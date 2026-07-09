@@ -43,7 +43,7 @@ Source: "C:\bs\blueseer\.patch"; DestDir: "{app}"; Flags: ignoreversion
 Source: "C:\bs\blueseer\scripts\bsconfig.sqlite"; DestDir: "{app}"; DestName: "{#bsconfig}"; Flags: ignoreversion
 Source: "C:\bs\bsmf\documentation\documentation.pdf"; DestDir: "{app}"; Flags: ignoreversion
 Source: "C:\bs\blueseer\sf\data\*"; DestDir: "{app}\data"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "C:\bs\blueseer\dist\*"; DestDir: "{app}\dist"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "C:\bs\blueseer\target\dist\*"; DestDir: "{app}\dist"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "C:\bs\blueseer\sf\temp\*"; DestDir: "{app}\temp"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "C:\bs\blueseer\sf\patches\*"; DestDir: "{app}\patches"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "C:\bs\blueseer\sf\edi\*"; DestDir: "{app}\edi"; Flags: ignoreversion recursesubdirs createallsubdirs

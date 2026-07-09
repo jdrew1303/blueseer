@@ -85,7 +85,9 @@ import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
-import javax.swing.SwingWorker;
+import javax.swing.SwingWorker;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignP;
 
 /**
  *
@@ -1313,7 +1315,7 @@ public class Scheduler extends javax.swing.JPanel {
 
         jLabel11.setText("To Item:");
 
-        btprint.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/print.png"))); // NOI18N
+        btprint.setIcon(FontIcon.of(MaterialDesignP.PRINTER, 16)); // NOI18N
         btprint.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btprintActionPerformed(evt);
@@ -1624,7 +1626,7 @@ public class Scheduler extends javax.swing.JPanel {
             }
         });
 
-        btopprint.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/print.png"))); // NOI18N
+        btopprint.setIcon(FontIcon.of(MaterialDesignP.PRINTER, 16)); // NOI18N
         btopprint.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btopprintActionPerformed(evt);

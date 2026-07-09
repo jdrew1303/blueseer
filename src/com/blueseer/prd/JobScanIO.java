@@ -98,7 +98,9 @@ import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.SwingWorker;
 import net.sf.jasperreports.engine.JasperExportManager;
-import net.sf.jasperreports.view.JasperViewer;
+import net.sf.jasperreports.view.JasperViewer;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
 
 /**
  *
@@ -809,7 +811,7 @@ javax.swing.table.DefaultTableModel historymodel = new javax.swing.table.Default
             }
         });
 
-        btbrowse.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btbrowse.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btbrowse.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btbrowseActionPerformed(evt);

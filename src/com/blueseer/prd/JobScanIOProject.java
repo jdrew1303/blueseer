@@ -137,7 +137,12 @@ import org.jfree.chart.JFreeChart;
 import org.jfree.chart.labels.PieSectionLabelGenerator;
 import org.jfree.chart.labels.StandardPieSectionLabelGenerator;
 import org.jfree.chart.plot.PiePlot;
-import org.jfree.data.general.DefaultPieDataset;
+import org.jfree.data.general.DefaultPieDataset;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignC;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignD;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignP;
 
 /**
  *
@@ -1128,7 +1133,7 @@ public class JobScanIOProject extends javax.swing.JPanel implements IBlueSeerV {
             }
         });
 
-        btlookup.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/lookup.png"))); // NOI18N
+        btlookup.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btlookup.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btlookupActionPerformed(evt);
@@ -1161,7 +1166,7 @@ public class JobScanIOProject extends javax.swing.JPanel implements IBlueSeerV {
 
         jLabel5.setText("Material:");
 
-        btaddmatl.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/add.png"))); // NOI18N
+        btaddmatl.setIcon(FontIcon.of(MaterialDesignP.PLUS_CIRCLE, 16)); // NOI18N
         btaddmatl.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btaddmatlActionPerformed(evt);
@@ -1315,14 +1320,14 @@ public class JobScanIOProject extends javax.swing.JPanel implements IBlueSeerV {
             }
         });
 
-        btdeletematl.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/delete.png"))); // NOI18N
+        btdeletematl.setIcon(FontIcon.of(MaterialDesignD.DELETE, 16)); // NOI18N
         btdeletematl.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btdeletematlActionPerformed(evt);
             }
         });
 
-        btprint.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/print.png"))); // NOI18N
+        btprint.setIcon(FontIcon.of(MaterialDesignP.PRINTER, 16)); // NOI18N
         btprint.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btprintActionPerformed(evt);
@@ -1338,7 +1343,7 @@ public class JobScanIOProject extends javax.swing.JPanel implements IBlueSeerV {
 
         jLabel16.setText("Operator:");
 
-        btupdate.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/save.png"))); // NOI18N
+        btupdate.setIcon(FontIcon.of(MaterialDesignC.CONTENT_SAVE, 16)); // NOI18N
         btupdate.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btupdateActionPerformed(evt);
@@ -1356,14 +1361,14 @@ public class JobScanIOProject extends javax.swing.JPanel implements IBlueSeerV {
             }
         });
 
-        btaddop.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/add.png"))); // NOI18N
+        btaddop.setIcon(FontIcon.of(MaterialDesignP.PLUS_CIRCLE, 16)); // NOI18N
         btaddop.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btaddopActionPerformed(evt);
             }
         });
 
-        btbrowse.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btbrowse.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btbrowse.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btbrowseActionPerformed(evt);

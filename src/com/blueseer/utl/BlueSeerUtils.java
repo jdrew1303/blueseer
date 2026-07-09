@@ -109,6 +109,7 @@ import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
+import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
@@ -140,6 +141,9 @@ import org.apache.commons.io.IOUtils;
 import org.bouncycastle.util.encoders.Base64;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignP;
+import org.kordamp.ikonli.swing.FontIcon;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 /**
@@ -156,12 +160,12 @@ public class BlueSeerUtils {
     
     public static DateFormat mysqlDateFormat = new SimpleDateFormat("yyyy-MM-dd");
     public static DateFormat bsdate = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
-    public static ImageIcon clickchange = new ImageIcon(BlueSeerUtils.class.getResource("/images/change.png")); 
-    public static ImageIcon clickflag = new ImageIcon(BlueSeerUtils.class.getResource("/images/flag.png")); 
-    public static ImageIcon clickbasket = new ImageIcon(BlueSeerUtils.class.getResource("/images/basket.png")); 
-    public static ImageIcon clickfind = new ImageIcon(BlueSeerUtils.class.getResource("/images/find.png")); 
-    public static ImageIcon clicklookup = new ImageIcon(BlueSeerUtils.class.getResource("/images/lookup.png")); 
-    public static  ImageIcon clickprint = new ImageIcon(BlueSeerUtils.class.getResource("/images/print.png"));
+    public static Icon clickchange = FontIcon.of(MaterialDesignP.PENCIL, 16);
+    public static ImageIcon clickflag = new ImageIcon(BlueSeerUtils.class.getResource("/images/flag.png"));
+    public static ImageIcon clickbasket = new ImageIcon(BlueSeerUtils.class.getResource("/images/basket.png"));
+    public static Icon clickfind = FontIcon.of(MaterialDesignM.MAGNIFY, 16);
+    public static Icon clicklookup = FontIcon.of(MaterialDesignM.MAGNIFY, 16);
+    public static Icon clickprint = FontIcon.of(MaterialDesignP.PRINTER, 16);
     public static  ImageIcon clickclock = new ImageIcon(BlueSeerUtils.class.getResource("/images/clock.png"));
     public static  ImageIcon clickchart = new ImageIcon(BlueSeerUtils.class.getResource("/images/chart.png"));
     public static  ImageIcon clickcoffee = new ImageIcon(BlueSeerUtils.class.getResource("/images/coffee.png"));

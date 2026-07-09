@@ -103,7 +103,10 @@ import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.SwingWorker;
 import javax.swing.event.TableModelEvent;
-import javax.swing.table.DefaultTableModel;
+import javax.swing.table.DefaultTableModel;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignP;
 
 
 /**
@@ -1895,14 +1898,14 @@ public class ShipperMaint extends javax.swing.JPanel implements IBlueSeerT {
         jLabel36.setText("ShipTo:");
         jLabel36.setName("lblshipto"); // NOI18N
 
-        btorder.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/add.png"))); // NOI18N
+        btorder.setIcon(FontIcon.of(MaterialDesignP.PLUS_CIRCLE, 16)); // NOI18N
         btorder.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btorderActionPerformed(evt);
             }
         });
 
-        btshipto.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/add.png"))); // NOI18N
+        btshipto.setIcon(FontIcon.of(MaterialDesignP.PLUS_CIRCLE, 16)); // NOI18N
         btshipto.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btshiptoActionPerformed(evt);
@@ -1929,7 +1932,7 @@ public class ShipperMaint extends javax.swing.JPanel implements IBlueSeerT {
 
         lbladdr.setBackground(java.awt.Color.lightGray);
 
-        btLookUpBillTo.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btLookUpBillTo.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btLookUpBillTo.setToolTipText("lookup");
         btLookUpBillTo.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -2037,7 +2040,7 @@ public class ShipperMaint extends javax.swing.JPanel implements IBlueSeerT {
             }
         });
 
-        btlookup.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/lookup.png"))); // NOI18N
+        btlookup.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btlookup.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btlookupActionPerformed(evt);
@@ -2173,7 +2176,7 @@ public class ShipperMaint extends javax.swing.JPanel implements IBlueSeerT {
         jLabel9.setText("ContQty");
         jLabel9.setName("lblcontqty"); // NOI18N
 
-        btlookupOrderLine.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btlookupOrderLine.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btlookupOrderLine.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btlookupOrderLineActionPerformed(evt);

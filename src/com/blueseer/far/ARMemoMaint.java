@@ -77,7 +77,9 @@ import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JViewport;
 import javax.swing.SwingWorker;
-import javax.swing.event.TableModelEvent;
+import javax.swing.event.TableModelEvent;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
 
 /**
  *
@@ -965,7 +967,7 @@ public class ARMemoMaint extends javax.swing.JPanel implements IBlueSeerV {
         jLabel8.setText("Total:");
         jLabel8.setName("lbltotal"); // NOI18N
 
-        btLookUpAccountDet.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btLookUpAccountDet.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btLookUpAccountDet.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btLookUpAccountDetActionPerformed(evt);
@@ -1097,7 +1099,7 @@ public class ARMemoMaint extends javax.swing.JPanel implements IBlueSeerV {
         jLabel7.setText("Remarks");
         jLabel7.setName("lblremarks"); // NOI18N
 
-        btlookup.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/lookup.png"))); // NOI18N
+        btlookup.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btlookup.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btlookupActionPerformed(evt);
@@ -1120,14 +1122,14 @@ public class ARMemoMaint extends javax.swing.JPanel implements IBlueSeerV {
 
         jLabel9.setText("Type");
 
-        btLookUpAccount.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btLookUpAccount.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btLookUpAccount.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btLookUpAccountActionPerformed(evt);
             }
         });
 
-        btLookUpBillTo.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btLookUpBillTo.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btLookUpBillTo.setToolTipText("lookup");
         btLookUpBillTo.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {

@@ -13,6 +13,19 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.release>26</maven.compiler.release>
+
+    <!-- jpackage installer defaults (see the "jpackage" profile below and the
+         "windows" / "linux-x86_64" / "mac" profiles for OS-specific overrides).
+         installer.appVersion is separate from project.version because jpackage
+         requires a strict numeric major[.minor[.build]] version for msi/exe. -->
+    <installer.appVersion>8.0.0</installer.appVersion>
+    <installer.type>APP_IMAGE</installer.type>
+    <installer.icon></installer.icon>
+    <!-- Point this at an extracted JetBrains Runtime to bundle it in the
+         installer, e.g. -Djbr.home=/opt/jbr-26. Defaults to whatever JDK is
+         running Maven, so building with a JBR-based JAVA_HOME/toolchain bundles
+         that runtime with no extra flags. -->
+    <jbr.home>${java.home}</jbr.home>
   </properties>
 
 
@@ -210,6 +223,20 @@
 </dependency>
 
 <dependency>
+    <!-- Ikonli: crisp, scalable, HiDPI-friendly vector icons for Swing,
+         replacing the old fixed-size images/*.png toolbar icons one at a time. -->
+    <groupId>org.kordamp.ikonli</groupId>
+    <artifactId>ikonli-swing</artifactId>
+    <version>12.4.0</version>
+</dependency>
+
+<dependency>
+    <groupId>org.kordamp.ikonli</groupId>
+    <artifactId>ikonli-materialdesign2-pack</artifactId>
+    <version>12.4.0</version>
+</dependency>
+
+<dependency>
     <groupId>com.google.code.gson</groupId>
     <artifactId>gson</artifactId>
     <version>2.9.1</version>
@@ -244,6 +271,32 @@
     <groupId>org.icepdf.os</groupId>
     <artifactId>icepdf-core</artifactId>
     <version>6.2.2</version>
+    <exclusions>
+        <!-- javax.media:jai_core is not published to Maven Central; icepdf only
+             uses it as an optional codec, so drop it rather than depend on the
+             now-unreliable jai.dev.java.net / osgeo mirrors. -->
+        <exclusion>
+            <groupId>javax.media</groupId>
+            <artifactId>jai_core</artifactId>
+        </exclusion>
+        <exclusion>
+            <groupId>com.sun.media</groupId>
+            <artifactId>jai_imageio</artifactId>
+        </exclusion>
+        <!-- superseded by the org.bouncycastle:*-jdk18on artifacts declared below -->
+        <exclusion>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk15on</artifactId>
+        </exclusion>
+        <exclusion>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-ext-jdk15on</artifactId>
+        </exclusion>
+        <exclusion>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk15on</artifactId>
+        </exclusion>
+    </exclusions>
   </dependency>
 
 <dependency>
@@ -251,12 +304,10 @@
     <artifactId>icepdf-viewer</artifactId>
     <version>6.2.2</version>
  <exclusions>
-<!--
     <exclusion>
         <groupId>javax.media</groupId>
-        <artifactId>jai-core</artifactId>
+        <artifactId>jai_core</artifactId>
     </exclusion>
--->
 </exclusions>
 </dependency>
 
@@ -509,18 +560,19 @@
   </dependencies>
 
 <profiles>
-  <profile>  
+  <profile>
     <id>windows</id>
     <activation>
       <os>
-        <name>Windows 10</name>
-        <arch>amd64</arch>
+        <family>windows</family>
       </os>
     </activation>
     <properties>
       <swt.groupId>org.eclipse.platform</swt.groupId>
       <swt.artifactId>org.eclipse.swt.win32.win32.x86_64</swt.artifactId>
       <swt.version>3.129.0</swt.version>
+      <installer.type>MSI</installer.type>
+      <installer.icon>${project.basedir}/sf/images/bs.ico</installer.icon>
     </properties>
   </profile>
   <profile>
@@ -535,7 +587,81 @@
             <swt.groupId>org.eclipse.swt</swt.groupId>
             <swt.artifactId>org.eclipse.swt.gtk.linux.x86_64</swt.artifactId>
             <swt.version>4.3</swt.version>
+            <installer.type>DEB</installer.type>
+            <installer.icon>${project.basedir}/sf/images/bs.png</installer.icon>
         </properties>
+    </profile>
+    <profile>
+        <id>mac</id>
+        <activation>
+            <os>
+                <family>mac</family>
+            </os>
+        </activation>
+        <properties>
+            <installer.type>DMG</installer.type>
+            <!-- no bundled .icns yet; jpackage falls back to a default icon -->
+        </properties>
+    </profile>
+
+    <profile>
+      <!-- Build a native installer with jpackage: mvn package -Pjpackage
+           (add -Djbr.home=/path/to/jetbrains-runtime to bundle JBR instead of
+           whatever JDK is running Maven). Must run on the target OS: jpackage
+           does not cross-build installers. -->
+      <id>jpackage</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.panteleyev</groupId>
+            <artifactId>jpackage-maven-plugin</artifactId>
+            <version>1.8.0</version>
+            <executions>
+              <execution>
+                <phase>package</phase>
+                <goals>
+                  <goal>jpackage</goal>
+                </goals>
+              </execution>
+            </executions>
+            <configuration>
+              <name>BlueSeer</name>
+              <appVersion>${installer.appVersion}</appVersion>
+              <vendor>BlueSeer</vendor>
+              <description>BlueSeer ERP</description>
+              <destination>${project.build.directory}/installer</destination>
+              <runtimeImage>${jbr.home}</runtimeImage>
+              <input>${project.build.directory}/dist</input>
+              <mainJar>${project.build.finalName}.jar</mainJar>
+              <mainClass>com.blueseer.utl.mf</mainClass>
+              <icon>${installer.icon}</icon>
+              <type>${installer.type}</type>
+              <javaOptions>
+                <option>-Djava.util.logging.config.file=bslogging.properties</option>
+              </javaOptions>
+              <!-- The app reads bs.cfg, data/, jasper/, etc. as relative paths
+                   from its working directory, so ship them alongside the jars
+                   inside the installed app image (not just on the classpath). -->
+              <appContentPaths>
+                <path>${project.build.directory}/bs.cfg</path>
+                <path>${project.build.directory}/.patch</path>
+                <path>${project.build.directory}/data</path>
+                <path>${project.build.directory}/edi</path>
+                <path>${project.build.directory}/jasper</path>
+                <path>${project.build.directory}/zebra</path>
+                <path>${project.build.directory}/conf</path>
+                <path>${project.build.directory}/logs</path>
+                <path>${project.build.directory}/attachments</path>
+                <path>${project.build.directory}/temp</path>
+              </appContentPaths>
+              <winDirChooser>true</winDirChooser>
+              <winMenu>true</winMenu>
+              <winShortcut>true</winShortcut>
+              <linuxShortcut>true</linuxShortcut>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
     </profile>
 </profiles>
 
@@ -549,6 +675,12 @@
   <resource>
    <directory>src/resources</directory>
    <targetPath>resources</targetPath>
+  </resource>
+  <resource>
+   <!-- bsmf.MainFrame (compiled, no source in this repo) loads its icons via
+        getClass().getResource, e.g. "/images/foo.png"; keep them on the classpath. -->
+   <directory>src/images</directory>
+   <targetPath>images</targetPath>
   </resource>
   </resources>
 
@@ -579,7 +711,12 @@
           <artifactId>maven-jar-plugin</artifactId>
           <version>3.4.2</version>
           <configuration>
-            <outputDirectory>./target/lib</outputDirectory>
+            <outputDirectory>${project.build.directory}/dist</outputDirectory>
+            <archive>
+              <manifest>
+                <mainClass>com.blueseer.utl.mf</mainClass>
+              </manifest>
+            </archive>
           </configuration>
         </plugin>
         <plugin>
@@ -601,6 +738,7 @@
         </plugin>
         <plugin>
             <artifactId>maven-dependency-plugin</artifactId>
+            <version>3.7.0</version>
             <executions>
             <execution>
             <id>copy-dependencies</id>
@@ -609,13 +747,14 @@
                 <goal>copy-dependencies</goal>
                </goals>
             <configuration>
-              <outputDirectory>${project.build.directory}/mylib</outputDirectory>
+              <outputDirectory>${project.build.directory}/dist</outputDirectory>
             </configuration>
             </execution>
             </executions>
         </plugin>
         <plugin>
             <artifactId>maven-resources-plugin</artifactId>
+            <version>3.3.1</version>
             <executions>
             <execution>
                <id>copy-resources</id>
@@ -779,6 +918,12 @@
                             <include>bs.cfg</include>
                         </includes>
                     </resource>
+                    <resource>
+                        <directory>./</directory>
+                        <includes>
+                            <include>.patch</include>
+                        </includes>
+                    </resource>
                 </resources>
             </configuration>
         </execution>
@@ -786,6 +931,23 @@
         </plugin>
       </plugins>
     </pluginManagement>
+
+    <!-- Activate the executions declared in pluginManagement above so that a
+         plain `mvn package` produces a complete, runnable target/dist (the
+         application jar + all dependency jars) plus target/{images,data,
+         jasper,zebra,conf,edi,logs,attachments} and target/bs.cfg — the same
+         layout the old Ant + refresh_test_*.sh flow produced by hand. -->
+    <plugins>
+      <plugin>
+        <artifactId>maven-jar-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <artifactId>maven-dependency-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <artifactId>maven-resources-plugin</artifactId>
+      </plugin>
+    </plugins>
   </build>
 
 

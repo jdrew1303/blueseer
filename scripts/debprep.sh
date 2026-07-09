@@ -25,7 +25,7 @@ echo "COUNTRY=US" >>$bsshare/bs.cfg
 
 cp bslogging.properties $bsshare/
 cp ../.patch $bsshare/
-cp -R ../dist $bsshare/
+cp -R ../target/dist $bsshare/
 cp -R ../sf/data $bsshare/
 cp -R ../sf/zebra $bsshare/
 cp -R ../sf/edi $bsshare/

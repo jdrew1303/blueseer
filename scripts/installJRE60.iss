@@ -62,7 +62,7 @@ Source: "C:\bs\blueseer\sf\data\en\bsdb.db"; components: english; DestDir: "{app
 Source: "C:\bs\blueseer\sf\data\tr\bsdb.db"; components: turkish; DestDir: "{app}\data"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "C:\bs\blueseer\sf\data\de\bsdb.db"; components: german; DestDir: "{app}\data"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "C:\bs\blueseer\sf\data\ro\bsdb.db"; components: romanian; DestDir: "{app}\data"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "C:\bs\blueseer\dist\*"; DestDir: "{app}\dist"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "C:\bs\blueseer\target\dist\*"; DestDir: "{app}\dist"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "C:\bs\blueseer\sf\temp\*"; DestDir: "{app}\temp"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "C:\bs\blueseer\sf\logs\*"; DestDir: "{app}\logs"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "C:\bs\blueseer\sf\attachments\*"; DestDir: "{app}\attachments"; Flags: ignoreversion recursesubdirs createallsubdirs

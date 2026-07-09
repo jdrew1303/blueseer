@@ -102,7 +102,10 @@ import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JViewport;
 import javax.swing.SwingWorker;
-import javax.swing.event.TableModelEvent;
+import javax.swing.event.TableModelEvent;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignP;
 
 
 /**
@@ -1389,7 +1392,7 @@ public class ServiceOrderMaint extends javax.swing.JPanel implements IBlueSeerT 
             }
         });
 
-        btnewcust.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/add.png"))); // NOI18N
+        btnewcust.setIcon(FontIcon.of(MaterialDesignP.PLUS_CIRCLE, 16)); // NOI18N
         btnewcust.setToolTipText("");
         btnewcust.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -1397,7 +1400,7 @@ public class ServiceOrderMaint extends javax.swing.JPanel implements IBlueSeerT 
             }
         });
 
-        btnewsite.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/add.png"))); // NOI18N
+        btnewsite.setIcon(FontIcon.of(MaterialDesignP.PLUS_CIRCLE, 16)); // NOI18N
         btnewsite.setToolTipText("");
         btnewsite.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -1489,7 +1492,7 @@ public class ServiceOrderMaint extends javax.swing.JPanel implements IBlueSeerT 
             }
         });
 
-        btlookup.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/lookup.png"))); // NOI18N
+        btlookup.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btlookup.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btlookupActionPerformed(evt);

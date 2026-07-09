@@ -77,9 +77,14 @@ permissions functionality that's built into the BlueSeer framework.
 
 BlueSeer's Swing UI is themed with <a href="https://www.formdev.com/flatlaf/">FlatLaf</a>,
 giving the existing JPanel/JFrame widgets a modern, flat appearance (better fonts,
-spacing, and HiDPI scaling) with no changes to the underlying panels themselves. The
-look and feel is installed once, in `com.blueseer.utl.mf` (the application's entry
-point), before the main frame is constructed.
+spacing, and HiDPI scaling) with no changes to the underlying panels themselves.
+FlatLaf also draws its own window decorations and merges the menu bar into the title
+bar (like a modern browser or VS Code). All of this is installed once, in
+`com.blueseer.utl.mf` (the application's entry point), before the main frame is
+constructed. One caveat: the main window's title bar text doubles as a status line
+(`USER=... IP=... VER=...`), which can get truncated on narrower windows now that it
+shares the title bar row with the embedded menu — widen/maximize the window if it
+looks cut off.
 </br>
 The application is also intended to be bundled and run with the
 <a href="https://github.com/JetBrains/JetBrainsRuntime">JetBrains Runtime (JBR)</a>
@@ -87,51 +92,89 @@ instead of a stock OpenJDK build. JBR is a drop-in, source-compatible OpenJDK bu
 that includes a number of Swing-specific rendering improvements (better subpixel/HiDPI
 handling, native window decorations, improved font rendering) that make Swing apps
 like BlueSeer feel noticeably more native on modern Windows, macOS, and Linux desktops.
-To pick up the change, download a JBR release matching the project's JDK baseline from
-the <a href="https://github.com/JetBrains/JetBrainsRuntime/releases">JetBrains Runtime
-releases page</a> and use it in place of the `jre26` directory referenced by the
-packaging scripts in `scripts/` (`login.bat`, `login.sh`, `debprep.sh`, the
-`installJRE*.iss` installers, etc.) — no other changes are required since JBR ships the
-same `bin/java` / `bin/javaw` layout as a standard JDK/JRE.
+The recommended way to pick this up is `mvn package -Pjpackage -Djbr.home=/path/to/jbr`
+(see "Building a native installer" below), which bundles JBR straight into the
+installer. If you're using the older manual packaging scripts in `scripts/` instead
+(`login.bat`, `login.sh`, `debprep.sh`, the `installJRE*.iss` installers, etc.), download
+a JBR release from the <a href="https://github.com/JetBrains/JetBrainsRuntime/releases">
+JetBrains Runtime releases page</a> and use it in place of the `jre26` directory those
+scripts expect — no other changes are required since JBR ships the same `bin/java` /
+`bin/javaw` layout as a standard JDK/JRE.
+</br>
+
+The old toolbar icons under `src/images` were fixed-size 16x16 PNGs, which look
+soft/blurry on HiDPI displays. They're being replaced, one icon at a time, with
+<a href="https://github.com/kordamp/ikonli">Ikonli</a> (`ikonli-swing` +
+`ikonli-materialdesign2-pack`) — a vector icon-font library for Swing that renders
+crisply at any size/DPI. The shared icons used across most Browse/Maint panels
+(magnifying-glass lookup/find, add, delete, save, change, print — ~200 call sites) are
+already converted; the pattern for the rest is mechanical:
+```java
+// before
+button.setIcon(new ImageIcon(getClass().getResource("/images/whatever.png")));
+// after
+button.setIcon(FontIcon.of(MaterialDesignW.WHATEVER, 16));
+```
+(add the matching `import org.kordamp.ikonli.swing.FontIcon;` and
+`import org.kordamp.ikonli.materialdesign2.MaterialDesignW;`, pick the closest icon at
+<a href="https://kordamp.org/ikonli/cheat-sheet-materialdesign2.html">the
+materialdesign2 cheat sheet</a>) — then the old PNG can be deleted once nothing
+references it.
 </br>
 
 <h1>Build/Compile Instructions (all builds should utilize JDK version 26 or higher)</h1>
 </br>
 
-<h2>Using Apache Netbeans</h2>
+BlueSeer builds with Maven only — there is no Ant build anymore. You'll need the JDK
+(version 26 or higher) and Maven installed and on your PATH.
 
-To use Netbeans, you will first need to download the Netbeans IDE. Once you have Netbeans installed, the following steps can be used to compile BlueSeer and bring up a test instance of the application :
-1. Download the blueseer source from github. You can either 'git clone https://github.com/BlueSeerERP/blueseer.git' or download the zipped version of Blueseer from github.com/BlueseerERP and extract the contents into a directory called 'blueseer'.
-2. Open a command prompt and cd to the install directory 'blueseer/test'. This will be your working/testing directory
-3. Type './refresh_test_win.bat' or ('./refresh_test_linux.sh' for linux) to establish a test instance of the blueseer application along with the bs.cfg file and database instance
-4. Start Netbeans and choose 'Open Project' to open the blueseer project files.
-5. Right click on the blueseer project and go to Project Properties
-6. Click on the 'run' portion of the properties and set the working directory to the 'test' directory where the instance config files and data directories are located.
-7. You should now be able to build and run the application. The default login credentials are 'admin' and 'admin' respectively.
+1. Download the source: `git clone https://github.com/BlueSeerERP/blueseer.git`
+2. From the `blueseer` directory, run: `mvn package`
+   This compiles the source, resolves every third-party dependency from Maven Central,
+   and assembles a complete, runnable application under `target/`:
+   `target/dist` (the application jar plus every dependency jar), and
+   `target/{data,edi,jasper,zebra,images,conf,logs,attachments,temp}` plus
+   `target/bs.cfg` (a default SQLite configuration) — everything the app needs to run,
+   equivalent to what `test/refresh_test_*.sh` used to assemble by hand for the old
+   Ant build.
+3. Run it:
+   - (linux) `cd target && java -cp "dist/*" com.blueseer.utl.mf`
+   - (windows) `cd target && java -classpath "dist/*" com.blueseer.utl.mf`
+   - The default login credentials are 'admin' and 'admin'.
+
+Only one dependency isn't on Maven Central: `lib/bsmf.jar`, the compiled main
+application frame (see the "Technology" section above) — it's declared as a
+`system`-scoped dependency in `pom.xml` pointing at `lib/bsmf.jar` directly.
+
+<h2>Using Apache Netbeans (or any Maven-aware IDE)</h2>
+
+Since the project is plain Maven, open the `blueseer` folder directly in any
+Maven-aware IDE (NetBeans, IntelliJ IDEA, Eclipse/m2e, VS Code + Java extensions) —
+it will be recognized automatically via `pom.xml`. Set the run/working directory to
+`target` (after running `mvn package` once) so the app can find `bs.cfg`, `data/`,
+etc., then run `com.blueseer.utl.mf` as the main class.
 </br>
 
-<h2>Using Ant</h2>
+<h2>Building a native installer (jpackage)</h2>
 
-Pre-requisite: You will need the JDK (version 26 or higher preferred) installed to run Ant.  You will then need to download the Ant build tool and install.  Make sure the ant executable is in your Environment Variables.  Once you have Ant installed, the following steps can be used to compile BlueSeer and bring up a test instance of the application:
+`mvn package -Pjpackage` produces a self-contained native installer under
+`target/installer` — a `.deb` on Linux, an `.msi` on Windows, a `.dmg` on macOS
+(jpackage only builds an installer for the OS you run it on) — with the app, all its
+dependency jars, its runtime resources (`bs.cfg`, `data/`, `jasper/`, etc.), and a
+bundled Java runtime, so end users just install and run it like any other desktop
+application; no separately-installed JDK required.
 
-1. Download the blueseer source from github. You can either 'git clone https://github.com/BlueSeerERP/blueseer.git' or download the zipped version of Blueseer from github.com/BlueseerERP and extract the contents into a directory called 'blueseer'.
-2. In the newly created blueseer directory, edit the build.xml file to adjust the location of your JDK (search the file for property name 'JDK')
-3. Once you've updated the build.xml with your JDK path, open a bash or powershell prompt and cd to the blueseer directory
-4. type the following to compile: ant main
-5. cd to blueseer/test and execute type ./refresh_test_linux.sh  (or refresh_test_win.bat)  ###this will create the necessary files to run the app
-6. cd to parent blueseer directory and type the following to run: ant run
-</br>
-
-<h2>Using Maven</h2>
-
-Pre-requisite:  You will need the JDK (version 26 or higher preferred) installed to run Maven.  You will then need to download the maven build tool and install.  Make sure the mvn executable is in your Environment Variables.  Once you have maven installed, the following steps can be used to compile BlueSeer and bring up a test instance of the application:
-
-1.  Download the blueseer source from github. You can either 'git clone https://github.com/BlueSeerERP/blueseer.git' or download the zipped version of Blueseer from github.com/BlueseerERP and extract the contents into a directory called 'blueseer'.
-2.  Open a powershell prompt or bash shell and cd to the blueseer directory
-3.  type and execute: mvn -U package dependency:copy-dependencies -DoutputDirectory="./target/lib"
-4.  cd to the newly created target directory
-5.  (windows) type and execute: java -classpath ".;lib/*" com.blueseer.utl.mf
-5.  (linux) type and execute: java -cp ".:lib/*" com.blueseer.utl.mf
+By default the installer bundles whatever JDK is running Maven. To bundle
+<a href="https://github.com/JetBrains/JetBrainsRuntime">JetBrains Runtime</a> instead
+(recommended — see "Look and Feel / Runtime" above), download a JBR release, extract
+it, and point at it:
+```
+mvn package -Pjpackage -Djbr.home=/path/to/extracted/jbr
+```
+The installer type/icon are picked automatically based on the OS running the build
+(see the `windows` / `linux-x86_64` / `mac` profiles in `pom.xml`); override
+`-Dinstaller.type=...` to build a different package type (e.g. `APP_IMAGE` for a
+plain, unpackaged app folder, useful for testing before building a real installer).
 </br>
 
 
