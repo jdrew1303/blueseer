@@ -225,7 +225,7 @@ dependency jars, its runtime resources (`bs.cfg`, `data/`, `jasper/`, etc.), and
 bundled Java runtime, so end users just install and run it like any other desktop
 application; no separately-installed JDK required.
 
-By default the installer bundles whatever JDK is running Maven. To bundle
+By default the build points jlink at whatever JDK is running Maven. To bundle
 <a href="https://github.com/JetBrains/JetBrainsRuntime">JetBrains Runtime</a> instead
 (recommended — see "Look and Feel / Runtime" above), download a JBR release, extract
 it, and point at it:
@@ -236,6 +236,65 @@ The installer type/icon are picked automatically based on the OS running the bui
 (see the `windows` / `linux-x86_64` / `mac` profiles in `pom.xml`); override
 `-Dinstaller.type=...` to build a different package type (e.g. `APP_IMAGE` for a
 plain, unpackaged app folder, useful for testing before building a real installer).
+</br>
+
+
+<h1>App size</h1>
+
+A few things keep the installer from bloating the way older Swing apps bundling a
+`lib/` folder and a full JDK tend to:
+
+<b>A custom jlink runtime instead of the whole JDK.</b> The `jpackage` profile doesn't
+bundle a full JDK/JBR (300MB+) — it points jpackage's built-in jlink step at just the
+modules this app actually uses (`<modulePaths>`/`<addModules>` in the `jpackage`
+profile in `pom.xml`), which on this JDK shrinks the bundled runtime from ~286MB down
+to ~90MB. The module list was computed by running jdeps against every jar in
+`target/dist`:
+```
+cd target && for j in dist/*.jar; do
+  jdeps --multi-release 21 --ignore-missing-deps --print-module-deps -cp "dist/*" "$j"
+done | grep -v '^Warning:' | tr ',' '\n' | sort -u
+```
+(run each jar individually rather than all together — some jars declare a real
+`module-info` and jdeps tries to fully resolve the module graph if you pass several of
+those at once, which can fail on version conflicts that don't actually matter for a
+classpath app). Two modules were added on top of what jdeps found — `jdk.crypto.ec`
+(TLS with EC cipher suites; needed for HTTPS/AS2/SFTP/MySQL but invisible to jdeps'
+static analysis) and `jdk.charsets` (non-Latin charsets, given this app's Arabic/
+Chinese/etc. language support) — both are classic jlink gotchas that fail silently at
+runtime, not at build time. If you add a dependency that needs something else, the
+symptom is a `NoClassDefFoundError`/`ClassNotFoundException` for a JDK class at
+runtime; regenerate the module list and add whatever's missing.
+</br>
+Note the jpackage profile explicitly keeps `stripNativeCommands` off (unlike the
+plugin's stripped-by-default setting): `com.blueseer.utl.mf` shells out to
+`$JAVA_HOME/bin/java` to relaunch itself in the app's own directory
+(`relaunchInAppDirectoryIfNeeded`), which needs that binary to still be present in the
+bundled runtime.
+</br>
+
+<b>JXBrowser and IcePDF were dead weight.</b> `lib/jxbrowser-3.0.jar` (a full bundled
+Chromium browser engine) turned out to be entirely unused — not referenced anywhere in
+this source tree or in the compiled `bsmf.jar` — and has been removed, along with the
+dead commented-out Maven dependency for it. `icepdf-core`/`icepdf-viewer` (used in
+exactly one place, `ItemMaint`'s drawing preview) have also been removed:
+`OVData.showPDFusingIcePDF`'s embedded PDF viewer window is replaced with
+`OVData.openPDF`, which just hands the file to the OS's default PDF viewer via
+`java.awt.Desktop`. This is a real, if narrow, behavior change — drawings now open in
+an external viewer instead of an in-app window — but it drops IcePDF's large
+transitive Apache Batik/xmlgraphics-commons dependency tree for a feature that had a
+single call site. (JasperReports also depends on Batik for its own SVG chart support,
+so those jars are still present either way — just no longer duplicated by IcePDF's
+older, separately-versioned copies.)
+</br>
+Not done: shrinking tools like ProGuard/R8 weren't applied. This codebase loads
+~300 business panels by reflection using class names stored in the database
+(see "Technology" above), and libraries like JasperReports and the JDBC drivers
+register themselves via reflection/`ServiceLoader`, all of which a bytecode shrinker
+can't see from a static call graph. Getting real value out of a shrinker here would
+need extensive, carefully-verified keep rules, and a wrong one fails silently at
+runtime in a hard-to-fully-test way across an app this size — a worse outcome than a
+larger installer.
 </br>
 
 

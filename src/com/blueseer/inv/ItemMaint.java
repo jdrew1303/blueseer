@@ -77,7 +77,7 @@ import com.blueseer.utl.DTData;
 import com.blueseer.utl.IBlueSeerT;
 import static com.blueseer.utl.OVData.printImageJasper;
 import static com.blueseer.utl.OVData.printJasperItem;
-import static com.blueseer.utl.OVData.showPDFusingIcePDF;
+import static com.blueseer.utl.OVData.openPDF;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Image;
@@ -114,7 +114,7 @@ import javax.swing.JTable;
 import javax.swing.JViewport;
 import javax.swing.SwingWorker;
 import javax.swing.tree.DefaultMutableTreeNode;
-import javax.swing.tree.DefaultTreeModel;
+import javax.swing.tree.DefaultTreeModel;
 import org.kordamp.ikonli.swing.FontIcon;
 import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
 
@@ -2260,7 +2260,7 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
             imageIcon.setImage(newimage);
             imagelabel.setIcon(imageIcon);
             if (ddimage.getSelectedItem().toString().toLowerCase().endsWith("pdf")) {
-            showPDFusingIcePDF(ddimage.getSelectedItem().toString());
+            openPDF(ddimage.getSelectedItem().toString());
             }
         } else {
          btdeleteimage.setEnabled(false);  

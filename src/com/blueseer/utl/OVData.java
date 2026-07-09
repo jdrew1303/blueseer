@@ -144,7 +144,6 @@ import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
-import java.io.PrintStream;
 import java.math.BigDecimal;
 import java.net.Socket;
 import java.net.URI;
@@ -190,9 +189,6 @@ import net.sf.jasperreports.engine.JasperExportManager;
 import net.sf.jasperreports.engine.data.JRTableModelDataSource;
 import net.sf.jasperreports.engine.data.ListOfArrayDataSource;
 import org.apache.commons.lang3.time.DateUtils;
-import org.icepdf.ri.common.ComponentKeyBinding;
-import org.icepdf.ri.common.SwingController;
-import org.icepdf.ri.common.SwingViewBuilder;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -20489,53 +20485,21 @@ return mystring;
        
     } 
        
-    public static void showPDFusingIcePDF(String file) {
-        
-        PrintStream orgStream   = null;
-        PrintStream fileStream  = null;
-        
+    /**
+     * Opens a PDF in the user's OS-default PDF viewer instead of an embedded
+     * viewer, avoiding the need to bundle a PDF rendering engine at all.
+     */
+    public static void openPDF(String file) {
         try {
-        
-        // this redirect of Std Err is necessary for icePDF warnings/crap that you are using free stuff  
-        // anyone know how to suppress these warnings...I'm all ears.
-        
-        orgStream = System.out;
-        fileStream = new PrintStream(new FileOutputStream("icePDF.log",true));
-        System.setErr(fileStream);
-        
-        Path pdfpath = FileSystems.getDefault().getPath(file);
-
-        // build a controller
-        SwingController controller = new SwingController();
-
-        // Build a SwingViewFactory configured with the controller
-        SwingViewBuilder factory = new SwingViewBuilder(controller);
-
-        // Use the factory to build a JPanel that is pre-configured
-        //with a complete, active Viewer UI.
-        JPanel viewerComponentPanel = factory.buildViewerPanel();
-
-        // add copy keyboard command
-        ComponentKeyBinding.install(controller, viewerComponentPanel);
-
-        // add interactive mouse link annotation support via callback
-        controller.getDocumentViewController().setAnnotationCallback(
-              new org.icepdf.ri.common.MyAnnotationCallback(
-                     controller.getDocumentViewController())); 
-
-        // Create a JFrame to display the panel in
-        JFrame window = new JFrame("Viewer"); 
-        window.getContentPane().add(viewerComponentPanel);
-        window.pack();
-        window.setVisible(true);
-
-        // Open a PDF document to view
-        controller.openDocument(pdfpath.toString());
-        
+            if (!java.awt.Desktop.isDesktopSupported()
+                    || !java.awt.Desktop.getDesktop().isSupported(java.awt.Desktop.Action.OPEN)) {
+                MainFrame.show("No default PDF viewer is available on this system.");
+                return;
+            }
+            java.awt.Desktop.getDesktop().open(new java.io.File(file));
         } catch (Exception ex) {
             bslog(ex);
-        } finally {
-           System.setErr(orgStream);
+            MainFrame.show("Unable to open " + file);
         }
     }
     

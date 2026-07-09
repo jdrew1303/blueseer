@@ -275,49 +275,12 @@
     <version>4.5.13</version>
 </dependency>
 
-<dependency>
-    <groupId>org.icepdf.os</groupId>
-    <artifactId>icepdf-core</artifactId>
-    <version>6.2.2</version>
-    <exclusions>
-        <!-- javax.media:jai_core is not published to Maven Central; icepdf only
-             uses it as an optional codec, so drop it rather than depend on the
-             now-unreliable jai.dev.java.net / osgeo mirrors. -->
-        <exclusion>
-            <groupId>javax.media</groupId>
-            <artifactId>jai_core</artifactId>
-        </exclusion>
-        <exclusion>
-            <groupId>com.sun.media</groupId>
-            <artifactId>jai_imageio</artifactId>
-        </exclusion>
-        <!-- superseded by the org.bouncycastle:*-jdk18on artifacts declared below -->
-        <exclusion>
-            <groupId>org.bouncycastle</groupId>
-            <artifactId>bcprov-jdk15on</artifactId>
-        </exclusion>
-        <exclusion>
-            <groupId>org.bouncycastle</groupId>
-            <artifactId>bcprov-ext-jdk15on</artifactId>
-        </exclusion>
-        <exclusion>
-            <groupId>org.bouncycastle</groupId>
-            <artifactId>bcpkix-jdk15on</artifactId>
-        </exclusion>
-    </exclusions>
-  </dependency>
-
-<dependency>
-    <groupId>org.icepdf.os</groupId>
-    <artifactId>icepdf-viewer</artifactId>
-    <version>6.2.2</version>
- <exclusions>
-    <exclusion>
-        <groupId>javax.media</groupId>
-        <artifactId>jai_core</artifactId>
-    </exclusion>
-</exclusions>
-</dependency>
+<!-- icepdf-core/icepdf-viewer removed: the one place that used them
+     (com.blueseer.utl.OVData.showPDFusingIcePDF, an embedded PDF viewer
+     window) now hands the file to the OS's default PDF viewer via
+     java.awt.Desktop instead (see OVData.openPDF). This also drops
+     icepdf-core's large transitive Apache Batik/xmlgraphics-commons
+     dependency tree, which was otherwise dead weight. -->
 
 <dependency>
     <groupId>com.ibm.icu</groupId>
@@ -411,13 +374,6 @@
     <artifactId>json-simple</artifactId>
     <version>2.1.2</version>
 </dependency>
-<!--
-<dependency>
-    <groupId>com.teamdev.jxbrowser</groupId>
-    <artifactId>jxbrowser</artifactId>
-    <version>7.12.2</version>
-</dependency>
--->
 <dependency>
     <groupId>javax.mail</groupId>
     <artifactId>mail</artifactId>
@@ -638,7 +594,55 @@
               <vendor>BlueSeer</vendor>
               <description>BlueSeer ERP</description>
               <destination>${project.build.directory}/installer</destination>
-              <runtimeImage>${jbr.home}</runtimeImage>
+              <!-- Instead of the runtime-image option (which copies the
+                   entire JDK, 300MB+), point jpackage's built-in jlink step
+                   at the JDK's own jmods and hand it only the modules this
+                   app actually uses, so the installer bundles a much smaller
+                   custom runtime. The list below was computed by running the
+                   jdeps print module deps mode over every jar in target/dist
+                   (see the "App size" section in README for the exact
+                   command) plus jdk.crypto.ec and jdk.charsets, two modules
+                   jdeps' static analysis reliably misses but that matter here
+                   (TLS with EC cipher suites for HTTPS/AS2/SFTP/MySQL, and
+                   non-Latin charsets given this app's Arabic/Chinese/etc.
+                   language support). Regenerate this list if dependencies
+                   change, and re-test thoroughly after any change: an
+                   under-listed module fails at runtime, not at build time. -->
+              <modulePaths>
+                <path>${jbr.home}/jmods</path>
+              </modulePaths>
+              <!-- The plugin's own jlink defaults strip the java/javac/etc.
+                   launcher binaries (stripNativeCommands), which is normally
+                   fine for a packaged app, except com.blueseer.utl.mf shells
+                   out to $JAVA_HOME/bin/java to relaunch itself in the app's
+                   own directory (see the relaunchInAppDirectoryIfNeeded
+                   comment in mf.java), so that binary has to stay. -->
+              <jLink>
+                <stripDebug>true</stripDebug>
+                <noHeaderFiles>true</noHeaderFiles>
+                <noManPages>true</noManPages>
+                <stripNativeCommands>false</stripNativeCommands>
+              </jLink>
+              <addModules>
+                <module>java.base</module>
+                <module>java.compiler</module>
+                <module>java.desktop</module>
+                <module>java.instrument</module>
+                <module>java.logging</module>
+                <module>java.management</module>
+                <module>java.naming</module>
+                <module>java.rmi</module>
+                <module>java.security.jgss</module>
+                <module>java.security.sasl</module>
+                <module>java.sql</module>
+                <module>java.sql.rowset</module>
+                <module>java.xml</module>
+                <module>jdk.charsets</module>
+                <module>jdk.crypto.ec</module>
+                <module>jdk.management</module>
+                <module>jdk.unsupported</module>
+                <module>jdk.xml.dom</module>
+              </addModules>
               <input>${project.build.directory}/dist</input>
               <mainJar>${project.build.finalName}.jar</mainJar>
               <mainClass>com.blueseer.utl.mf</mainClass>
