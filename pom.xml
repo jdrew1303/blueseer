@@ -511,6 +511,17 @@
       <artifactId>junit-jupiter-params</artifactId>
     </dependency>
 
+    <!-- UI regression walker (tools/ui-regression): drives the live Swing app
+         via its real component tree instead of blind screen coordinates, so
+         the same recorded action sequence can be replayed against a second
+         build (e.g. a different bsmf.jar) for a pixel-diff comparison. -->
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-swing</artifactId>
+      <version>3.17.1</version>
+      <scope>test</scope>
+    </dependency>
+
     <dependency>
     <groupId>com.blueseer.bsmf</groupId>
     <artifactId>bsmf</artifactId>
