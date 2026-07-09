@@ -56,7 +56,7 @@ includeantruntime="false" debug="true">
 includes="images/**/*.png,images/**/*.gif,resources/**/*.properties" />
                 <!--    <fileset dir="${lib.dir}" includes="**/*.jar"/> -->
              <manifest>
-                 <attribute name="Main-Class" value="bsmf" />
+                 <attribute name="Main-Class" value="com.blueseer.utl.mf" />
              </manifest>
          </jar>
      </target>
@@ -69,7 +69,7 @@ includes="images/**/*.png,images/**/*.gif,resources/**/*.properties" />
            <!-- <fileset dir="lib" includes="*.jar"/> -->
      </path>
      <echo>running in ....${test.dir}</echo>
-    <java classname="bsmf.MainFrame" jvm="${java}" fork="true"
+    <java classname="com.blueseer.utl.mf" jvm="${java}" fork="true"
 classpathref="runtime.path" dir="${test.dir}">
             <arg value="-debug"/>
             <jvmarg

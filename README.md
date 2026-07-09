@@ -73,6 +73,28 @@ given the menu/class management and
 permissions functionality that's built into the BlueSeer framework.
 </br>
 
+<h1>Look and Feel / Runtime</h1>
+
+BlueSeer's Swing UI is themed with <a href="https://www.formdev.com/flatlaf/">FlatLaf</a>,
+giving the existing JPanel/JFrame widgets a modern, flat appearance (better fonts,
+spacing, and HiDPI scaling) with no changes to the underlying panels themselves. The
+look and feel is installed once, in `com.blueseer.utl.mf` (the application's entry
+point), before the main frame is constructed.
+</br>
+The application is also intended to be bundled and run with the
+<a href="https://github.com/JetBrains/JetBrainsRuntime">JetBrains Runtime (JBR)</a>
+instead of a stock OpenJDK build. JBR is a drop-in, source-compatible OpenJDK build
+that includes a number of Swing-specific rendering improvements (better subpixel/HiDPI
+handling, native window decorations, improved font rendering) that make Swing apps
+like BlueSeer feel noticeably more native on modern Windows, macOS, and Linux desktops.
+To pick up the change, download a JBR release matching the project's JDK baseline from
+the <a href="https://github.com/JetBrains/JetBrainsRuntime/releases">JetBrains Runtime
+releases page</a> and use it in place of the `jre26` directory referenced by the
+packaging scripts in `scripts/` (`login.bat`, `login.sh`, `debprep.sh`, the
+`installJRE*.iss` installers, etc.) — no other changes are required since JBR ships the
+same `bin/java` / `bin/javaw` layout as a standard JDK/JRE.
+</br>
+
 <h1>Build/Compile Instructions (all builds should utilize JDK version 26 or higher)</h1>
 </br>
 
@@ -108,8 +130,8 @@ Pre-requisite:  You will need the JDK (version 26 or higher preferred) installed
 2.  Open a powershell prompt or bash shell and cd to the blueseer directory
 3.  type and execute: mvn -U package dependency:copy-dependencies -DoutputDirectory="./target/lib"
 4.  cd to the newly created target directory
-5.  (windows) type and execute: java -classpath ".;lib/*" bsmf.MainFrame
-5.  (linux) type and execute: java -cp ".:lib/*" bsmf.MainFrame
+5.  (windows) type and execute: java -classpath ".;lib/*" com.blueseer.utl.mf
+5.  (linux) type and execute: java -cp ".:lib/*" com.blueseer.utl.mf
 </br>
 
 

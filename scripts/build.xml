@@ -78,7 +78,7 @@
 		<fileset dir="${src.dir}" includes="images/**/*.png,images/**/*.gif,resources/**/*.properties" />
 		<!--	<fileset dir="${lib.dir}" includes="**/*.jar"/> -->
             <manifest>
-                <attribute name="Main-Class" value="bsmf" />
+                <attribute name="Main-Class" value="com.blueseer.utl.mf" />
                 <attribute name="Enable-Native-Access" value="ALL-UNNAMED" />
             </manifest>
         </jar>
@@ -124,7 +124,7 @@
 	    <fileset dir="../dist" includes="*.jar"/>
     </path>
     <echo>running target run ....${test.dir}</echo>
-    <java classname="bsmf.MainFrame" jvm="${java17}" fork="true" classpathref="run.classpath" dir="${test.dir}">
+    <java classname="com.blueseer.utl.mf" jvm="${java17}" fork="true" classpathref="run.classpath" dir="${test.dir}">
 	    <arg value="-debug"/> 
 	    <jvmarg value="-Djava.util.logging.config.file=bslogging.properties"/>
         </java>
@@ -147,7 +147,7 @@
 	    <fileset dir="${test.dir}/edi/maps" includes="*.jar"/>
     </path>
     <echo>running in ....${test.dir}</echo>
-    <java classname="bsmf.MainFrame" jvm="${java17}" fork="true" classpathref="run.classpath" dir="${test.dir}">
+    <java classname="com.blueseer.utl.mf" jvm="${java17}" fork="true" classpathref="run.classpath" dir="${test.dir}">
 	    <arg value="-debug"/> 
 	    <jvmarg value="-Duser.language=${l}"/>
 	    <jvmarg value="-Duser.country=${c}"/>
@@ -161,7 +161,7 @@
 	    <fileset dir="${test.dir}/edi/maps" includes="*.jar"/>
     </path>
     <echo>running in ....${test.dir}</echo>
-    <java classname="bsmf.MainFrame" jvm="${java26l}" fork="true" classpathref="run.classpath" dir="${test.dir}">
+    <java classname="com.blueseer.utl.mf" jvm="${java26l}" fork="true" classpathref="run.classpath" dir="${test.dir}">
 	    <arg value="-debug"/> 
 	    <jvmarg value="-Djava.util.logging.config.file=bslogging.properties"/>
         </java>

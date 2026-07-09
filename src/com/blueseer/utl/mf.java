@@ -26,6 +26,7 @@ SOFTWARE.
 package com.blueseer.utl;
 
 import bsmf.MainFrame;
+import com.formdev.flatlaf.FlatLightLaf;
 import javax.swing.InputMap;
 import javax.swing.KeyStroke;
 import javax.swing.UIManager;
@@ -40,44 +41,34 @@ public class mf {
      * @param args the command line arguments
      */
     public static void main(String args[]) {
-        /* Set the Nimbus look and feel */
+        /* Set the FlatLaf look and feel */
         //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
-        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
-         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
+        /* FlatLaf (https://www.formdev.com/flatlaf/) gives Swing a modern, flat
+         * appearance and respects the OS font/scaling settings. Falls back to the
+         * platform default look and feel if FlatLaf can't be installed.
          */
-         
         //</editor-fold>
-        
-        
-        
+
+        FlatLightLaf.setup();
+
         try {
-            
-            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
-             //   MainFrame.show(info.getClassName().toString());
-                if ("Nimbus".equals(info.getName())) {
-                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
-                     // TEV 20160318 added the below for windows 'doclick' fix
-                     InputMap im = (InputMap)UIManager.get("Button.focusInputMap");
-                     im.put( KeyStroke.getKeyStroke( "ENTER" ), "pressed" );
-                     im.put( KeyStroke.getKeyStroke( "released ENTER" ), "released" );
-                    break;
-                }
-                
-            }
-            
-        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | javax.swing.UnsupportedLookAndFeelException ex) {
+            // TEV 20160318 added the below for windows 'doclick' fix
+            InputMap im = (InputMap) UIManager.get("Button.focusInputMap");
+            im.put(KeyStroke.getKeyStroke("ENTER"), "pressed");
+            im.put(KeyStroke.getKeyStroke("released ENTER"), "released");
+        } catch (Exception ex) {
             MainFrame.bslog(ex);
         }
-        
-       
+
+
         /* Create and display the form */
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
                 new MainFrame().setVisible(true);
             }
         });
-        
-        
+
+
     }
-    
+
 }

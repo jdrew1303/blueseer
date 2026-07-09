@@ -58,7 +58,7 @@ PROTOCOL=https
 
 
 # test connection from client to VM
-jre26/bin/java -cp "dist/*" bsmf.MainFrame -debug
+jre26/bin/java -cp "dist/*" com.blueseer.utl.mf -debug
 
 # finally...copy entire blueseer directory on client side to any other client instances
     or...install blueseer on any further client side and copy over bs.cfg and jre26/lib/security/cacerts from this instance to other client instances
