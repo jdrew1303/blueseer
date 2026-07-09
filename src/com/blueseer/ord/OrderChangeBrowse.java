@@ -947,6 +947,8 @@ public class OrderChangeBrowse extends javax.swing.JPanel {
         cbapplied = new javax.swing.JCheckBox();
         btexport = new javax.swing.JButton();
         tbsearch = new javax.swing.JTextField();
+        tbsearch.putClientProperty("JTextField.placeholderText", "Search...");
+        tbsearch.putClientProperty("JTextField.showClearButton", true);
         jLabel2 = new javax.swing.JLabel();
         btclear = new javax.swing.JButton();
         dcfrom = new com.toedter.calendar.JDateChooser();

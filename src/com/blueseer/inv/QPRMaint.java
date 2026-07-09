@@ -1067,7 +1067,7 @@ public class QPRMaint extends javax.swing.JPanel implements IBlueSeerV {
 
         jLabel20.setText("site:");
 
-        jLabel5.setFont(new java.awt.Font("Tahoma", 1, 13)); // NOI18N
+        jLabel5.putClientProperty("FlatLaf.styleClass", "h4");
         jLabel5.setText("Source Of Reject");
         jLabel5.setName("lblsourceofreject"); // NOI18N
 

@@ -403,10 +403,10 @@ public class Clock extends javax.swing.JPanel {
 
         lbstatus.setBorder(javax.swing.BorderFactory.createEtchedBorder());
 
-        lbclockdatetime.setFont(new java.awt.Font("Tahoma", 0, 24)); // NOI18N
+        lbclockdatetime.putClientProperty("FlatLaf.styleClass", "h2");
         lbclockdatetime.setBorder(javax.swing.BorderFactory.createEtchedBorder());
 
-        lbempid.setFont(new java.awt.Font("Tahoma", 0, 24)); // NOI18N
+        lbempid.putClientProperty("FlatLaf.styleClass", "h2");
         lbempid.setBorder(javax.swing.BorderFactory.createEtchedBorder());
 
         jTextArea1.setColumns(20);
@@ -414,7 +414,7 @@ public class Clock extends javax.swing.JPanel {
         jTextArea1.setFocusable(false);
         jScrollPane1.setViewportView(jTextArea1);
 
-        lbname.setFont(new java.awt.Font("Tahoma", 0, 24)); // NOI18N
+        lbname.putClientProperty("FlatLaf.styleClass", "h2");
         lbname.setBorder(javax.swing.BorderFactory.createEtchedBorder());
 
         jLabel2.setText("ClockNumber");

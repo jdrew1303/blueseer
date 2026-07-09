@@ -1904,11 +1904,11 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
         jLabel6.setText("TotalCost");
         jLabel6.setName("lbltotal"); // NOI18N
 
-        jLabel7.setFont(new java.awt.Font("Cantarell", 1, 18)); // NOI18N
+        jLabel7.putClientProperty("FlatLaf.styleClass", "h3");
         jLabel7.setText("Standard");
         jLabel7.setName("lblstandard"); // NOI18N
 
-        jLabel8.setFont(new java.awt.Font("Cantarell", 1, 18)); // NOI18N
+        jLabel8.putClientProperty("FlatLaf.styleClass", "h3");
         jLabel8.setText("Current");
         jLabel8.setName("lblcurrent"); // NOI18N
 

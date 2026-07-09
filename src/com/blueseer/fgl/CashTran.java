@@ -1579,7 +1579,7 @@ public class CashTran extends javax.swing.JPanel {
         jLabel36.setText("Date");
         jLabel36.setName("sell_lbldate"); // NOI18N
 
-        lbtitle1.setFont(new java.awt.Font("Tahoma", 0, 36)); // NOI18N
+        lbtitle1.putClientProperty("FlatLaf.styleClass", "h1");
 
         btaddentity1.setText("add new customer");
         btaddentity1.setName("btaddcustomer"); // NOI18N
@@ -1878,7 +1878,7 @@ public class CashTran extends javax.swing.JPanel {
         jLabel35.setText("Date");
         jLabel35.setName("buy_lbldate"); // NOI18N
 
-        lbtitle.setFont(new java.awt.Font("Tahoma", 0, 36)); // NOI18N
+        lbtitle.putClientProperty("FlatLaf.styleClass", "h1");
 
         btaddentity.setText("add new vendor");
         btaddentity.setName("btaddvendor"); // NOI18N
@@ -2134,7 +2134,7 @@ public class CashTran extends javax.swing.JPanel {
         jLabel37.setText("Date");
         jLabel37.setName("expense_lbldate"); // NOI18N
 
-        lbtitle2.setFont(new java.awt.Font("Tahoma", 0, 36)); // NOI18N
+        lbtitle2.putClientProperty("FlatLaf.styleClass", "h1");
 
         btexpenseAddEntity.setText("add new vendor");
         btexpenseAddEntity.setName("btaddvendor"); // NOI18N
@@ -2807,7 +2807,7 @@ public class CashTran extends javax.swing.JPanel {
         jLabel39.setText("Date");
         jLabel39.setName("income_lbldate"); // NOI18N
 
-        lbtitleIncome.setFont(new java.awt.Font("Tahoma", 0, 36)); // NOI18N
+        lbtitleIncome.putClientProperty("FlatLaf.styleClass", "h1");
 
         lbitem4.setText("Description:");
         lbitem4.setName("income_lbldesc"); // NOI18N

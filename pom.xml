@@ -223,6 +223,14 @@
 </dependency>
 
 <dependency>
+    <!-- Modern replacement for GroupLayout in hand-migrated panels (see the
+         "Layout" section in README) - handles resizing/HiDPI far better. -->
+    <groupId>com.miglayout</groupId>
+    <artifactId>miglayout-swing</artifactId>
+    <version>11.4.3</version>
+</dependency>
+
+<dependency>
     <!-- Ikonli: crisp, scalable, HiDPI-friendly vector icons for Swing,
          replacing the old fixed-size images/*.png toolbar icons one at a time. -->
     <groupId>org.kordamp.ikonli</groupId>

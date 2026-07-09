@@ -122,6 +122,67 @@ materialdesign2 cheat sheet</a>) — then the old PNG can be deleted once nothin
 references it.
 </br>
 
+FlatLaf's <a href="https://www.formdev.com/flatlaf/typography/">typography</a> and
+<a href="https://www.formdev.com/flatlaf/components/textfield/">text field</a> client
+properties replace a fair amount of hand-written styling code. Section/title labels
+that used to hardcode a font (`label.setFont(new Font("Tahoma", Font.BOLD, 18))`)
+should instead use a semantic style class, which scales correctly with the user's OS
+font/DPI settings instead of a fixed pixel size:
+```java
+label.putClientProperty("FlatLaf.styleClass", "h3"); // h1 (largest) .. h4 (smallest)
+```
+(drop the old `setFont` call — the style class fully owns the font once applied). Every
+existing large/bold title label in the codebase has already been converted this way.
+Likewise, search/filter `JTextField`s get a placeholder and a clear ("x") button instead
+of a separate "Search:" label:
+```java
+searchField.putClientProperty("JTextField.placeholderText", "Search...");
+searchField.putClientProperty("JTextField.showClearButton", true);
+```
+The shared search field in `com.blueseer.utl.Browse` (used by ~30 different
+Browse-type screens via reflection) and the other dedicated search fields are already
+converted; apply the same two lines to any other `JTextField` that's used for
+filtering.
+</br>
+
+<h1>Layout</h1>
+
+Every panel in this codebase already uses `javax.swing.GroupLayout` (NetBeans' modern
+default layout manager) — there's no `AbsoluteLayout`/fixed-x-y-coordinate code to
+migrate away from; the one-time `lib/AbsoluteLayout.jar` that used to sit in this repo
+turned out to be unused by both this source tree and the compiled `bsmf.jar`; it was
+removed in the Maven cleanup. GroupLayout is a real layout manager (not fixed
+coordinates), but it's extremely verbose — a simple toolbar row is 30-40 lines of
+`addGroup`/`addComponent` calls — and doesn't reflow as gracefully as modern
+alternatives when a window is resized well beyond its designed size.
+</br>
+<a href="https://www.miglayout.com/">MigLayout</a> (`miglayout-swing`, already added
+to `pom.xml`) is a much more concise, actively-maintained replacement that handles
+resizing and HiDPI scaling better. Rather than a one-shot rewrite of ~240 panels, adopt
+a Boy Scout Rule: whenever you're already touching a panel's `initComponents()` for a
+bug fix or new feature, migrate that panel's layout to MigLayout while you're in there.
+`com.blueseer.eng.OVDevBrowse` has been converted as a worked example — a GroupLayout
+block like:
+```java
+javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
+jPanel1.setLayout(jPanel1Layout);
+jPanel1Layout.setHorizontalGroup( /* ~15 lines of addGroup/addComponent/addGap */ );
+jPanel1Layout.setVerticalGroup( /* ~15 more */ );
+```
+becomes:
+```java
+jPanel1.setLayout(new MigLayout("insets 5 23 5 5", "[]18[]3[]18[]5[]5[]", "[]"));
+jPanel1.add(jLabel1);
+jPanel1.add(jLabel2);
+jPanel1.add(tbtext, "width 80!");
+jPanel1.add(rbactive);
+jPanel1.add(rbinactive);
+jPanel1.add(btview, "wrap");
+```
+See the <a href="https://www.miglayout.com/QuickStart.pdf">MigLayout quick start
+guide</a> for the constraint-string syntax.
+</br>
+
 <h1>Build/Compile Instructions (all builds should utilize JDK version 26 or higher)</h1>
 </br>
 
@@ -175,6 +236,35 @@ The installer type/icon are picked automatically based on the OS running the bui
 (see the `windows` / `linux-x86_64` / `mac` profiles in `pom.xml`); override
 `-Dinstaller.type=...` to build a different package type (e.g. `APP_IMAGE` for a
 plain, unpackaged app folder, useful for testing before building a real installer).
+</br>
+
+
+<h1>Responsiveness</h1>
+
+Most of the codebase already wraps its database calls in `SwingWorker` (~200 files) —
+that pattern is the house style, not something to introduce from scratch. But there
+are still panels that run a query directly on the EDT, freezing the UI until it
+returns. `com.blueseer.eng.OVDevBrowse` was one of them (`btviewActionPerformed` ran
+`DriverManager.getConnection` + a query + a result-set loop straight from the button's
+`ActionListener`) and has been converted as a worked example: the query now runs in
+`SwingWorker.doInBackground()`, the button disables and an indeterminate
+`JProgressBar` (added next to it via MigLayout) shows while it runs, and the table
+model is applied back on the EDT in `done()`. While converting it, the hand-built SQL
+string (`"...like '%" + tbtext.getText() + "%'"`) was also switched to a
+`PreparedStatement` — worth checking for wherever else user input is concatenated
+directly into SQL.
+</br>
+Grepping for files that run `executeQuery`/read a `ResultSet` but don't reference
+`SwingWorker` turns up the rest of the list (excluding the `com.blueseer.srv.*`
+web-service endpoints, which don't run on the EDT so aren't a UI-freeze risk): the
+`*Rpt.java`/`*RptPicker` report generators (`ReworkRpt`, `ScrapRpt`, `ReqRpt`,
+`OrderDetRpt`, `OrderSchedRpt`, `TrainingRpt`, `RetailReorderRpt`, `ClockDetRpt`,
+`IncomeStatementRptYear`...) are the highest-value next targets since reports tend to
+run the heaviest queries; then the `*Browse.java` list screens (`POSBrowse`,
+`DOBrowse`, `ComponentDemandBrowse`, `ForecastBrowse`, `ProjectionBrowse`...); then the
+`*Maint.java`/`*Control.java` forms. Same recipe as `OVDevBrowse` for each: move the
+query into `doInBackground()`, apply the result to the UI in `done()`, and show some
+kind of busy indicator in between.
 </br>
 
 

@@ -363,6 +363,8 @@ public class APIBrowse extends javax.swing.JPanel {
         jLabel3 = new javax.swing.JLabel();
         jLabel6 = new javax.swing.JLabel();
         tbsearch = new javax.swing.JTextField();
+        tbsearch.putClientProperty("JTextField.placeholderText", "Search...");
+        tbsearch.putClientProperty("JTextField.showClearButton", true);
         ddtype = new javax.swing.JComboBox<>();
         jPanel3 = new javax.swing.JPanel();
 
