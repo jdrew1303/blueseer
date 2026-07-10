@@ -620,7 +620,8 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
        jTabbedPane1.add(getClassLabelTag("images", this.getClass().getSimpleName()), ImagePanel);
        jTabbedPane1.add(getClassLabelTag("attachments", this.getClass().getSimpleName()), panelAttachment);
        jTabbedPane1.add(getClassLabelTag("ingredientdata", this.getClass().getSimpleName()), ingredientPanel);
-        setPanelComponentState(this, false); 
+       populateLabelDropdown();
+        setPanelComponentState(this, false);
         btnew.setEnabled(true);
         btlookup.setEnabled(true);
         if (initDataSet == null) {
@@ -637,9 +638,26 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
             tbkey.requestFocus();
             ingredientPanel.clear();
         }
-        
+
    }
-        
+
+    /**
+     * Loads the Label combo from label_zebra (lblz_type = 'item') instead of
+     * the fixed {"itemPDF", "itemZPL"} NetBeans design-time list, so a new
+     * label template registered via label_zebra (e.g. a new Zebra template
+     * added for a different product line) shows up here without a code
+     * change. Falls back to the previous item's label if it's no longer in
+     * the list rather than silently clearing the combo.
+     */
+    private void populateLabelDropdown() {
+        String current = ddlabel.getSelectedItem() != null ? ddlabel.getSelectedItem().toString() : "";
+        ArrayList<String> codes = com.blueseer.lbl.lblData.getLabelFileList("item");
+        ddlabel.setModel(new javax.swing.DefaultComboBoxModel<>(codes.toArray(new String[0])));
+        if (!current.isBlank() && codes.contains(current)) {
+            ddlabel.setSelectedItem(current);
+        }
+    }
+
     public String[] addRecord(String[] x) {
      
         String[] m = new String[2];
