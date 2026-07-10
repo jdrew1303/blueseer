@@ -21007,6 +21007,21 @@ return mystring;
     }    
         
     public static void printLabelItem(String item, String printer, String labelfile) throws IOException, PrintException {
+        printLabelItem(item, printer, labelfile, "", "", "", "");
+    }
+
+    /**
+     * Same as printLabelItem(item, printer, labelfile), plus the EU/Irish FIC
+     * ingredient label tokens: $INGREDIENTLIST, $ALLERGENWARNINGS, $LOTNBR,
+     * $BESTBEFORE (see com.blueseer.ing.IngredientLabelEngine). Allergens are
+     * upper-cased rather than bold, since a plain ZPL text field can't mix
+     * font weights within one ^FD block - true inline bold would need the
+     * template to lay out each ingredient as its own ^FO/^FD run, which is a
+     * template-specific follow-up once the client's physical label layout is
+     * known.
+     */
+    public static void printLabelItem(String item, String printer, String labelfile, String ingredientList,
+            String allergenWarnings, String lotNbr, String bestBefore) throws IOException, PrintException {
           String this_printer = "";
           try {
 
@@ -21015,19 +21030,19 @@ return mystring;
           } else {
               this_printer = printer;
           }
-          
+
           if (this_printer.isEmpty())
               return;
-          
-      
+
+
         String[] prt = OVData.getPrinterInfo(this_printer);
         if (prt[2].equals("DirectToIP") && prt[1].isEmpty()) {
             prt[1] = "9100";
         }
-        
-        
-        Path template = checkForCustomPath(getSystemLabelDirectory(), labelfile);       
-                
+
+
+        Path template = checkForCustomPath(getSystemLabelDirectory(), labelfile);
+
         BufferedReader fsr = new BufferedReader(new FileReader(template.toFile(), StandardCharsets.UTF_8));
         String line = "";
         String concatline = "";
@@ -21042,6 +21057,10 @@ return mystring;
         DateFormat dfdate = new SimpleDateFormat("MM/dd/yyyy");
 
         concatline = concatline.replace("$ITEMNBR", item);
+        concatline = concatline.replace("$INGREDIENTLIST", ingredientList);
+        concatline = concatline.replace("$ALLERGENWARNINGS", allergenWarnings);
+        concatline = concatline.replace("$LOTNBR", lotNbr);
+        concatline = concatline.replace("$BESTBEFORE", bestBefore);
 
          if (prt[2].equals("DirectToIP")) {
             Socket soc = null;

@@ -499,6 +499,7 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
     public void newAction(String x) {
        setPanelComponentState(this, true);
         setComponentDefaultValues();
+        ingredientPanel.clear();
         BlueSeerUtils.message(new String[]{"0",BlueSeerUtils.addRecordInit});
         btupdate.setEnabled(false);
         btdelete.setEnabled(false);
@@ -618,6 +619,7 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
        jTabbedPane1.add(getClassLabelTag("costbom", this.getClass().getSimpleName()), CostBOMPanel);
        jTabbedPane1.add(getClassLabelTag("images", this.getClass().getSimpleName()), ImagePanel);
        jTabbedPane1.add(getClassLabelTag("attachments", this.getClass().getSimpleName()), panelAttachment);
+       jTabbedPane1.add(getClassLabelTag("ingredientdata", this.getClass().getSimpleName()), ingredientPanel);
         setPanelComponentState(this, false); 
         btnew.setEnabled(true);
         btlookup.setEnabled(true);
@@ -633,6 +635,7 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
             tbkey.setEnabled(true);
             tbkey.setEditable(true);
             tbkey.requestFocus();
+            ingredientPanel.clear();
         }
         
    }
@@ -657,6 +660,7 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
           // now add item cost record for later use
           OVData.addItemCostRec(tbkey.getText(), ddsite.getSelectedItem().toString(), "standard", mtlcost, ovhcost, outcost, (mtlcost + ovhcost + outcost));
           OVData.addItemCostRec(tbkey.getText(), ddsite.getSelectedItem().toString(), "current", mtlcost, ovhcost, outcost, (mtlcost + ovhcost + outcost));
+          ingredientPanel.saveData(tbkey.getText());
           return m;
        
      }
@@ -689,6 +693,7 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
         
         String[] m = updateItemMstr(createRecord());
         rebaseCurrentCost(tbkey.getText(), mtlcost, ovhcost, outcost);
+        ingredientPanel.saveData(tbkey.getText());
         return m;
     }
     
@@ -704,9 +709,10 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
      }
     
     public String[] getRecord(String[] key) {
-        item_mstr z = getItemMstr(key);  
+        item_mstr z = getItemMstr(key);
         x = z;
         getAttachments(key[0]);
+        ingredientPanel.loadData(key[0]);
        return x.m();
     }
     
@@ -2599,12 +2605,35 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
         
                 if (OVData.isValidPrinter(printer)) {
                     try {
-                        OVData.printLabelItem(tbkey.getText(), defaultprinter, lz.lblz_file());
-                    } catch (IOException ex) { 
+                        // EU/Irish FIC ingredient label tokens ($INGREDIENTLIST,
+                        // $ALLERGENWARNINGS, $LOTNBR, $BESTBEFORE) - see
+                        // com.blueseer.ing.IngredientLabelEngine. Uses the most
+                        // recent on-hand lot as a default; a screen that knows
+                        // the actual production lot being packed (e.g. work
+                        // order completion) should pass that lot's real
+                        // in_serial/in_expire instead.
+                        com.blueseer.ing.IngredientLabelEngine.IngredientLabelResult ingLabel = null;
+                        String lotNbr = "";
+                        String bestBefore = "";
+                        try {
+                            String[] lot = com.blueseer.ing.ingData.getMostRecentLot(tbkey.getText());
+                            lotNbr = lot[0];
+                            bestBefore = lot[1];
+                            ingLabel = new com.blueseer.ing.IngredientLabelEngine().generate(tbkey.getText(), lotNbr, bestBefore);
+                        } catch (Exception ex) {
+                            MainFrame.bslog(ex);
+                        }
+                        if (ingLabel != null) {
+                            OVData.printLabelItem(tbkey.getText(), defaultprinter, lz.lblz_file(),
+                                    ingLabel.toPlainIngredientList(), ingLabel.toPlainWarnings(), lotNbr, bestBefore);
+                        } else {
+                            OVData.printLabelItem(tbkey.getText(), defaultprinter, lz.lblz_file());
+                        }
+                    } catch (IOException ex) {
                         ex.printStackTrace();
                     } catch (PrintException ex) {
                         ex.printStackTrace();
-                    } 
+                    }
                 } else {
                     bsmf.MainFrame.show(getMessageTag(1139));
                 }
@@ -2664,6 +2693,11 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
         }
     }//GEN-LAST:event_tableattachmentMouseClicked
 
+
+    // EU/Irish FIC ingredient regulatory data tab - hand-written, kept out of
+    // the generated initComponents()/GEN-BEGIN block below on purpose so it
+    // isn't at risk if this form is ever regenerated.
+    private final com.blueseer.ing.IngredientPanel ingredientPanel = new com.blueseer.ing.IngredientPanel();
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel CostBOMPanel;
