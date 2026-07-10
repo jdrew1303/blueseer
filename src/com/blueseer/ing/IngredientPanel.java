@@ -81,19 +81,19 @@ public class IngredientPanel extends JPanel {
         add(new JLabel("Weight (g) per 1 unit of measure"));
         add(tbWtPerUom, "wrap");
         JLabel wtHint = new JLabel(
-                "<html>Leave as 1 if this item is already tracked by weight (kg/g) consistent with the rest of "
+                "<html><div style='width:480px'>Leave as 1 if this item is already tracked by weight (kg/g) consistent with the rest of "
                 + "the recipe. Set this for a <i>volume</i>-tracked ingredient (mL/L) so it sorts and sums "
-                + "correctly against solids - e.g. water tracked in mL: 1; a lighter oil tracked in mL: ~0.92.</html>");
+                + "correctly against solids - e.g. water tracked in mL: 1; a lighter oil tracked in mL: ~0.92.</div></html>");
         wtHint.setForeground(java.awt.Color.GRAY);
         add(wtHint, "span 2, wrap");
 
         add(cbIsAdditive, "span 2, wrap");
         JLabel additiveHint = new JLabel(
-                "<html>Leave unchecked for a plain ingredient (sugar, flour, water, ...). Check this only "
+                "<html><div style='width:480px'>Leave unchecked for a plain ingredient (sugar, flour, water, ...). Check this only "
                 + "when this item <i>is</i> the additive itself - e.g. an item called \"Sodium Benzoate\" used "
                 + "in a recipe. It will then appear in the printed ingredient list at its own position (sorted "
                 + "by its own quantity, like any other ingredient), formatted per EU convention as "
-                + "\"Category (E-number)\", e.g. \"Preservative (E211)\".</html>");
+                + "\"Category (E-number)\", e.g. \"Preservative (E211)\".</div></html>");
         additiveHint.setForeground(java.awt.Color.GRAY);
         add(additiveHint, "span 2, wrap");
         add(new JLabel("Additive category"));
@@ -108,7 +108,7 @@ public class IngredientPanel extends JPanel {
         });
 
         for (ingData.ing_allergen_ref ref : ingData.getAllergenRef()) {
-            JCheckBox cb = new JCheckBox(capitalize(ref.allergen_desc()));
+            JCheckBox cb = new JCheckBox(shortAllergenLabel(ref.allergen_code(), ref.allergen_desc()));
             cb.setToolTipText(ref.allergen_desc());
             allergenBoxes.put(ref.allergen_code(), cb);
             allergenPanel.add(cb);
@@ -149,7 +149,31 @@ public class IngredientPanel extends JPanel {
         return wrapper;
     }
 
-    private static String capitalize(String desc) {
+    // EU Annex II short names for checkbox labels - allergen_desc carries the full legal
+    // wording (shown as the tooltip instead) since a couple of entries (tree nuts' bracketed
+    // examples, the sulphites concentration threshold) run 90+ characters and blow out the
+    // MigLayout grid width if used as the visible label.
+    private static final Map<String, String> ALLERGEN_SHORT_LABEL = Map.ofEntries(
+            Map.entry("GLUTEN", "Cereals containing gluten"),
+            Map.entry("CRUSTACEANS", "Crustaceans"),
+            Map.entry("EGGS", "Eggs"),
+            Map.entry("FISH", "Fish"),
+            Map.entry("PEANUTS", "Peanuts"),
+            Map.entry("SOYBEANS", "Soybeans"),
+            Map.entry("MILK", "Milk"),
+            Map.entry("NUTS", "Tree nuts"),
+            Map.entry("CELERY", "Celery"),
+            Map.entry("MUSTARD", "Mustard"),
+            Map.entry("SESAME", "Sesame seeds"),
+            Map.entry("SULPHITES", "Sulphur dioxide/sulphites"),
+            Map.entry("LUPIN", "Lupin"),
+            Map.entry("MOLLUSCS", "Molluscs"));
+
+    private static String shortAllergenLabel(String code, String desc) {
+        String known = ALLERGEN_SHORT_LABEL.get(code);
+        if (known != null) {
+            return known;
+        }
         int paren = desc.indexOf(" and products");
         return paren > 0 ? desc.substring(0, paren) : desc;
     }
