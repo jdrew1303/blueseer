@@ -55,44 +55,65 @@ import java.util.Map;
  * review this against the client's actual products before it goes live on
  * real packaging.
  *
- * Assumes every BOM line below the finished good is expressed in a single,
- * consistent weight-basis unit of measure (e.g. all grams, or all kg) - this
- * is standard practice for recipe-level BOMs, but is not itself validated
- * here; mixing weight and count-based UOMs (e.g. "EA") in the same tree
- * would produce a meaningless total.
+ * Two different things both get called "compound ingredients" here, and
+ * BlueSeer treats them very differently:
+ *  - An in-house sub-recipe with its own BOM (pbm_mstr.ps_type = 'M', e.g.
+ *    a dough or icing made on-site) - BlueSeer has full recipe visibility,
+ *    so it's always fully expanded into the flat list. That's always legally
+ *    permitted (more disclosure than the law requires is never a violation).
+ *  - A purchased item that is itself a compound ingredient BlueSeer has no
+ *    BOM for (ing_mstr.ing_iscompound, e.g. bought-in chocolate spread) -
+ *    per FIC Annex VII Part E this is declared under its own name at its own
+ *    position in the list, immediately followed by its declared
+ *    sub-ingredients in brackets, e.g. "Chocolate Spread (Sugar, Vegetable
+ *    Oil, Cocoa Powder, ...)" - NOT flattened/merged into the main list.
+ *    The bracket is only omittable when the compound is under 2% of the
+ *    finished product AND none of its declared sub-ingredients is an
+ *    allergen.
+ *
+ * Every leaf ingredient's quantity is normalized to grams via
+ * ing_mstr.ing_wt_per_uom_g ("grams per 1 unit of this item's own UOM",
+ * default 1) before summing/sorting, so a liquid tracked by volume (e.g.
+ * water in mL) compares correctly against solids tracked by weight - this
+ * needs to be set explicitly per ingredient; it is not inferred from the
+ * item's unit-of-measure code.
+ *
+ * The 2% threshold is computed against the finished good's item_mstr.it_net_wt
+ * (already-populated net/retail weight), not a sum of the recipe's pre-loss
+ * BOM inputs - per FIC's own QUID rule, a percentage "shall correspond to
+ * the quantity of the ingredient(s) used, related to the finished product",
+ * and it_net_wt is the one place BlueSeer already records that finished
+ * weight (net weight already used for shipping/packaging). This sidesteps
+ * needing to model bake/process loss ourselves. It_net_wt is assumed to be
+ * expressed in grams; if it isn't set at all, the engine can't safely tell
+ * whether a compound ingredient is under 2%, so it conservatively always
+ * shows the bracket breakdown and records that in internalNotes.
  */
 public class IngredientLabelEngine {
 
-    /** One EU-FIC-mandated-emphasis-aware run of ingredient list text. */
-    public record Segment(String text, boolean isAllergen) {
+    /** One EU-FIC-mandated-emphasis-aware run of ingredient list text, with
+     *  an optional bracketed sub-ingredient breakdown (compound ingredients
+     *  only - see class javadoc). */
+    public record Segment(String text, boolean isAllergen, List<Segment> bracketed) {
+        public Segment(String text, boolean isAllergen) {
+            this(text, isAllergen, List.of());
+        }
     }
 
     public record IngredientLabelResult(List<Segment> segments, List<String> warnings,
-            String lotNumber, String bestBeforeDate) {
+            String lotNumber, String bestBeforeDate, List<String> internalNotes) {
 
         /** Ingredient list only, HTML markup="html" ready (for JasperReports). */
         public String toHtmlIngredientList() {
             StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < segments.size(); i++) {
-                Segment s = segments.get(i);
-                if (i > 0) {
-                    sb.append(", ");
-                }
-                sb.append(s.isAllergen() ? "<b>" + escapeHtml(s.text()) + "</b>" : escapeHtml(s.text()));
-            }
+            appendSegments(sb, segments, true);
             return sb.toString();
         }
 
         /** Ingredient list only, plain text with allergens upper-cased (for ZPL). */
         public String toPlainIngredientList() {
             StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < segments.size(); i++) {
-                Segment s = segments.get(i);
-                if (i > 0) {
-                    sb.append(", ");
-                }
-                sb.append(s.isAllergen() ? s.text().toUpperCase(Locale.ROOT) : s.text());
-            }
+            appendSegments(sb, segments, false);
             return sb.toString();
         }
 
@@ -110,21 +131,50 @@ public class IngredientLabelEngine {
 
         public String toHtml() {
             StringBuilder sb = new StringBuilder(toHtmlIngredientList());
-            if (!warnings.isEmpty()) {
-                sb.append(".");
-                for (String w : warnings) {
-                    sb.append(" ").append(escapeHtml(w)).append(".");
-                }
-            }
+            appendWarnings(sb, true);
             return sb.toString();
         }
 
         public String toPlainText() {
             StringBuilder sb = new StringBuilder(toPlainIngredientList());
-            if (!warnings.isEmpty()) {
-                sb.append(". ").append(toPlainWarnings());
-            }
+            appendWarnings(sb, false);
             return sb.toString();
+        }
+
+        private void appendWarnings(StringBuilder sb, boolean html) {
+            if (!warnings.isEmpty()) {
+                sb.append(".");
+                for (String w : warnings) {
+                    sb.append(" ").append(html ? escapeHtml(w) : w).append(".");
+                }
+            }
+        }
+
+        private static void appendSegments(StringBuilder sb, List<Segment> segs, boolean html) {
+            for (int i = 0; i < segs.size(); i++) {
+                Segment s = segs.get(i);
+                if (i > 0) {
+                    sb.append(", ");
+                }
+                sb.append(renderOne(s, html));
+                if (!s.bracketed().isEmpty()) {
+                    sb.append(" (");
+                    for (int j = 0; j < s.bracketed().size(); j++) {
+                        if (j > 0) {
+                            sb.append(", ");
+                        }
+                        sb.append(renderOne(s.bracketed().get(j), html));
+                    }
+                    sb.append(")");
+                }
+            }
+        }
+
+        private static String renderOne(Segment s, boolean html) {
+            if (html) {
+                return s.isAllergen() ? "<b>" + escapeHtml(s.text()) + "</b>" : escapeHtml(s.text());
+            }
+            return s.isAllergen() ? s.text().toUpperCase(Locale.ROOT) : s.text();
         }
 
         private static String escapeHtml(String s) {
@@ -139,47 +189,23 @@ public class IngredientLabelEngine {
 
     public IngredientLabelResult generate(String finishedItem, String lotNumber, String bestBeforeDate) {
         Map<String, Double> flatQty = new LinkedHashMap<>();
+        List<String> internalNotes = new ArrayList<>();
+        double finishedWeightG = 0;
         try (Connection con = (ds == null ? DriverManager.getConnection(url + db, user, pass) : ds.getConnection())) {
             flattenRecursive(con, finishedItem, 1.0, flatQty);
+            finishedWeightG = getFinishedNetWeightG(con, finishedItem);
         } catch (SQLException s) {
             bslog(s);
         }
 
-        double totalQty = flatQty.values().stream().mapToDouble(Double::doubleValue).sum();
-
-        // Splice purchased-compound ingredients (ing_iscompound=1) per the
-        // 2% rule before dedupe/sort, since splicing can introduce new
-        // ingredient names that need to merge with anything already present.
-        Map<String, Double> expanded = new LinkedHashMap<>();
-        for (Map.Entry<String, Double> entry : flatQty.entrySet()) {
-            String item = entry.getKey();
-            double qty = entry.getValue();
-            ingData.ing_mstr rec = ingData.getIngMstr(item);
-            boolean isCompound = rec.m() != null && rec.m().length > 0
-                    && rec.m()[0].equals(com.blueseer.utl.BlueSeerUtils.SuccessBit) && "1".equals(rec.ing_iscompound());
-            if (isCompound && totalQty > 0 && (qty / totalQty) * 100.0 >= COMPOUND_INGREDIENT_THRESHOLD_PCT) {
-                List<ingData.ing_subingredient> subs = ingData.getSubIngredients(item);
-                if (!subs.isEmpty()) {
-                    // Sub-ingredient quantities aren't individually known (the
-                    // supplier declares an order, not exact splits) - allocate
-                    // the compound's total weight evenly across its declared
-                    // sub-ingredients. This preserves the compound's overall
-                    // position in the descending sort reasonably well but is
-                    // an approximation; a compliance reviewer should confirm
-                    // this is acceptable or supply real sub-quantities.
-                    double each = qty / subs.size();
-                    for (ingData.ing_subingredient sub : subs) {
-                        String label = sub.sub_name() + (sub.sub_enumber().isBlank() ? "" : "|E:" + sub.sub_enumber())
-                                + (("1".equals(sub.is_allergen())) ? "|A" : "");
-                        expanded.merge(label, each, Double::sum);
-                    }
-                    continue;
-                }
-            }
-            expanded.merge(item, qty, Double::sum);
+        boolean weightKnown = finishedWeightG > 0;
+        if (!weightKnown) {
+            internalNotes.add("item_mstr.it_net_wt is not set for " + finishedItem + " - can't compute the 2% "
+                    + "compound-ingredient threshold, so every compound ingredient's sub-ingredients are shown "
+                    + "in full rather than risk under-disclosing.");
         }
 
-        List<Map.Entry<String, Double>> sorted = new ArrayList<>(expanded.entrySet());
+        List<Map.Entry<String, Double>> sorted = new ArrayList<>(flatQty.entrySet());
         sorted.sort((a, b) -> Double.compare(b.getValue(), a.getValue()));
 
         List<Segment> segments = new ArrayList<>();
@@ -188,38 +214,40 @@ public class IngredientLabelEngine {
         java.util.Set<String> triggeredCategories = new java.util.LinkedHashSet<>();
 
         for (Map.Entry<String, Double> entry : sorted) {
-            String key = entry.getKey();
-            if (key.contains("|")) {
-                // synthetic sub-ingredient label from the splice step above
-                String[] parts = key.split("\\|", -1);
-                String name = parts[0];
-                String enumber = "";
-                boolean isAllergen = false;
-                for (int i = 1; i < parts.length; i++) {
-                    if (parts[i].startsWith("E:")) {
-                        enumber = parts[i].substring(2);
-                    } else if (parts[i].equals("A")) {
-                        isAllergen = true;
-                    }
-                }
-                String text = enumber.isBlank() ? name : name + " (" + enumber + ")";
-                segments.add(new Segment(text, isAllergen));
-                if (!enumber.isBlank()) {
-                    triggeredENumbers.add(enumber.toUpperCase(Locale.ROOT));
-                }
-                continue;
-            }
-            ingData.ing_mstr rec = ingData.getIngMstr(key);
+            String item = entry.getKey();
+            double qty = entry.getValue();
+            ingData.ing_mstr rec = ingData.getIngMstr(item);
             boolean found = rec.m() != null && rec.m().length > 0 && rec.m()[0].equals(com.blueseer.utl.BlueSeerUtils.SuccessBit);
-            String legalName = found && !rec.ing_legalname().isBlank() ? rec.ing_legalname() : key;
+            String legalName = found && !rec.ing_legalname().isBlank() ? rec.ing_legalname() : item;
             String category = found ? rec.ing_category() : "";
             String enumber = found ? rec.ing_enumber() : "";
-            List<String> allergenCodes = ingData.getAllergenCodes(key);
+            List<String> allergenCodes = ingData.getAllergenCodes(item);
             boolean isAllergen = !allergenCodes.isEmpty();
+            boolean isCompound = found && "1".equals(rec.ing_iscompound());
 
-            String text = (!category.isBlank() && !enumber.isBlank()) ? category + " (" + enumber + ")"
+            String mainText = (!category.isBlank() && !enumber.isBlank()) ? category + " (" + enumber + ")"
                     : (!category.isBlank() ? category : legalName);
-            segments.add(new Segment(text, isAllergen));
+
+            List<Segment> bracket = List.of();
+            if (isCompound) {
+                List<ingData.ing_subingredient> subs = ingData.getSubIngredients(item);
+                boolean hasAllergenSub = subs.stream().anyMatch(s -> "1".equals(s.is_allergen()));
+                double pctOfFinished = weightKnown ? (qty / finishedWeightG) * 100.0 : Double.NaN;
+                boolean showBracket = !subs.isEmpty() && (!weightKnown || pctOfFinished >= COMPOUND_INGREDIENT_THRESHOLD_PCT || hasAllergenSub);
+                if (showBracket) {
+                    List<Segment> subSegs = new ArrayList<>();
+                    for (ingData.ing_subingredient sub : subs) {
+                        String subText = sub.sub_enumber().isBlank() ? sub.sub_name() : sub.sub_name() + " (" + sub.sub_enumber() + ")";
+                        subSegs.add(new Segment(subText, "1".equals(sub.is_allergen())));
+                        if (!sub.sub_enumber().isBlank()) {
+                            triggeredENumbers.add(sub.sub_enumber().toUpperCase(Locale.ROOT));
+                        }
+                    }
+                    bracket = subSegs;
+                }
+            }
+
+            segments.add(new Segment(mainText, isAllergen, bracket));
 
             triggeredAllergenCodes.addAll(allergenCodes);
             if (!enumber.isBlank()) {
@@ -232,7 +260,7 @@ public class IngredientLabelEngine {
 
         List<String> warnings = evaluateWarnings(triggeredAllergenCodes, triggeredENumbers, triggeredCategories);
 
-        return new IngredientLabelResult(segments, warnings, lotNumber, bestBeforeDate);
+        return new IngredientLabelResult(segments, warnings, lotNumber, bestBeforeDate, internalNotes);
     }
 
     private List<String> evaluateWarnings(java.util.Set<String> allergenCodes, java.util.Set<String> enumbers,
@@ -259,9 +287,35 @@ public class IngredientLabelEngine {
             if (line.type().equalsIgnoreCase("M")) {
                 flattenRecursive(con, line.child(), childQty, flatQty);
             } else {
-                flatQty.merge(line.child(), childQty, Double::sum);
+                double gramsPerUom = getWtPerUomG(con, line.child());
+                flatQty.merge(line.child(), childQty * gramsPerUom, Double::sum);
             }
         }
+    }
+
+    private double getWtPerUomG(Connection con, String item) throws SQLException {
+        try (PreparedStatement ps = con.prepareStatement("select ing_wt_per_uom_g from ing_mstr where it_item = ?;")) {
+            ps.setString(1, item);
+            try (ResultSet res = ps.executeQuery()) {
+                if (res.next()) {
+                    double v = res.getDouble("ing_wt_per_uom_g");
+                    return v <= 0 ? 1.0 : v;
+                }
+            }
+        }
+        return 1.0;
+    }
+
+    private double getFinishedNetWeightG(Connection con, String item) throws SQLException {
+        try (PreparedStatement ps = con.prepareStatement("select it_net_wt from item_mstr where it_item = ?;")) {
+            ps.setString(1, item);
+            try (ResultSet res = ps.executeQuery()) {
+                if (res.next()) {
+                    return res.getDouble("it_net_wt");
+                }
+            }
+        }
+        return 0;
     }
 
     /**

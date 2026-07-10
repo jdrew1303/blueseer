@@ -548,6 +548,7 @@ public class MassLoad extends javax.swing.JPanel {
         list.add("ing_enumber,s,10,optional,unvalidated");
         list.add("ing_iscompound,b,1,optional,validated (1 or 0)");
         list.add("allergen_codes,s,200,optional,validated (pipe-delimited, e.g. GLUTEN|MILK)");
+        list.add("ing_wt_per_uom_g,d,12,optional,unvalidated (grams per 1 unit of this item's UOM; blank/0 defaults to 1)");
         return list;
     }
 

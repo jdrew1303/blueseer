@@ -56,9 +56,9 @@ import java.util.ArrayList;
 public class ingData {
 
     public record ing_mstr(String[] m, String it_item, String ing_legalname, String ing_category,
-        String ing_enumber, String ing_iscompound, String ing_active, String ing_notes) {
+        String ing_enumber, String ing_iscompound, String ing_active, String ing_notes, double ing_wt_per_uom_g) {
         public ing_mstr(String[] m) {
-            this(m, "", "", "", "", "", "1", "");
+            this(m, "", "", "", "", "", "1", "", 1.0);
         }
     }
 
@@ -119,9 +119,9 @@ public class ingData {
         int rows;
         String sqlSelect = "select * from ing_mstr where it_item = ?;";
         String sqlInsert = "insert into ing_mstr (it_item, ing_legalname, ing_category, ing_enumber, "
-                + "ing_iscompound, ing_active, ing_notes) values (?,?,?,?,?,?,?);";
+                + "ing_iscompound, ing_active, ing_notes, ing_wt_per_uom_g) values (?,?,?,?,?,?,?,?);";
         String sqlUpdate = "update ing_mstr set ing_legalname = ?, ing_category = ?, ing_enumber = ?, "
-                + "ing_iscompound = ?, ing_active = ?, ing_notes = ? where it_item = ?;";
+                + "ing_iscompound = ?, ing_active = ?, ing_notes = ?, ing_wt_per_uom_g = ? where it_item = ?;";
         try (PreparedStatement ps = con.prepareStatement(sqlSelect)) {
             ps.setString(1, x.it_item());
             try (ResultSet res = ps.executeQuery()) {
@@ -134,6 +134,7 @@ public class ingData {
                         psi.setString(5, x.ing_iscompound());
                         psi.setString(6, x.ing_active());
                         psi.setString(7, x.ing_notes());
+                        psi.setDouble(8, x.ing_wt_per_uom_g() <= 0 ? 1.0 : x.ing_wt_per_uom_g());
                         rows = psi.executeUpdate();
                     }
                 } else {
@@ -144,7 +145,8 @@ public class ingData {
                         psu.setString(4, x.ing_iscompound());
                         psu.setString(5, x.ing_active());
                         psu.setString(6, x.ing_notes());
-                        psu.setString(7, x.it_item());
+                        psu.setDouble(7, x.ing_wt_per_uom_g() <= 0 ? 1.0 : x.ing_wt_per_uom_g());
+                        psu.setString(8, x.it_item());
                         rows = psu.executeUpdate();
                     }
                 }
@@ -184,7 +186,7 @@ public class ingData {
                     r = new ing_mstr(m, res.getString("it_item"), res.getString("ing_legalname"),
                             res.getString("ing_category"), res.getString("ing_enumber"),
                             res.getString("ing_iscompound"), res.getString("ing_active"),
-                            res.getString("ing_notes"));
+                            res.getString("ing_notes"), res.getDouble("ing_wt_per_uom_g"));
                 }
             }
         } catch (SQLException s) {
@@ -198,8 +200,8 @@ public class ingData {
     /**
      * Bulk CSV import (see MassLoad.processIngredientMaster). Each line is
      * it_item, ing_legalname, ing_category, ing_enumber, ing_iscompound,
-     * allergen_codes (pipe-delimited) - already validated by
-     * MassLoad.checkIngredientMaster before this is called.
+     * allergen_codes (pipe-delimited), ing_wt_per_uom_g - already validated
+     * by MassLoad.checkIngredientMaster before this is called.
      */
     public static String[] addIngredientMasterMass(ArrayList<String> lines, String delim) {
         String[] m = new String[]{BlueSeerUtils.SuccessBit, ""};
@@ -208,7 +210,16 @@ public class ingData {
             con = (ds == null ? DriverManager.getConnection(url + db, user, pass) : ds.getConnection());
             for (String rec : lines) {
                 String[] ld = rec.split(delim, -1);
-                ing_mstr x = new ing_mstr(null, ld[0], ld[1], ld[2], ld[3], ld[4].isBlank() ? "0" : ld[4], "1", "");
+                double wtPerUom = 1.0;
+                if (ld.length > 6 && !ld[6].isBlank()) {
+                    try {
+                        wtPerUom = Double.parseDouble(ld[6]);
+                    } catch (NumberFormatException ignored) {
+                        wtPerUom = 1.0;
+                    }
+                }
+                ing_mstr x = new ing_mstr(null, ld[0], ld[1], ld[2], ld[3], ld[4].isBlank() ? "0" : ld[4], "1", "",
+                        wtPerUom <= 0 ? 1.0 : wtPerUom);
                 _addUpdateIngMstr(x, con);
                 ArrayList<String> codes = new ArrayList<>();
                 if (ld.length > 5 && !ld[5].isBlank()) {

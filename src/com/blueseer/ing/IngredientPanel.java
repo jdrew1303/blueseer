@@ -53,6 +53,7 @@ public class IngredientPanel extends JPanel {
     private final javax.swing.JTextField tbLegalName = new javax.swing.JTextField();
     private final javax.swing.JTextField tbCategory = new javax.swing.JTextField();
     private final javax.swing.JTextField tbENumber = new javax.swing.JTextField();
+    private final javax.swing.JTextField tbWtPerUom = new javax.swing.JTextField("1");
     private final JCheckBox cbIsAdditive = new JCheckBox(
             "This ingredient is itself a food additive (preservative, colour, emulsifier, etc.)");
     private final JCheckBox cbIsCompound = new JCheckBox("Purchased compound ingredient (supplier recipe, no BOM here)");
@@ -76,6 +77,15 @@ public class IngredientPanel extends JPanel {
 
         add(new JLabel("Legal ingredient name"));
         add(tbLegalName, "wrap");
+
+        add(new JLabel("Weight (g) per 1 unit of measure"));
+        add(tbWtPerUom, "wrap");
+        JLabel wtHint = new JLabel(
+                "<html>Leave as 1 if this item is already tracked by weight (kg/g) consistent with the rest of "
+                + "the recipe. Set this for a <i>volume</i>-tracked ingredient (mL/L) so it sorts and sums "
+                + "correctly against solids - e.g. water tracked in mL: 1; a lighter oil tracked in mL: ~0.92.</html>");
+        wtHint.setForeground(java.awt.Color.GRAY);
+        add(wtHint, "span 2, wrap");
 
         add(cbIsAdditive, "span 2, wrap");
         JLabel additiveHint = new JLabel(
@@ -148,6 +158,7 @@ public class IngredientPanel extends JPanel {
         tbLegalName.setText("");
         tbCategory.setText("");
         tbENumber.setText("");
+        tbWtPerUom.setText("1");
         cbIsAdditive.setSelected(false);
         tbCategory.setEnabled(false);
         tbENumber.setEnabled(false);
@@ -170,6 +181,7 @@ public class IngredientPanel extends JPanel {
             tbLegalName.setText(rec.ing_legalname());
             tbCategory.setText(rec.ing_category());
             tbENumber.setText(rec.ing_enumber());
+            tbWtPerUom.setText(String.valueOf(rec.ing_wt_per_uom_g() <= 0 ? 1.0 : rec.ing_wt_per_uom_g()));
             boolean isAdditive = !rec.ing_category().isBlank() || !rec.ing_enumber().isBlank();
             cbIsAdditive.setSelected(isAdditive);
             tbCategory.setEnabled(isAdditive);
@@ -195,8 +207,14 @@ public class IngredientPanel extends JPanel {
         }
         String category = cbIsAdditive.isSelected() ? tbCategory.getText() : "";
         String enumber = cbIsAdditive.isSelected() ? tbENumber.getText() : "";
+        double wtPerUom;
+        try {
+            wtPerUom = Double.parseDouble(tbWtPerUom.getText().trim());
+        } catch (NumberFormatException nfe) {
+            wtPerUom = 1.0;
+        }
         ingData.ing_mstr rec = new ingData.ing_mstr(null, item, tbLegalName.getText(), category,
-                enumber, cbIsCompound.isSelected() ? "1" : "0", "1", taNotes.getText());
+                enumber, cbIsCompound.isSelected() ? "1" : "0", "1", taNotes.getText(), wtPerUom <= 0 ? 1.0 : wtPerUom);
         ingData.addUpdateIngMstr(rec);
 
         ArrayList<String> codes = new ArrayList<>();

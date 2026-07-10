@@ -17,6 +17,10 @@ select '';
 select '*** ADD TABLE IF NOT EXISTS SECTION ***';
 select '';
 
+/* ing_wt_per_uom_g: grams equivalent to 1 unit of this item's own it_uom.
+   Default 1 assumes it_uom is already gram-comparable with the rest of the
+   recipe. Set explicitly for a volume-tracked ingredient (e.g. water in mL
+   is ~1, oil in mL is ~0.92) so liquids and solids sort/sum correctly. */
 CREATE TABLE IF NOT EXISTS `ing_mstr` (
   `it_item` varchar(36) NOT NULL PRIMARY KEY,
   `ing_legalname` varchar(200) NOT NULL DEFAULT '',
@@ -24,7 +28,8 @@ CREATE TABLE IF NOT EXISTS `ing_mstr` (
   `ing_enumber` varchar(10) NOT NULL DEFAULT '',
   `ing_iscompound` tinyint(1) NOT NULL DEFAULT '0',
   `ing_active` tinyint(1) NOT NULL DEFAULT '1',
-  `ing_notes` varchar(500) NOT NULL DEFAULT ''
+  `ing_notes` varchar(500) NOT NULL DEFAULT '',
+  `ing_wt_per_uom_g` decimal(12,5) NOT NULL DEFAULT '1'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `ing_allergen_ref` (

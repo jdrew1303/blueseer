@@ -42,7 +42,8 @@ CREATE TABLE IF NOT EXISTS "ing_mstr" (
   "ing_enumber" varchar(10) NOT NULL COLLATE NOCASE DEFAULT '',
   "ing_iscompound" tinyint(1) NOT NULL COLLATE NOCASE DEFAULT '0',
   "ing_active" tinyint(1) NOT NULL COLLATE NOCASE DEFAULT '1',
-  "ing_notes" varchar(500) NOT NULL COLLATE NOCASE DEFAULT ''
+  "ing_notes" varchar(500) NOT NULL COLLATE NOCASE DEFAULT '',
+  "ing_wt_per_uom_g" decimal(12,5) NOT NULL DEFAULT '1'
 );
 CREATE TABLE IF NOT EXISTS "ing_allergen_ref" (
   "allergen_code" varchar(20) NOT NULL COLLATE NOCASE PRIMARY KEY,
