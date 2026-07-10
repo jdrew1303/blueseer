@@ -2642,8 +2642,10 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
                             MainFrame.bslog(ex);
                         }
                         if (ingLabel != null) {
+                            String netWeight = tbnetwt.getText().isBlank() ? "" : tbnetwt.getText() + "g";
                             OVData.printLabelItem(tbkey.getText(), defaultprinter, lz.lblz_file(),
-                                    ingLabel, ingLabel.toPlainWarnings(), lotNbr, bestBefore);
+                                    ingLabel, ingLabel.toPlainWarnings(), lotNbr, bestBefore,
+                                    tbdesc.getText(), netWeight);
                         } else {
                             OVData.printLabelItem(tbkey.getText(), defaultprinter, lz.lblz_file());
                         }

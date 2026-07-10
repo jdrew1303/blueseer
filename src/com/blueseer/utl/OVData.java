@@ -21007,19 +21007,21 @@ return mystring;
     }    
         
     public static void printLabelItem(String item, String printer, String labelfile) throws IOException, PrintException {
-        printLabelItem(item, printer, labelfile, null, "", "", "");
+        printLabelItem(item, printer, labelfile, null, "", "", "", "", "");
     }
 
     /**
      * Same as printLabelItem(item, printer, labelfile), plus the EU/Irish FIC
      * ingredient label tokens: $INGREDIENTLIST, $ALLERGENWARNINGS, $LOTNBR,
-     * $BESTBEFORE (see com.blueseer.ing.IngredientLabelEngine). Allergens are
-     * rendered bold in $INGREDIENTLIST via {@link #spliceIngredientListZpl} -
-     * see that method for the template convention this depends on.
+     * $BESTBEFORE, $ITEMDESC, $NETWEIGHT (see com.blueseer.ing.IngredientLabelEngine).
+     * Allergens are rendered bold in $INGREDIENTLIST via
+     * {@link #spliceIngredientListZpl} - see that method for the template
+     * convention this depends on.
      */
     public static void printLabelItem(String item, String printer, String labelfile,
             com.blueseer.ing.IngredientLabelEngine.IngredientLabelResult ingLabel,
-            String allergenWarnings, String lotNbr, String bestBefore) throws IOException, PrintException {
+            String allergenWarnings, String lotNbr, String bestBefore, String itemDesc,
+            String netWeight) throws IOException, PrintException {
           String this_printer = "";
           try {
 
@@ -21059,6 +21061,8 @@ return mystring;
         concatline = concatline.replace("$ALLERGENWARNINGS", allergenWarnings);
         concatline = concatline.replace("$LOTNBR", lotNbr);
         concatline = concatline.replace("$BESTBEFORE", bestBefore);
+        concatline = concatline.replace("$ITEMDESC", itemDesc);
+        concatline = concatline.replace("$NETWEIGHT", netWeight);
 
          if (prt[2].equals("DirectToIP")) {
             Socket soc = null;

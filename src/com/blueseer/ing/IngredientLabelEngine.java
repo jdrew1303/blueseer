@@ -225,7 +225,10 @@ public class IngredientLabelEngine {
                             cy += fontHeight + lineSpacing;
                         }
                         appendZplField(zpl, cx, cy, fontHeight, word.toString(), wordBold);
-                        cx += wordWidth + (int) Math.ceil(charWidth);
+                        // a full extra char-width of gap (rather than one space's worth)
+                        // errs toward too-loose over too-cramped, since the actual glyph
+                        // widths of the printer's resident font aren't known on the host
+                        cx += wordWidth + (int) Math.ceil(charWidth * 2);
                         word.setLength(0);
                         wordBold = false;
                     }
