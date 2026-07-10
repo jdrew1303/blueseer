@@ -180,6 +180,113 @@ public class IngredientLabelEngine {
         private static String escapeHtml(String s) {
             return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
         }
+
+        private static final char BOLD_START = '';
+        private static final char BOLD_END = '';
+
+        /**
+         * Ingredient list as a sequence of positioned ZPL field commands, word-
+         * wrapped to the given pixel width, with allergens rendered bold via
+         * "double-strike" (the same text re-emitted offset by one dot) - the
+         * standard way to fake bold on a ZPL printer whose ^FD field can't mix
+         * font weights and that has no separate bold font loaded.
+         *
+         * Word width is estimated at roughly 0.6x the font height per
+         * character, since exact glyph metrics for the printer's resident font
+         * aren't available on the host. If wrapping looks off on a real
+         * printout, retune CHAR_WIDTH_RATIO below rather than fontHeight.
+         */
+        public String toZplIngredientBlock(int x, int y, int width, int fontHeight, int lineSpacing) {
+            StringBuilder marked = new StringBuilder();
+            appendSegmentsMarked(marked, segments);
+            double charWidth = fontHeight * CHAR_WIDTH_RATIO;
+
+            StringBuilder zpl = new StringBuilder();
+            int cx = x;
+            int cy = y;
+            StringBuilder word = new StringBuilder();
+            boolean wordBold = false;
+            boolean inBold = false;
+            for (int i = 0; i <= marked.length(); i++) {
+                char c = i < marked.length() ? marked.charAt(i) : ' ';
+                if (c == BOLD_START) {
+                    inBold = true;
+                    continue;
+                }
+                if (c == BOLD_END) {
+                    inBold = false;
+                    continue;
+                }
+                if (c == ' ') {
+                    if (word.length() > 0) {
+                        int wordWidth = (int) Math.ceil(word.length() * charWidth);
+                        if (cx > x && cx + wordWidth > x + width) {
+                            cx = x;
+                            cy += fontHeight + lineSpacing;
+                        }
+                        appendZplField(zpl, cx, cy, fontHeight, word.toString(), wordBold);
+                        cx += wordWidth + (int) Math.ceil(charWidth);
+                        word.setLength(0);
+                        wordBold = false;
+                    }
+                } else {
+                    if (word.length() == 0) {
+                        wordBold = inBold;
+                    }
+                    word.append(c);
+                }
+            }
+            return zpl.toString();
+        }
+
+        private static final double CHAR_WIDTH_RATIO = 0.6;
+
+        private static void appendZplField(StringBuilder zpl, int x, int y, int fontHeight, String text, boolean bold) {
+            String escaped = zplEscape(text);
+            zpl.append("^FO").append(x).append(",").append(y)
+                    .append("^A0N,").append(fontHeight).append(",").append(fontHeight)
+                    .append("^FD").append(escaped).append("^FS");
+            if (bold) {
+                // double-strike one dot down-and-right to thicken the strokes
+                zpl.append("^FO").append(x + 1).append(",").append(y + 1)
+                        .append("^A0N,").append(fontHeight).append(",").append(fontHeight)
+                        .append("^FD").append(escaped).append("^FS");
+            }
+        }
+
+        private static String zplEscape(String s) {
+            // ^ and ~ are ZPL command-prefix characters; strip rather than risk
+            // corrupting the command stream if either ever appears in ingredient text.
+            return s.replace("^", "").replace("~", "");
+        }
+
+        private static void appendSegmentsMarked(StringBuilder sb, List<Segment> segs) {
+            for (int i = 0; i < segs.size(); i++) {
+                Segment s = segs.get(i);
+                if (i > 0) {
+                    sb.append(", ");
+                }
+                appendOneMarked(sb, s);
+                if (!s.bracketed().isEmpty()) {
+                    sb.append(" (");
+                    for (int j = 0; j < s.bracketed().size(); j++) {
+                        if (j > 0) {
+                            sb.append(", ");
+                        }
+                        appendOneMarked(sb, s.bracketed().get(j));
+                    }
+                    sb.append(")");
+                }
+            }
+        }
+
+        private static void appendOneMarked(StringBuilder sb, Segment s) {
+            if (s.isAllergen()) {
+                sb.append(BOLD_START).append(s.text()).append(BOLD_END);
+            } else {
+                sb.append(s.text());
+            }
+        }
     }
 
     private record BomLine(String child, String type, double qtyPer) {

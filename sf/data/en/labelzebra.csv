@@ -8,3 +8,4 @@ code39E,code 39 ext Jasper,code39E.jasper,ucc
 uccpdf,code128 ext Jasper,ucc128.jasper,ucc
 itemPDF,code 39 item PDF Jasper,itemPDF4x6.jasper,item
 itemZPL,code 39 item zebra 2 x 4,item.prn,item
+itemFIC,EU/Irish FIC ingredient label (Zebra 4 x 6),itemFIC.prn,item

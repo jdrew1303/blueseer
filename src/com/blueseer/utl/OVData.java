@@ -21007,20 +21007,18 @@ return mystring;
     }    
         
     public static void printLabelItem(String item, String printer, String labelfile) throws IOException, PrintException {
-        printLabelItem(item, printer, labelfile, "", "", "", "");
+        printLabelItem(item, printer, labelfile, null, "", "", "");
     }
 
     /**
      * Same as printLabelItem(item, printer, labelfile), plus the EU/Irish FIC
      * ingredient label tokens: $INGREDIENTLIST, $ALLERGENWARNINGS, $LOTNBR,
      * $BESTBEFORE (see com.blueseer.ing.IngredientLabelEngine). Allergens are
-     * upper-cased rather than bold, since a plain ZPL text field can't mix
-     * font weights within one ^FD block - true inline bold would need the
-     * template to lay out each ingredient as its own ^FO/^FD run, which is a
-     * template-specific follow-up once the client's physical label layout is
-     * known.
+     * rendered bold in $INGREDIENTLIST via {@link #spliceIngredientListZpl} -
+     * see that method for the template convention this depends on.
      */
-    public static void printLabelItem(String item, String printer, String labelfile, String ingredientList,
+    public static void printLabelItem(String item, String printer, String labelfile,
+            com.blueseer.ing.IngredientLabelEngine.IngredientLabelResult ingLabel,
             String allergenWarnings, String lotNbr, String bestBefore) throws IOException, PrintException {
           String this_printer = "";
           try {
@@ -21057,7 +21055,7 @@ return mystring;
         DateFormat dfdate = new SimpleDateFormat("MM/dd/yyyy");
 
         concatline = concatline.replace("$ITEMNBR", item);
-        concatline = concatline.replace("$INGREDIENTLIST", ingredientList);
+        concatline = spliceIngredientListZpl(concatline, ingLabel);
         concatline = concatline.replace("$ALLERGENWARNINGS", allergenWarnings);
         concatline = concatline.replace("$LOTNBR", lotNbr);
         concatline = concatline.replace("$BESTBEFORE", bestBefore);
@@ -21096,7 +21094,54 @@ return mystring;
 MainFrame.bslog(e);
 }
       }
-      
+
+    /**
+     * Replaces $INGREDIENTLIST with a bold-allergen-aware ZPL fragment
+     * instead of a single plain-text substitution, since one ^FD field can't
+     * mix font weights. Layout stays template-editable: the token must sit
+     * inside a "^FOx,y^A0N,h,w^FBwidth,lines,spacing,justify^FD$INGREDIENTLIST^FS"
+     * block (a normal ^FO + ^A0N + optional ^FB immediately before the ^FD),
+     * exactly like every other field in a .prn template - x/y/font size/wrap
+     * width are read straight out of that block, so moving or resizing the
+     * ingredient list on the label is still just an edit to the .prn text
+     * file, not a code change. Falls back to a plain, non-bold substitution
+     * if the token isn't wrapped that way (e.g. an older/malformed template).
+     */
+    private static String spliceIngredientListZpl(String template,
+            com.blueseer.ing.IngredientLabelEngine.IngredientLabelResult ingLabel) {
+        String tokenField = "^FD$INGREDIENTLIST^FS";
+        int fsIdx = template.indexOf(tokenField);
+        if (fsIdx < 0) {
+            return template;
+        }
+        if (ingLabel == null) {
+            return template.replace(tokenField, "");
+        }
+        int blockStart = template.lastIndexOf("^FO", fsIdx);
+        int prevFieldEnd = template.lastIndexOf("^FS", fsIdx);
+        if (blockStart < 0 || blockStart < prevFieldEnd) {
+            return template.replace("$INGREDIENTLIST", ingLabel.toPlainIngredientList());
+        }
+        String blockPrefix = template.substring(blockStart, fsIdx);
+        java.util.regex.Matcher foM = java.util.regex.Pattern.compile("\\^FO(\\d+),(\\d+)").matcher(blockPrefix);
+        java.util.regex.Matcher fontM = java.util.regex.Pattern.compile("\\^A0N,(\\d+),(\\d+)").matcher(blockPrefix);
+        java.util.regex.Matcher fbM = java.util.regex.Pattern.compile("\\^FB(\\d+),(\\d+),(\\d+)").matcher(blockPrefix);
+        if (!foM.find() || !fontM.find()) {
+            return template.replace("$INGREDIENTLIST", ingLabel.toPlainIngredientList());
+        }
+        int x = Integer.parseInt(foM.group(1));
+        int y = Integer.parseInt(foM.group(2));
+        int fontHeight = Integer.parseInt(fontM.group(1));
+        int width = 400;
+        int lineSpacing = 0;
+        if (fbM.find()) {
+            width = Integer.parseInt(fbM.group(1));
+            lineSpacing = Integer.parseInt(fbM.group(3));
+        }
+        String zplBlock = ingLabel.toZplIngredientBlock(x, y, width, fontHeight, lineSpacing);
+        return template.substring(0, blockStart) + zplBlock + template.substring(fsIdx + tokenField.length());
+    }
+
     public static void printLabelStream(String text, String printer) throws IOException, PrintException {
           prt_mstr prt = getPrtMstr(new String[]{printer});
           String port = (prt.prt_port().isBlank()) ? "9100" : prt.prt_port();
