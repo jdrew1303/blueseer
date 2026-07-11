@@ -15,7 +15,8 @@
     <maven.compiler.release>26</maven.compiler.release>
 
     <!-- jpackage installer defaults (see the "jpackage" profile below and the
-         "windows" / "linux-x86_64" / "mac" profiles for OS-specific overrides).
+         "windows" / "linux-x86_64" / "mac-aarch64" / "mac-x86_64" profiles for
+         OS-specific overrides).
          installer.appVersion is separate from project.version because jpackage
          requires a strict numeric major[.minor[.build]] version for msi/exe. -->
     <installer.appVersion>8.0.0</installer.appVersion>
@@ -571,13 +572,33 @@
         </properties>
     </profile>
     <profile>
-        <id>mac</id>
+        <id>mac-aarch64</id>
         <activation>
             <os>
                 <family>mac</family>
+                <arch>aarch64</arch>
             </os>
         </activation>
         <properties>
+            <swt.groupId>org.eclipse.platform</swt.groupId>
+            <swt.artifactId>org.eclipse.swt.cocoa.macosx.aarch64</swt.artifactId>
+            <swt.version>3.129.0</swt.version>
+            <installer.type>DMG</installer.type>
+            <!-- no bundled .icns yet; jpackage falls back to a default icon -->
+        </properties>
+    </profile>
+    <profile>
+        <id>mac-x86_64</id>
+        <activation>
+            <os>
+                <family>mac</family>
+                <arch>x86_64</arch>
+            </os>
+        </activation>
+        <properties>
+            <swt.groupId>org.eclipse.platform</swt.groupId>
+            <swt.artifactId>org.eclipse.swt.cocoa.macosx.x86_64</swt.artifactId>
+            <swt.version>3.129.0</swt.version>
             <installer.type>DMG</installer.type>
             <!-- no bundled .icns yet; jpackage falls back to a default icon -->
         </properties>

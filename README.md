@@ -123,9 +123,10 @@ release, extract it, and point at it:
 mvn package -Pjpackage -Djbr.home=/path/to/extracted/jbr
 ```
 The installer type/icon are picked automatically based on the OS running the build
-(see the `windows` / `linux-x86_64` / `mac` profiles in `pom.xml`); override
-`-Dinstaller.type=...` to build a different package type (e.g. `APP_IMAGE` for a
-plain, unpackaged app folder, useful for testing before building a real installer).
+(see the `windows` / `linux-x86_64` / `mac-aarch64` / `mac-x86_64` profiles in
+`pom.xml`); override `-Dinstaller.type=...` to build a different package type (e.g.
+`APP_IMAGE` for a plain, unpackaged app folder, useful for testing before building a
+real installer).
 </br>
 
 <h1>Contributing</h1>
