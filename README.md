@@ -108,12 +108,23 @@ etc., then run `com.blueseer.utl.mf` as the main class.
 <h2>Building a native installer (jpackage)</h2>
 
 `mvn package -Pjpackage` produces a self-contained native installer under
-`target/installer` — a `.deb` on Linux, an `.msi` on Windows, a `.dmg` on macOS
-(jpackage only builds an installer for the OS you run it on) — with the app, all its
-dependency jars, its runtime resources (`bs.cfg`, `data/`, `jasper/`, etc.), and a
+`target/installer` — a `.deb` on Linux, an `.msi` on Windows, an unpacked `.app` on
+macOS (jpackage only builds an installer for the OS you run it on) — with the app, all
+its dependency jars, its runtime resources (`bs.cfg`, `data/`, `jasper/`, etc.), and a
 bundled Java runtime (built with jlink, so it's a fraction of a full JDK install), so
 end users just install and run it like any other desktop application; no
 separately-installed JDK required.
+
+macOS builds `APP_IMAGE` (a plain `target/installer/BlueSeer.app`) rather than a
+`.dmg`: jpackage always ad-hoc-codesigns the app bundle it builds on macOS, and that
+codesign step reproducibly fails when bundling `bs.cfg`/`.patch` as loose top-level
+files (a real jpackage limitation, not a project-specific misconfiguration) - see the
+`mac-aarch64`/`mac-x86_64` profiles in `pom.xml` for the workaround (a post-build step
+copies those two files in afterward and re-signs). Once you've confirmed
+`target/installer/BlueSeer.app` launches correctly, wrap it into a `.dmg` yourself:
+```
+hdiutil create -volname BlueSeer -srcfolder target/installer/BlueSeer.app -ov -format UDZO target/installer/BlueSeer.dmg
+```
 
 By default the build points jlink at whatever JDK is running Maven. To bundle
 <a href="https://github.com/JetBrains/JetBrainsRuntime">JetBrains Runtime</a> instead
