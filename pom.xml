@@ -655,6 +655,7 @@
                 <module>java.xml</module>
                 <module>jdk.charsets</module>
                 <module>jdk.crypto.ec</module>
+                <module>jdk.localedata</module>
                 <module>jdk.management</module>
                 <module>jdk.unsupported</module>
                 <module>jdk.xml.dom</module>
@@ -773,6 +774,7 @@
                   <module>java.xml</module>
                   <module>jdk.charsets</module>
                   <module>jdk.crypto.ec</module>
+                  <module>jdk.localedata</module>
                   <module>jdk.management</module>
                   <module>jdk.unsupported</module>
                   <module>jdk.xml.dom</module>
@@ -927,6 +929,7 @@
                   <module>java.xml</module>
                   <module>jdk.charsets</module>
                   <module>jdk.crypto.ec</module>
+                  <module>jdk.localedata</module>
                   <module>jdk.management</module>
                   <module>jdk.unsupported</module>
                   <module>jdk.xml.dom</module>
