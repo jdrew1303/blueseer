@@ -116,17 +116,24 @@ import java.util.Map;
  * ingredient itself and so can never exceed 100%.
  *
  * Reconstituted/dehydrated ingredients (FSAI: QUID must use the weight
- * <i>after</i> rehydration, not the dry/concentrated weight): rather than a
- * separate bookkeeping table, an ingredient's own {@code ing_mstr.
- * ing_reconstitutes_into} names another item code, and this engine folds
- * its flattened BOM weight directly into that other item's accumulated
- * total during flattening (see {@link #flattenRecursive}) - so a "water
- * used to reconstitute milk powder" BOM line simply never appears as its
- * own ingredient-list entry; its weight silently becomes part of milk's.
- * Because this is a property of the ingredient item itself rather than of
- * one specific BOM line, the same item code can't be reconstituted in one
- * recipe and used as-is (unreconstituted) in another - a recipe needing
- * both would need two distinct item codes for the two uses.
+ * <i>after</i> rehydration, not the dry/concentrated weight): {@code
+ * ing_recon} maps, per FINISHED item, a diluent's item code to the item
+ * code its weight should fold into - e.g. for CAKE001 specifically, "water"
+ * folds into "milk powder". This is scoped to one finished item's recipe
+ * (not a global property of the water item), because the same raw
+ * material can be a plain ingredient in one recipe, a minor flavoring in
+ * another, and the reconstitution diluent for something else entirely in
+ * a third - exactly the same reasoning as {@code ing_quid} being scoped
+ * per finished item rather than living on the ingredient's own master
+ * record. This engine folds the diluent's flattened BOM weight directly
+ * into the target's accumulated total during flattening (see {@link
+ * #flattenRecursive}), so the diluent never appears as its own
+ * ingredient-list entry - its weight silently becomes part of the
+ * target's. Both {@code ing_quid} and {@code ing_recon} are maintained
+ * from ItemMaint's Ingredient Data tab as a single table of the finished
+ * item's own flattened BOM ingredients (see {@link #getBomIngredients}),
+ * not free-text item-code entry, so what can be selected always matches
+ * what's actually in the recipe.
  */
 public class IngredientLabelEngine {
 
@@ -433,8 +440,9 @@ public class IngredientLabelEngine {
         Map<String, Double> flatQty = new LinkedHashMap<>();
         List<String> internalNotes = new ArrayList<>();
         double finishedWeightG = 0;
+        Map<String, String> reconMap = ingData.getReconMap(finishedItem);
         try (Connection con = (ds == null ? DriverManager.getConnection(url + db, user, pass) : ds.getConnection())) {
-            flattenRecursive(con, finishedItem, 1.0, flatQty);
+            flattenRecursive(con, finishedItem, 1.0, flatQty, reconMap);
             finishedWeightG = getFinishedNetWeightG(con, finishedItem);
         } catch (SQLException s) {
             bslog(s);
@@ -546,34 +554,47 @@ public class IngredientLabelEngine {
         return warnings;
     }
 
-    private void flattenRecursive(Connection con, String item, double qtyPerUnit, Map<String, Double> flatQty)
-            throws SQLException {
+    private void flattenRecursive(Connection con, String item, double qtyPerUnit, Map<String, Double> flatQty,
+            Map<String, String> reconMap) throws SQLException {
         for (BomLine line : getBomLines(con, item)) {
             double childQty = qtyPerUnit * line.qtyPer();
             if (line.type().equalsIgnoreCase("M")) {
-                flattenRecursive(con, line.child(), childQty, flatQty);
+                flattenRecursive(con, line.child(), childQty, flatQty, reconMap);
             } else {
                 double gramsPerUom = getWtPerUomG(con, line.child());
-                String reconstitutesInto = getReconstitutesInto(con, line.child());
-                String key = reconstitutesInto.isBlank() ? line.child() : reconstitutesInto;
+                String key = reconMap.getOrDefault(line.child(), line.child());
                 flatQty.merge(key, childQty * gramsPerUom, Double::sum);
             }
         }
     }
 
-    /** See the class javadoc's "Reconstituted/dehydrated ingredients" section. */
-    private String getReconstitutesInto(Connection con, String item) throws SQLException {
-        try (PreparedStatement ps = con.prepareStatement(
-                "select ing_reconstitutes_into from ing_mstr where it_item = ?;")) {
-            ps.setString(1, item);
-            try (ResultSet res = ps.executeQuery()) {
-                if (res.next()) {
-                    String v = res.getString("ing_reconstitutes_into");
-                    return v == null ? "" : v;
-                }
-            }
+    /** One row of {@link #getBomIngredients} - a raw, unfolded leaf ingredient item code and its description. */
+    public record BomIngredient(String item, String desc) {
+    }
+
+    /**
+     * The finished item's own flattened BOM ingredients (item code +
+     * description, sorted by descending raw weight, deduplicated, no
+     * reconstitution folding applied) - this is what ItemMaint's Ingredient
+     * Data tab shows as a checkbox/dropdown table so QUID and reconstitution
+     * targets are always picked from what's actually in the recipe, never
+     * free-typed. Returns an empty list for an item with no BOM of its own
+     * (a raw material/purchased ingredient, not a finished/manufactured good).
+     */
+    public List<BomIngredient> getBomIngredients(String finishedItem) {
+        Map<String, Double> flatQty = new LinkedHashMap<>();
+        try (Connection con = (ds == null ? DriverManager.getConnection(url + db, user, pass) : ds.getConnection())) {
+            flattenRecursive(con, finishedItem, 1.0, flatQty, Map.of());
+        } catch (SQLException s) {
+            bslog(s);
         }
-        return "";
+        List<Map.Entry<String, Double>> sorted = new ArrayList<>(flatQty.entrySet());
+        sorted.sort((a, b) -> Double.compare(b.getValue(), a.getValue()));
+        List<BomIngredient> out = new ArrayList<>();
+        for (Map.Entry<String, Double> e : sorted) {
+            out.add(new BomIngredient(e.getKey(), com.blueseer.inv.invData.getItemDesc(e.getKey())));
+        }
+        return out;
     }
 
     private double getWtPerUomG(Connection con, String item) throws SQLException {

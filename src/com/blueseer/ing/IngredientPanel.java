@@ -26,17 +26,24 @@ SOFTWARE.
 package com.blueseer.ing;
 
 import net.miginfocom.swing.MigLayout;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignH;
+import org.kordamp.ikonli.swing.FontIcon;
 
+import javax.swing.DefaultCellEditor;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.Cursor;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -44,9 +51,16 @@ import java.util.Map;
  * an item used as a raw material/ingredient elsewhere (legal name, additive
  * category/E-number, allergens, and - for a purchased item that is itself a
  * compound ingredient BlueSeer has no BOM visibility into - the supplier's
- * declared sub-ingredient breakdown). ItemMaint calls loadData()/saveData()
- * alongside its own item_mstr load/save, the same way it already does for
- * attachments (see ItemMaint.getRecord/addRecord/updateRecord).
+ * declared sub-ingredient breakdown), plus QUID/reconstitution settings for
+ * an item that is itself a finished good with its own BOM. ItemMaint calls
+ * loadData()/saveData() alongside its own item_mstr load/save, the same way
+ * it already does for attachments (see ItemMaint.getRecord/addRecord/
+ * updateRecord).
+ *
+ * Explanatory text lives in tooltips behind a small help icon next to each
+ * field rather than as permanently-visible paragraphs (see {@link
+ * #helpIcon}), so the form stays a compact two-column grid instead of a
+ * tall single-column stack of label/field/paragraph/label/field/...
  */
 public class IngredientPanel extends JPanel {
 
@@ -54,9 +68,7 @@ public class IngredientPanel extends JPanel {
     private final javax.swing.JTextField tbCategory = new javax.swing.JTextField();
     private final javax.swing.JTextField tbENumber = new javax.swing.JTextField();
     private final javax.swing.JTextField tbWtPerUom = new javax.swing.JTextField("1");
-    private final javax.swing.JTextField tbReconstitutesInto = new javax.swing.JTextField();
-    private final JCheckBox cbIsAdditive = new JCheckBox(
-            "This ingredient is itself a food additive (preservative, colour, emulsifier, etc.)");
+    private final JCheckBox cbIsAdditive = new JCheckBox("This ingredient is itself a food additive");
     private final JCheckBox cbIsCompound = new JCheckBox("Purchased compound ingredient (supplier recipe, no BOM here)");
     private final javax.swing.JTextArea taNotes = new javax.swing.JTextArea(3, 20);
 
@@ -73,56 +85,51 @@ public class IngredientPanel extends JPanel {
     private final JTable subTable = new JTable(subModel);
     private final JPanel subPanel = new JPanel(new BorderLayout(0, 5));
 
-    private final JCheckBox cbMoistLoss = new JCheckBox(
-            "This item's production process loses moisture (cooking/baking/drying)");
-    private final DefaultTableModel quidModel = new DefaultTableModel(
-            new Object[]{"Ingredient item code", "Description"}, 0) {
+    private final JCheckBox cbMoistLoss = new JCheckBox("This item's production process loses moisture");
+
+    // BOM-driven QUID + reconstitution table: rows are THIS item's own
+    // flattened ingredients (see IngredientLabelEngine.getBomIngredients),
+    // never free-typed, so what can be flagged always matches the recipe.
+    private final DefaultTableModel bomModel = new DefaultTableModel(
+            new Object[]{"Item code", "Description", "Needs QUID %", "Reconstitutes into"}, 0) {
+        @Override
+        public Class<?> getColumnClass(int col) {
+            return col == 2 ? Boolean.class : String.class;
+        }
+
         @Override
         public boolean isCellEditable(int row, int col) {
-            return col == 0;
+            return col == 2 || col == 3;
         }
     };
-    private final JTable quidTable = new JTable(quidModel);
+    private final JTable bomTable = new JTable(bomModel);
+    private final JComboBox<String> reconCombo = new JComboBox<>();
+    private final JPanel bomPanel = new JPanel(new BorderLayout(0, 5));
 
     public IngredientPanel() {
-        setLayout(new MigLayout("fill, insets 10", "[]10[grow,fill]", "[]5[]5[]10[]10[]10[grow,fill]"));
+        setLayout(new MigLayout("fill, insets 10", "[]5[grow,fill]", "[]5[]5[]10[]10[]10[]10[grow,fill]"));
+        JPanel content = this;
 
-        add(new JLabel("Legal ingredient name"));
-        add(tbLegalName, "wrap");
+        content.add(new JLabel("Legal ingredient name"));
+        content.add(tbLegalName, "wrap");
 
-        add(new JLabel("Weight (g) per 1 unit of measure"));
-        add(tbWtPerUom, "wrap");
-        JLabel wtHint = new JLabel(
-                "<html><div style='width:480px'>Leave as 1 if this item is already tracked by weight (kg/g) consistent with the rest of "
+        content.add(labelWithHelp("Weight (g) per 1 unit of measure",
+                "Leave as 1 if this item is already tracked by weight (kg/g) consistent with the rest of "
                 + "the recipe. Set this for a <i>volume</i>-tracked ingredient (mL/L) so it sorts and sums "
-                + "correctly against solids - e.g. water tracked in mL: 1; a lighter oil tracked in mL: ~0.92.</div></html>");
-        wtHint.setForeground(java.awt.Color.GRAY);
-        add(wtHint, "span 2, wrap");
+                + "correctly against solids - e.g. water tracked in mL: 1; a lighter oil tracked in mL: ~0.92."));
+        content.add(tbWtPerUom, "wrap");
 
-        add(new JLabel("Reconstituted into item code"));
-        add(tbReconstitutesInto, "wrap");
-        JLabel reconHint = new JLabel(
-                "<html><div style='width:480px'>Leave blank for a normal ingredient. Set this to another item's code "
-                + "only when <i>this</i> item is a diluent (e.g. water) used solely to rehydrate a concentrated/"
-                + "dehydrated ingredient (e.g. milk powder) during production - its weight is then folded into the "
-                + "named item's ingredient-list entry and QUID %, instead of appearing as its own entry, per FSAI "
-                + "reconstituted-ingredient guidance.</div></html>");
-        reconHint.setForeground(java.awt.Color.GRAY);
-        add(reconHint, "span 2, wrap");
-
-        add(cbIsAdditive, "span 2, wrap");
-        JLabel additiveHint = new JLabel(
-                "<html><div style='width:480px'>Leave unchecked for a plain ingredient (sugar, flour, water, ...). Check this only "
-                + "when this item <i>is</i> the additive itself - e.g. an item called \"Sodium Benzoate\" used "
-                + "in a recipe. It will then appear in the printed ingredient list at its own position (sorted "
-                + "by its own quantity, like any other ingredient), formatted per EU convention as "
-                + "\"Category (E-number)\", e.g. \"Preservative (E211)\".</div></html>");
-        additiveHint.setForeground(java.awt.Color.GRAY);
-        add(additiveHint, "span 2, wrap");
-        add(new JLabel("Additive category"));
-        add(tbCategory, "wrap");
-        add(new JLabel("E-number"));
-        add(tbENumber, "wrap");
+        content.add(cbIsAdditive, "wrap");
+        cbIsAdditive.setToolTipText(helpHtml(
+                "Leave unchecked for a plain ingredient (sugar, flour, water, ...). Check this only when this "
+                + "item <i>is</i> the additive itself - e.g. an item called \"Sodium Benzoate\" used in a recipe. "
+                + "It will then appear in the printed ingredient list at its own position (sorted by its own "
+                + "quantity, like any other ingredient), formatted per EU convention as \"Category (E-number)\", "
+                + "e.g. \"Preservative (E211)\"."));
+        content.add(new JLabel("Additive category"));
+        content.add(tbCategory, "wrap");
+        content.add(new JLabel("E-number"));
+        content.add(tbENumber, "wrap");
         tbCategory.setEnabled(false);
         tbENumber.setEnabled(false);
         cbIsAdditive.addActionListener(e -> {
@@ -136,9 +143,15 @@ public class IngredientPanel extends JPanel {
             allergenBoxes.put(ref.allergen_code(), cb);
             allergenPanel.add(cb);
         }
-        add(wrapTitled("Allergens (EU Annex II)", allergenPanel), "span 2, growx, wrap");
+        content.add(wrapTitled("Allergens (EU Annex II)", allergenPanel), "span 2, growx, wrap");
 
-        add(cbIsCompound, "span 2, wrap");
+        content.add(cbIsCompound, "wrap");
+        cbIsCompound.setToolTipText(helpHtml(
+                "Check only for a <i>purchased</i> item that is itself a compound ingredient BlueSeer has no BOM "
+                + "for (e.g. bought-in chocolate chips). It's declared under its own name, followed by its "
+                + "supplier-declared sub-ingredients in brackets - omitted only when under 2% of the finished "
+                + "product and none of its sub-ingredients is an allergen. An in-house sub-recipe with its own "
+                + "BOM doesn't need this - it's always fully expanded automatically."));
 
         subTable.getColumnModel().getColumn(0).setPreferredWidth(220);
         JButton btnAddRow = new JButton("Add row");
@@ -155,58 +168,80 @@ public class IngredientPanel extends JPanel {
         subButtons.add(btnRemoveRow);
         subPanel.add(new JScrollPane(subTable), BorderLayout.CENTER);
         subPanel.add(subButtons, BorderLayout.SOUTH);
+        subPanel.setPreferredSize(new java.awt.Dimension(10, 140));
         subPanel.setVisible(false);
-        add(wrapTitled("Supplier-declared sub-ingredients (used when ≥ 2% of finished product weight)", subPanel),
-                "span 2, grow, wrap");
+        content.add(wrapTitled("Supplier-declared sub-ingredients", subPanel), "span 2, grow, wrap");
 
         cbIsCompound.addActionListener(e -> subPanel.setVisible(cbIsCompound.isSelected()));
 
-        add(cbMoistLoss, "span 2, wrap");
-        JLabel moistHint = new JLabel(
-                "<html><div style='width:480px'>Only relevant when this item is itself printed as a finished-good "
-                + "label (e.g. this cake, not an ingredient used inside something else). Leave unchecked for a cold/"
-                + "no-cook product (QUID % is calculated against the total raw ingredient weight). Check it for a "
-                + "cooked/baked/dried product (QUID % is instead calculated against this item's Net Weight, since "
-                + "the raw mix no longer reflects what's actually in the finished product).</div></html>");
-        moistHint.setForeground(java.awt.Color.GRAY);
-        add(moistHint, "span 2, wrap");
+        content.add(cbMoistLoss, "wrap");
+        cbMoistLoss.setToolTipText(helpHtml(
+                "Only relevant when this item is itself printed as a finished-good label (e.g. this cake, not an "
+                + "ingredient used inside something else). Leave unchecked for a cold/no-cook product (QUID % is "
+                + "calculated against the total raw ingredient weight). Check it for a cooked/baked/dried product "
+                + "(QUID % is instead calculated against this item's Net Weight, since the raw mix no longer "
+                + "reflects what's actually in the finished product)."));
 
-        quidTable.getColumnModel().getColumn(0).setPreferredWidth(150);
-        JButton btnAddQuidRow = new JButton("Add row");
-        btnAddQuidRow.addActionListener(e -> quidModel.addRow(new Object[]{"", ""}));
-        JButton btnRemoveQuidRow = new JButton("Remove row");
-        btnRemoveQuidRow.addActionListener(e -> {
-            int row = quidTable.getSelectedRow();
-            if (row >= 0) {
-                quidModel.removeRow(row);
+        bomTable.getColumnModel().getColumn(0).setPreferredWidth(120);
+        bomTable.getColumnModel().getColumn(1).setPreferredWidth(220);
+        bomTable.getColumnModel().getColumn(3).setCellEditor(new DefaultCellEditor(reconCombo) {
+            @Override
+            public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected,
+                    int row, int col) {
+                String selfCode = String.valueOf(bomModel.getValueAt(row, 0));
+                reconCombo.removeAllItems();
+                reconCombo.addItem("");
+                for (int i = 0; i < bomModel.getRowCount(); i++) {
+                    String code = String.valueOf(bomModel.getValueAt(i, 0));
+                    if (!code.equals(selfCode)) {
+                        reconCombo.addItem(code);
+                    }
+                }
+                reconCombo.setSelectedItem(value == null ? "" : value);
+                return reconCombo;
             }
         });
-        quidModel.addTableModelListener(e -> {
-            if (e.getColumn() != 0) {
-                return;
-            }
-            int row = e.getFirstRow();
-            if (row < 0 || row >= quidModel.getRowCount()) {
-                return;
-            }
-            String code = String.valueOf(quidModel.getValueAt(row, 0));
-            String desc = code.isBlank() ? "" : com.blueseer.inv.invData.getItemDesc(code);
-            if (!desc.equals(quidModel.getValueAt(row, 1))) {
-                quidModel.setValueAt(desc, row, 1);
-            }
-        });
-        JPanel quidButtons = new JPanel(new MigLayout("insets 0", "[]5[]", "[]"));
-        quidButtons.add(btnAddQuidRow);
-        quidButtons.add(btnRemoveQuidRow);
-        JPanel quidPanel = new JPanel(new BorderLayout(0, 5));
-        quidPanel.add(new JScrollPane(quidTable), BorderLayout.CENTER);
-        quidPanel.add(quidButtons, BorderLayout.SOUTH);
-        add(wrapTitled("Quantitative Ingredient Declaration (QUID) - ingredients of THIS finished item requiring a "
-                + "percentage on its label (named in the product name, emphasized on-pack, or characterizing)",
-                quidPanel), "span 2, grow, wrap");
+        bomPanel.add(new JScrollPane(bomTable), BorderLayout.CENTER);
+        bomPanel.setPreferredSize(new java.awt.Dimension(10, 160));
+        bomPanel.setVisible(false);
+        JLabel bomTitle = new JLabel("This item's ingredients (QUID % / reconstitution)");
+        JPanel bomTitleRow = new JPanel(new MigLayout("insets 0", "[]5[]", "[]"));
+        bomTitleRow.add(bomTitle);
+        bomTitleRow.add(helpIcon(
+                "Lists this item's own flattened BOM ingredients - only shown when this item is a finished/"
+                + "manufactured good with a recipe of its own. <b>Needs QUID %</b>: check for an ingredient named "
+                + "in this product's name, emphasized on the pack, or characterizing it (e.g. the ham in a ham "
+                + "sandwich) - its percentage is then printed on the label. <b>Reconstitutes into</b>: for a "
+                + "diluent (e.g. water) used solely to rehydrate a concentrated/dehydrated ingredient in "
+                + "<i>this</i> recipe (e.g. milk powder) - its weight is folded into the chosen ingredient instead "
+                + "of appearing as its own list entry. Both are specific to this one product; the same raw "
+                + "material may be flagged differently (or not at all) on a different product's label."));
+        JPanel bomWrapper = new JPanel(new BorderLayout());
+        bomWrapper.add(bomTitleRow, BorderLayout.NORTH);
+        bomWrapper.add(bomPanel, BorderLayout.CENTER);
+        content.add(bomWrapper, "span 2, grow, wrap");
 
-        add(new JLabel("Notes"));
-        add(new JScrollPane(taNotes), "span 2, grow");
+        content.add(new JLabel("Notes"));
+        content.add(new JScrollPane(taNotes), "span 2, grow");
+    }
+
+    /** A field label followed by a small help icon carrying the long-form explanation as a tooltip. */
+    private static JPanel labelWithHelp(String label, String helpHtmlBody) {
+        JPanel row = new JPanel(new MigLayout("insets 0", "[]3[]", "[]"));
+        row.add(new JLabel(label));
+        row.add(helpIcon(helpHtmlBody));
+        return row;
+    }
+
+    private static JLabel helpIcon(String helpHtmlBody) {
+        JLabel icon = new JLabel(FontIcon.of(MaterialDesignH.HELP_CIRCLE_OUTLINE, 15, java.awt.Color.GRAY));
+        icon.setToolTipText(helpHtml(helpHtmlBody));
+        icon.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        return icon;
+    }
+
+    private static String helpHtml(String body) {
+        return "<html><div style='width:360px'>" + body + "</div></html>";
     }
 
     private static JPanel wrapTitled(String title, JPanel content) {
@@ -250,7 +285,6 @@ public class IngredientPanel extends JPanel {
         tbCategory.setText("");
         tbENumber.setText("");
         tbWtPerUom.setText("1");
-        tbReconstitutesInto.setText("");
         cbIsAdditive.setSelected(false);
         tbCategory.setEnabled(false);
         tbENumber.setEnabled(false);
@@ -262,7 +296,8 @@ public class IngredientPanel extends JPanel {
             cb.setSelected(false);
         }
         subModel.setRowCount(0);
-        quidModel.setRowCount(0);
+        bomModel.setRowCount(0);
+        bomPanel.setVisible(false);
     }
 
     public void loadData(String item) {
@@ -276,7 +311,6 @@ public class IngredientPanel extends JPanel {
             tbCategory.setText(rec.ing_category());
             tbENumber.setText(rec.ing_enumber());
             tbWtPerUom.setText(String.valueOf(rec.ing_wt_per_uom_g() <= 0 ? 1.0 : rec.ing_wt_per_uom_g()));
-            tbReconstitutesInto.setText(rec.ing_reconstitutes_into());
             boolean isAdditive = !rec.ing_category().isBlank() || !rec.ing_enumber().isBlank();
             cbIsAdditive.setSelected(isAdditive);
             tbCategory.setEnabled(isAdditive);
@@ -295,8 +329,16 @@ public class IngredientPanel extends JPanel {
             subModel.addRow(new Object[]{sub.sub_name(), sub.sub_enumber(), "1".equals(sub.is_allergen())});
         }
         cbMoistLoss.setSelected(ingData.getMoistLoss(item));
-        for (String code : ingData.getQuidItemCodes(item)) {
-            quidModel.addRow(new Object[]{code, com.blueseer.inv.invData.getItemDesc(code)});
+
+        List<IngredientLabelEngine.BomIngredient> bomList = new IngredientLabelEngine().getBomIngredients(item);
+        bomPanel.setVisible(!bomList.isEmpty());
+        if (!bomList.isEmpty()) {
+            java.util.Set<String> quidSet = new java.util.HashSet<>(ingData.getQuidItemCodes(item));
+            Map<String, String> reconMap = ingData.getReconMap(item);
+            for (IngredientLabelEngine.BomIngredient bi : bomList) {
+                bomModel.addRow(new Object[]{bi.item(), bi.desc(), quidSet.contains(bi.item()),
+                        reconMap.getOrDefault(bi.item(), "")});
+            }
         }
     }
 
@@ -313,8 +355,7 @@ public class IngredientPanel extends JPanel {
             wtPerUom = 1.0;
         }
         ingData.ing_mstr rec = new ingData.ing_mstr(null, item, tbLegalName.getText(), category,
-                enumber, cbIsCompound.isSelected() ? "1" : "0", "1", taNotes.getText(), wtPerUom <= 0 ? 1.0 : wtPerUom,
-                tbReconstitutesInto.getText().trim());
+                enumber, cbIsCompound.isSelected() ? "1" : "0", "1", taNotes.getText(), wtPerUom <= 0 ? 1.0 : wtPerUom);
         ingData.addUpdateIngMstr(rec);
 
         ArrayList<String> codes = new ArrayList<>();
@@ -339,13 +380,24 @@ public class IngredientPanel extends JPanel {
         ingData.setSubIngredients(item, subs);
 
         ingData.setMoistLoss(item, cbMoistLoss.isSelected());
+
+        if (bomTable.isEditing()) {
+            bomTable.getCellEditor().stopCellEditing();
+        }
         ArrayList<String> quidItems = new ArrayList<>();
-        for (int i = 0; i < quidModel.getRowCount(); i++) {
-            String code = String.valueOf(quidModel.getValueAt(i, 0)).trim();
-            if (!code.isBlank() && !code.equals("null")) {
+        Map<String, String> reconMap = new LinkedHashMap<>();
+        for (int i = 0; i < bomModel.getRowCount(); i++) {
+            String code = String.valueOf(bomModel.getValueAt(i, 0));
+            boolean needsQuid = Boolean.TRUE.equals(bomModel.getValueAt(i, 2));
+            String target = String.valueOf(bomModel.getValueAt(i, 3));
+            if (needsQuid) {
                 quidItems.add(code);
+            }
+            if (!target.isBlank() && !target.equals("null")) {
+                reconMap.put(code, target);
             }
         }
         ingData.setQuidItemCodes(item, quidItems);
+        ingData.setReconMap(item, reconMap);
     }
 }
