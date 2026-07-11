@@ -530,7 +530,11 @@
     <systemPath>${project.basedir}/lib/bsmf.jar</systemPath>
     </dependency>
 
-
+    <dependency>
+      <groupId>io.github.varunsermaldev</groupId>
+      <artifactId>JavaZPL2PDF</artifactId>
+      <version>1.0.0</version>
+    </dependency>
 
   </dependencies>
 

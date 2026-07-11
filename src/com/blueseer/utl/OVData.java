@@ -21011,6 +21011,37 @@ return mystring;
     }
 
     /**
+     * Reads a .prn label template and substitutes its tokens, returning the
+     * final ZPL text without sending it anywhere - shared by printLabelItem
+     * (which sends this over the printer socket) and the Preview Label
+     * button (which renders it to a PDF instead via com.blueseer.ing.LabelPreview).
+     */
+    public static String buildLabelZpl(String item, String labelfile,
+            com.blueseer.ing.IngredientLabelEngine.IngredientLabelResult ingLabel,
+            String allergenWarnings, String lotNbr, String bestBefore, String itemDesc,
+            String netWeight) throws IOException {
+        Path template = checkForCustomPath(getSystemLabelDirectory(), labelfile);
+
+        BufferedReader fsr = new BufferedReader(new FileReader(template.toFile(), StandardCharsets.UTF_8));
+        String line = "";
+        String concatline = "";
+
+        while ((line = fsr.readLine()) != null) {
+            concatline += line;
+        }
+        fsr.close();
+
+        concatline = concatline.replace("$ITEMNBR", item);
+        concatline = spliceIngredientListZpl(concatline, ingLabel);
+        concatline = concatline.replace("$ALLERGENWARNINGS", allergenWarnings);
+        concatline = concatline.replace("$LOTNBR", lotNbr);
+        concatline = concatline.replace("$BESTBEFORE", bestBefore);
+        concatline = concatline.replace("$ITEMDESC", itemDesc);
+        concatline = concatline.replace("$NETWEIGHT", netWeight);
+        return concatline;
+    }
+
+    /**
      * Same as printLabelItem(item, printer, labelfile), plus the EU/Irish FIC
      * ingredient label tokens: $INGREDIENTLIST, $ALLERGENWARNINGS, $LOTNBR,
      * $BESTBEFORE, $ITEMDESC, $NETWEIGHT (see com.blueseer.ing.IngredientLabelEngine).
@@ -21041,28 +21072,8 @@ return mystring;
         }
 
 
-        Path template = checkForCustomPath(getSystemLabelDirectory(), labelfile);
-
-        BufferedReader fsr = new BufferedReader(new FileReader(template.toFile(), StandardCharsets.UTF_8));
-        String line = "";
-        String concatline = "";
-
-        while ((line = fsr.readLine()) != null) {
-            concatline += line;
-        }
-        fsr.close();
-        // fos.write(concatline.getBytes());
-
-        java.util.Date now = new java.util.Date();
-        DateFormat dfdate = new SimpleDateFormat("MM/dd/yyyy");
-
-        concatline = concatline.replace("$ITEMNBR", item);
-        concatline = spliceIngredientListZpl(concatline, ingLabel);
-        concatline = concatline.replace("$ALLERGENWARNINGS", allergenWarnings);
-        concatline = concatline.replace("$LOTNBR", lotNbr);
-        concatline = concatline.replace("$BESTBEFORE", bestBefore);
-        concatline = concatline.replace("$ITEMDESC", itemDesc);
-        concatline = concatline.replace("$NETWEIGHT", netWeight);
+        String concatline = buildLabelZpl(item, labelfile, ingLabel, allergenWarnings, lotNbr,
+                bestBefore, itemDesc, netWeight);
 
          if (prt[2].equals("DirectToIP")) {
             Socket soc = null;
