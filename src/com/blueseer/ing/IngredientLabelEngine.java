@@ -184,24 +184,89 @@ public class IngredientLabelEngine {
         private static final char BOLD_START = '';
         private static final char BOLD_END = '';
 
+        // Measures text at a given ZPL font height using a real font's metrics
+        // (java.awt.Font/FontRenderContext work headlessly - no display needed)
+        // rather than a flat per-character ratio, which was producing visibly
+        // overlapping words. This still only approximates whatever font the
+        // physical printer actually has resident, but tracks a real font's
+        // varying glyph widths (a "W" isn't the same width as an "i") instead
+        // of a single guessed average, so it's much closer in practice.
+        private static final java.awt.font.FontRenderContext MEASURE_FRC =
+                new java.awt.font.FontRenderContext(null, true, true);
+
+        private static double measureWidth(String text, int fontHeight) {
+            java.awt.Font font = new java.awt.Font(java.awt.Font.SANS_SERIF, java.awt.Font.PLAIN, fontHeight);
+            return font.getStringBounds(text, MEASURE_FRC).getWidth();
+        }
+
         /**
-         * Ingredient list as a sequence of positioned ZPL field commands, word-
-         * wrapped to the given pixel width, with allergens rendered bold via
-         * "double-strike" (the same text re-emitted offset by one dot) - the
-         * standard way to fake bold on a ZPL printer whose ^FD field can't mix
-         * font weights and that has no separate bold font loaded.
+         * The entire dynamic section of the label below the fixed item-
+         * description/"Ingredients:" header: the word-wrapped bold ingredient
+         * list, a static allergen-bold disclaimer, any mandatory additive
+         * warnings (only emitted if non-empty, so a simple recipe doesn't
+         * waste label space on a blank warnings block), a divider line, then
+         * a two-column row - Net Weight/Best Before/Batch-Lot stacked on the
+         * left, the barcode with its human-readable interpretation line on
+         * the right, so it isn't just sitting in unused whitespace below.
          *
-         * Word width is estimated at roughly 0.6x the font height per
-         * character, since exact glyph metrics for the printer's resident font
-         * aren't available on the host. If wrapping looks off on a real
-         * printout, retune CHAR_WIDTH_RATIO below rather than fontHeight.
+         * Every Y position from the disclaimer onward is computed from where
+         * the ingredient list actually finished wrapping, not a fixed guess,
+         * so a short recipe doesn't leave a large dead gap and a long one
+         * doesn't run into the row below it (barring a genuinely enormous
+         * ingredient list, which would still run past the bottom of the
+         * physical label - the same limit any fixed-size label has).
          */
-        public String toZplIngredientBlock(int x, int y, int width, int fontHeight, int lineSpacing) {
+        public String toZplLabelBody(int x, int y, int width, int fontHeight, int lineSpacing,
+                String itemNumber, String netWeight) {
+            StringBuilder zpl = new StringBuilder();
+            int cy = renderIngredientWords(zpl, x, y, width, fontHeight, lineSpacing);
+
+            cy += 16;
+            int disclaimerFontH = 20;
+            for (String dl : wrapPlain("Allergens are shown in BOLD within the ingredients list.", disclaimerFontH, width)) {
+                appendZplField(zpl, x, cy, disclaimerFontH, dl, false);
+                cy += disclaimerFontH + 4;
+            }
+
+            if (!warnings.isEmpty()) {
+                cy += 10;
+                for (String wl : wrapPlain(toPlainWarnings(), disclaimerFontH, width)) {
+                    appendZplField(zpl, x, cy, disclaimerFontH, wl, false);
+                    cy += disclaimerFontH + 4;
+                }
+            }
+
+            cy += 14;
+            zpl.append("^FO").append(x).append(",").append(cy).append("^GB").append(width).append(",2,2^FS");
+            cy += 20;
+
+            int rowTop = cy;
+            int rowFontH = 26;
+            int rowHeight = 34;
+            appendZplField(zpl, x, cy, rowFontH, "Net Weight:", false);
+            appendZplField(zpl, x + 160, cy, rowFontH, netWeight, false);
+            cy += rowHeight;
+            appendZplField(zpl, x, cy, rowFontH, "Best Before:", false);
+            appendZplField(zpl, x + 160, cy, rowFontH, bestBeforeDate, false);
+            cy += rowHeight;
+            appendZplField(zpl, x, cy, rowFontH, "Batch/Lot No:", false);
+            appendZplField(zpl, x + 160, cy, rowFontH, lotNumber, false);
+
+            int barcodeX = x + 460;
+            int barcodeHeight = 90;
+            zpl.append("^BY2,3,").append(barcodeHeight)
+                    .append("^FO").append(barcodeX).append(",").append(rowTop)
+                    .append("^BCN,,Y,N^FD>:").append(zplEscape(itemNumber)).append("^FS");
+
+            return zpl.toString();
+        }
+
+        /** Word-wraps and renders the bold-aware ingredient list into zpl, returning the Y just past the last line. */
+        private int renderIngredientWords(StringBuilder zpl, int x, int y, int width, int fontHeight, int lineSpacing) {
             StringBuilder marked = new StringBuilder();
             appendSegmentsMarked(marked, segments);
-            double charWidth = fontHeight * CHAR_WIDTH_RATIO;
+            double spaceWidth = measureWidth(" ", fontHeight);
 
-            StringBuilder zpl = new StringBuilder();
             int cx = x;
             int cy = y;
             StringBuilder word = new StringBuilder();
@@ -219,16 +284,13 @@ public class IngredientLabelEngine {
                 }
                 if (c == ' ') {
                     if (word.length() > 0) {
-                        int wordWidth = (int) Math.ceil(word.length() * charWidth);
+                        int wordWidth = (int) Math.ceil(measureWidth(word.toString(), fontHeight));
                         if (cx > x && cx + wordWidth > x + width) {
                             cx = x;
                             cy += fontHeight + lineSpacing;
                         }
                         appendZplField(zpl, cx, cy, fontHeight, word.toString(), wordBold);
-                        // a full extra char-width of gap (rather than one space's worth)
-                        // errs toward too-loose over too-cramped, since the actual glyph
-                        // widths of the printer's resident font aren't known on the host
-                        cx += wordWidth + (int) Math.ceil(charWidth * 2);
+                        cx += wordWidth + (int) Math.ceil(spaceWidth);
                         word.setLength(0);
                         wordBold = false;
                     }
@@ -239,10 +301,28 @@ public class IngredientLabelEngine {
                     word.append(c);
                 }
             }
-            return zpl.toString();
+            return cy + fontHeight;
         }
 
-        private static final double CHAR_WIDTH_RATIO = 0.6;
+        /** Simple word-wrap for plain (non-bold) text, using the same real-font measurement as the ingredient list. */
+        private static List<String> wrapPlain(String text, int fontHeight, int width) {
+            List<String> lines = new ArrayList<>();
+            String[] words = text.split(" ");
+            StringBuilder cur = new StringBuilder();
+            for (String w : words) {
+                String candidate = cur.length() == 0 ? w : cur + " " + w;
+                if (measureWidth(candidate, fontHeight) > width && cur.length() > 0) {
+                    lines.add(cur.toString());
+                    cur = new StringBuilder(w);
+                } else {
+                    cur = new StringBuilder(candidate);
+                }
+            }
+            if (cur.length() > 0) {
+                lines.add(cur.toString());
+            }
+            return lines;
+        }
 
         private static void appendZplField(StringBuilder zpl, int x, int y, int fontHeight, String text, boolean bold) {
             String escaped = zplEscape(text);

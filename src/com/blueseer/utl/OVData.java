@@ -21032,7 +21032,7 @@ return mystring;
         fsr.close();
 
         concatline = concatline.replace("$ITEMNBR", item);
-        concatline = spliceIngredientListZpl(concatline, ingLabel);
+        concatline = spliceIngredientListZpl(concatline, ingLabel, item, netWeight);
         concatline = concatline.replace("$ALLERGENWARNINGS", allergenWarnings);
         concatline = concatline.replace("$LOTNBR", lotNbr);
         concatline = concatline.replace("$BESTBEFORE", bestBefore);
@@ -21111,10 +21111,14 @@ MainFrame.bslog(e);
       }
 
     /**
-     * Replaces $INGREDIENTLIST with a bold-allergen-aware ZPL fragment
-     * instead of a single plain-text substitution, since one ^FD field can't
-     * mix font weights. Layout stays template-editable: the token must sit
-     * inside a "^FOx,y^A0N,h,w^FBwidth,lines,spacing,justify^FD$INGREDIENTLIST^FS"
+     * Replaces $INGREDIENTLIST with the entire dynamic lower section of the
+     * label - the bold-allergen-aware ingredient text, disclaimer, any
+     * regulatory warnings, a divider, the Net Weight/Best Before/Batch-Lot
+     * column and the barcode beside it - since one ^FD field can't mix font
+     * weights, and every one of those elements' Y position depends on how
+     * many lines the ingredient list actually wrapped to. Layout stays
+     * template-editable: the token must sit inside a
+     * "^FOx,y^A0N,h,w^FBwidth,lines,spacing,justify^FD$INGREDIENTLIST^FS"
      * block (a normal ^FO + ^A0N + optional ^FB immediately before the ^FD),
      * exactly like every other field in a .prn template - x/y/font size/wrap
      * width are read straight out of that block, so moving or resizing the
@@ -21123,7 +21127,8 @@ MainFrame.bslog(e);
      * if the token isn't wrapped that way (e.g. an older/malformed template).
      */
     private static String spliceIngredientListZpl(String template,
-            com.blueseer.ing.IngredientLabelEngine.IngredientLabelResult ingLabel) {
+            com.blueseer.ing.IngredientLabelEngine.IngredientLabelResult ingLabel,
+            String item, String netWeight) {
         String tokenField = "^FD$INGREDIENTLIST^FS";
         int fsIdx = template.indexOf(tokenField);
         if (fsIdx < 0) {
@@ -21153,7 +21158,7 @@ MainFrame.bslog(e);
             width = Integer.parseInt(fbM.group(1));
             lineSpacing = Integer.parseInt(fbM.group(3));
         }
-        String zplBlock = ingLabel.toZplIngredientBlock(x, y, width, fontHeight, lineSpacing);
+        String zplBlock = ingLabel.toZplLabelBody(x, y, width, fontHeight, lineSpacing, item, netWeight);
         return template.substring(0, blockStart) + zplBlock + template.substring(fsIdx + tokenField.length());
     }
 
