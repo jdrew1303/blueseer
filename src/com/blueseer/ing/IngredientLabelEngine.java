@@ -88,6 +88,45 @@ import java.util.Map;
  * expressed in grams; if it isn't set at all, the engine can't safely tell
  * whether a compound ingredient is under 2%, so it conservatively always
  * shows the bracket breakdown and records that in internalNotes.
+ *
+ * <h2>QUID (Quantitative Ingredient Declaration, FIC Annex VIII / FSAI)</h2>
+ * An ingredient flagged via {@code ing_quid} for the finished item being
+ * labeled (named in the product name, emphasized on the pack, or
+ * characterizing the product) gets its percentage appended in the
+ * ingredient list, using one of two methods depending on
+ * {@code item_mstr.it_moistloss} for the finished item:
+ * <ul>
+ *   <li><b>Mixing Bowl Method</b> (it_moistloss = 0, e.g. a sandwich or dry
+ *       mix that doesn't change weight in processing): the ingredient's raw
+ *       weight divided by the sum of all raw ingredient weights (this
+ *       engine's own flattened BOM total) - "Ham (20%)".</li>
+ *   <li><b>Finished-Weight Method</b> (it_moistloss = 1, e.g. baked, cooked,
+ *       or dried, so the product loses moisture): the ingredient's raw
+ *       weight divided by item_mstr.it_net_wt instead, since the raw mixing-
+ *       bowl total no longer reflects what's actually in the finished
+ *       product - "Strawberries (75%)" even though they were only 60% of
+ *       the pre-bake mix.</li>
+ * </ul>
+ * If the finished-weight method produces over 100% (a heavily dried/reduced
+ * product, e.g. cooked ham), EU law forbids printing a percentage over
+ * 100% as confusing, so the declaration switches to
+ * "Prepared with 122g of pork per 100g of finished product." instead of a
+ * bracketed percentage - this can only happen with the finished-weight
+ * method, since the mixing-bowl method's denominator already includes the
+ * ingredient itself and so can never exceed 100%.
+ *
+ * Reconstituted/dehydrated ingredients (FSAI: QUID must use the weight
+ * <i>after</i> rehydration, not the dry/concentrated weight): rather than a
+ * separate bookkeeping table, an ingredient's own {@code ing_mstr.
+ * ing_reconstitutes_into} names another item code, and this engine folds
+ * its flattened BOM weight directly into that other item's accumulated
+ * total during flattening (see {@link #flattenRecursive}) - so a "water
+ * used to reconstitute milk powder" BOM line simply never appears as its
+ * own ingredient-list entry; its weight silently becomes part of milk's.
+ * Because this is a property of the ingredient item itself rather than of
+ * one specific BOM line, the same item code can't be reconstituted in one
+ * recipe and used as-is (unreconstituted) in another - a recipe needing
+ * both would need two distinct item codes for the two uses.
  */
 public class IngredientLabelEngine {
 
@@ -408,6 +447,17 @@ public class IngredientLabelEngine {
                     + "in full rather than risk under-disclosing.");
         }
 
+        boolean moistureLoss = ingData.getMoistLoss(finishedItem);
+        java.util.Set<String> quidItems = new java.util.HashSet<>(ingData.getQuidItemCodes(finishedItem));
+        double totalRawWeightG = flatQty.values().stream().mapToDouble(Double::doubleValue).sum();
+        double quidDenominatorG = moistureLoss ? finishedWeightG : totalRawWeightG;
+        if (!quidItems.isEmpty() && quidDenominatorG <= 0) {
+            internalNotes.add((moistureLoss ? "item_mstr.it_net_wt" : "the flattened BOM total")
+                    + " is not available for " + finishedItem + " - can't compute QUID %, so the flagged "
+                    + "QUID ingredient(s) are shown without a percentage.");
+            quidItems = java.util.Set.of();
+        }
+
         List<Map.Entry<String, Double>> sorted = new ArrayList<>(flatQty.entrySet());
         sorted.sort((a, b) -> Double.compare(b.getValue(), a.getValue()));
 
@@ -430,6 +480,14 @@ public class IngredientLabelEngine {
 
             String mainText = (!category.isBlank() && !enumber.isBlank()) ? category + " (" + enumber + ")"
                     : (!category.isBlank() ? category : legalName);
+
+            if (quidItems.contains(item)) {
+                double quidPct = (qty / quidDenominatorG) * 100.0;
+                mainText = quidPct > 100.0
+                        ? "Prepared with " + formatQuidNumber(quidPct) + "g of " + legalName.toLowerCase(Locale.ROOT)
+                                + " per 100g of finished product"
+                        : mainText + " (" + formatQuidNumber(quidPct) + "%)";
+            }
 
             List<Segment> bracket = List.of();
             if (isCompound) {
@@ -466,6 +524,11 @@ public class IngredientLabelEngine {
         return new IngredientLabelResult(segments, warnings, lotNumber, bestBeforeDate, internalNotes);
     }
 
+    /** Every worked QUID example in FSAI guidance rounds to a whole number (20%, 75%, 122%). */
+    private static String formatQuidNumber(double pct) {
+        return String.valueOf(Math.round(pct));
+    }
+
     private List<String> evaluateWarnings(java.util.Set<String> allergenCodes, java.util.Set<String> enumbers,
             java.util.Set<String> categories) {
         List<String> warnings = new ArrayList<>();
@@ -491,9 +554,26 @@ public class IngredientLabelEngine {
                 flattenRecursive(con, line.child(), childQty, flatQty);
             } else {
                 double gramsPerUom = getWtPerUomG(con, line.child());
-                flatQty.merge(line.child(), childQty * gramsPerUom, Double::sum);
+                String reconstitutesInto = getReconstitutesInto(con, line.child());
+                String key = reconstitutesInto.isBlank() ? line.child() : reconstitutesInto;
+                flatQty.merge(key, childQty * gramsPerUom, Double::sum);
             }
         }
+    }
+
+    /** See the class javadoc's "Reconstituted/dehydrated ingredients" section. */
+    private String getReconstitutesInto(Connection con, String item) throws SQLException {
+        try (PreparedStatement ps = con.prepareStatement(
+                "select ing_reconstitutes_into from ing_mstr where it_item = ?;")) {
+            ps.setString(1, item);
+            try (ResultSet res = ps.executeQuery()) {
+                if (res.next()) {
+                    String v = res.getString("ing_reconstitutes_into");
+                    return v == null ? "" : v;
+                }
+            }
+        }
+        return "";
     }
 
     private double getWtPerUomG(Connection con, String item) throws SQLException {

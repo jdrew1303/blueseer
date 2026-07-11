@@ -54,6 +54,7 @@ public class IngredientPanel extends JPanel {
     private final javax.swing.JTextField tbCategory = new javax.swing.JTextField();
     private final javax.swing.JTextField tbENumber = new javax.swing.JTextField();
     private final javax.swing.JTextField tbWtPerUom = new javax.swing.JTextField("1");
+    private final javax.swing.JTextField tbReconstitutesInto = new javax.swing.JTextField();
     private final JCheckBox cbIsAdditive = new JCheckBox(
             "This ingredient is itself a food additive (preservative, colour, emulsifier, etc.)");
     private final JCheckBox cbIsCompound = new JCheckBox("Purchased compound ingredient (supplier recipe, no BOM here)");
@@ -72,6 +73,17 @@ public class IngredientPanel extends JPanel {
     private final JTable subTable = new JTable(subModel);
     private final JPanel subPanel = new JPanel(new BorderLayout(0, 5));
 
+    private final JCheckBox cbMoistLoss = new JCheckBox(
+            "This item's production process loses moisture (cooking/baking/drying)");
+    private final DefaultTableModel quidModel = new DefaultTableModel(
+            new Object[]{"Ingredient item code", "Description"}, 0) {
+        @Override
+        public boolean isCellEditable(int row, int col) {
+            return col == 0;
+        }
+    };
+    private final JTable quidTable = new JTable(quidModel);
+
     public IngredientPanel() {
         setLayout(new MigLayout("fill, insets 10", "[]10[grow,fill]", "[]5[]5[]10[]10[]10[grow,fill]"));
 
@@ -86,6 +98,17 @@ public class IngredientPanel extends JPanel {
                 + "correctly against solids - e.g. water tracked in mL: 1; a lighter oil tracked in mL: ~0.92.</div></html>");
         wtHint.setForeground(java.awt.Color.GRAY);
         add(wtHint, "span 2, wrap");
+
+        add(new JLabel("Reconstituted into item code"));
+        add(tbReconstitutesInto, "wrap");
+        JLabel reconHint = new JLabel(
+                "<html><div style='width:480px'>Leave blank for a normal ingredient. Set this to another item's code "
+                + "only when <i>this</i> item is a diluent (e.g. water) used solely to rehydrate a concentrated/"
+                + "dehydrated ingredient (e.g. milk powder) during production - its weight is then folded into the "
+                + "named item's ingredient-list entry and QUID %, instead of appearing as its own entry, per FSAI "
+                + "reconstituted-ingredient guidance.</div></html>");
+        reconHint.setForeground(java.awt.Color.GRAY);
+        add(reconHint, "span 2, wrap");
 
         add(cbIsAdditive, "span 2, wrap");
         JLabel additiveHint = new JLabel(
@@ -138,6 +161,50 @@ public class IngredientPanel extends JPanel {
 
         cbIsCompound.addActionListener(e -> subPanel.setVisible(cbIsCompound.isSelected()));
 
+        add(cbMoistLoss, "span 2, wrap");
+        JLabel moistHint = new JLabel(
+                "<html><div style='width:480px'>Only relevant when this item is itself printed as a finished-good "
+                + "label (e.g. this cake, not an ingredient used inside something else). Leave unchecked for a cold/"
+                + "no-cook product (QUID % is calculated against the total raw ingredient weight). Check it for a "
+                + "cooked/baked/dried product (QUID % is instead calculated against this item's Net Weight, since "
+                + "the raw mix no longer reflects what's actually in the finished product).</div></html>");
+        moistHint.setForeground(java.awt.Color.GRAY);
+        add(moistHint, "span 2, wrap");
+
+        quidTable.getColumnModel().getColumn(0).setPreferredWidth(150);
+        JButton btnAddQuidRow = new JButton("Add row");
+        btnAddQuidRow.addActionListener(e -> quidModel.addRow(new Object[]{"", ""}));
+        JButton btnRemoveQuidRow = new JButton("Remove row");
+        btnRemoveQuidRow.addActionListener(e -> {
+            int row = quidTable.getSelectedRow();
+            if (row >= 0) {
+                quidModel.removeRow(row);
+            }
+        });
+        quidModel.addTableModelListener(e -> {
+            if (e.getColumn() != 0) {
+                return;
+            }
+            int row = e.getFirstRow();
+            if (row < 0 || row >= quidModel.getRowCount()) {
+                return;
+            }
+            String code = String.valueOf(quidModel.getValueAt(row, 0));
+            String desc = code.isBlank() ? "" : com.blueseer.inv.invData.getItemDesc(code);
+            if (!desc.equals(quidModel.getValueAt(row, 1))) {
+                quidModel.setValueAt(desc, row, 1);
+            }
+        });
+        JPanel quidButtons = new JPanel(new MigLayout("insets 0", "[]5[]", "[]"));
+        quidButtons.add(btnAddQuidRow);
+        quidButtons.add(btnRemoveQuidRow);
+        JPanel quidPanel = new JPanel(new BorderLayout(0, 5));
+        quidPanel.add(new JScrollPane(quidTable), BorderLayout.CENTER);
+        quidPanel.add(quidButtons, BorderLayout.SOUTH);
+        add(wrapTitled("Quantitative Ingredient Declaration (QUID) - ingredients of THIS finished item requiring a "
+                + "percentage on its label (named in the product name, emphasized on-pack, or characterizing)",
+                quidPanel), "span 2, grow, wrap");
+
         add(new JLabel("Notes"));
         add(new JScrollPane(taNotes), "span 2, grow");
     }
@@ -183,16 +250,19 @@ public class IngredientPanel extends JPanel {
         tbCategory.setText("");
         tbENumber.setText("");
         tbWtPerUom.setText("1");
+        tbReconstitutesInto.setText("");
         cbIsAdditive.setSelected(false);
         tbCategory.setEnabled(false);
         tbENumber.setEnabled(false);
         cbIsCompound.setSelected(false);
         subPanel.setVisible(false);
+        cbMoistLoss.setSelected(false);
         taNotes.setText("");
         for (JCheckBox cb : allergenBoxes.values()) {
             cb.setSelected(false);
         }
         subModel.setRowCount(0);
+        quidModel.setRowCount(0);
     }
 
     public void loadData(String item) {
@@ -206,6 +276,7 @@ public class IngredientPanel extends JPanel {
             tbCategory.setText(rec.ing_category());
             tbENumber.setText(rec.ing_enumber());
             tbWtPerUom.setText(String.valueOf(rec.ing_wt_per_uom_g() <= 0 ? 1.0 : rec.ing_wt_per_uom_g()));
+            tbReconstitutesInto.setText(rec.ing_reconstitutes_into());
             boolean isAdditive = !rec.ing_category().isBlank() || !rec.ing_enumber().isBlank();
             cbIsAdditive.setSelected(isAdditive);
             tbCategory.setEnabled(isAdditive);
@@ -223,6 +294,10 @@ public class IngredientPanel extends JPanel {
         for (ingData.ing_subingredient sub : ingData.getSubIngredients(item)) {
             subModel.addRow(new Object[]{sub.sub_name(), sub.sub_enumber(), "1".equals(sub.is_allergen())});
         }
+        cbMoistLoss.setSelected(ingData.getMoistLoss(item));
+        for (String code : ingData.getQuidItemCodes(item)) {
+            quidModel.addRow(new Object[]{code, com.blueseer.inv.invData.getItemDesc(code)});
+        }
     }
 
     public void saveData(String item) {
@@ -238,7 +313,8 @@ public class IngredientPanel extends JPanel {
             wtPerUom = 1.0;
         }
         ingData.ing_mstr rec = new ingData.ing_mstr(null, item, tbLegalName.getText(), category,
-                enumber, cbIsCompound.isSelected() ? "1" : "0", "1", taNotes.getText(), wtPerUom <= 0 ? 1.0 : wtPerUom);
+                enumber, cbIsCompound.isSelected() ? "1" : "0", "1", taNotes.getText(), wtPerUom <= 0 ? 1.0 : wtPerUom,
+                tbReconstitutesInto.getText().trim());
         ingData.addUpdateIngMstr(rec);
 
         ArrayList<String> codes = new ArrayList<>();
@@ -261,5 +337,15 @@ public class IngredientPanel extends JPanel {
                     isAllergen ? "1" : "0"));
         }
         ingData.setSubIngredients(item, subs);
+
+        ingData.setMoistLoss(item, cbMoistLoss.isSelected());
+        ArrayList<String> quidItems = new ArrayList<>();
+        for (int i = 0; i < quidModel.getRowCount(); i++) {
+            String code = String.valueOf(quidModel.getValueAt(i, 0)).trim();
+            if (!code.isBlank() && !code.equals("null")) {
+                quidItems.add(code);
+            }
+        }
+        ingData.setQuidItemCodes(item, quidItems);
     }
 }

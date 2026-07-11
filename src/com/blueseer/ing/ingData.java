@@ -56,9 +56,10 @@ import java.util.ArrayList;
 public class ingData {
 
     public record ing_mstr(String[] m, String it_item, String ing_legalname, String ing_category,
-        String ing_enumber, String ing_iscompound, String ing_active, String ing_notes, double ing_wt_per_uom_g) {
+        String ing_enumber, String ing_iscompound, String ing_active, String ing_notes, double ing_wt_per_uom_g,
+        String ing_reconstitutes_into) {
         public ing_mstr(String[] m) {
-            this(m, "", "", "", "", "", "1", "", 1.0);
+            this(m, "", "", "", "", "", "1", "", 1.0, "");
         }
     }
 
@@ -80,6 +81,10 @@ public class ingData {
         public ing_allergen_ref(String[] m) {
             this(m, "", "");
         }
+    }
+
+    /** A QUID item code (with description, for display) attached to a finished item. */
+    public record quid_item(String item, String desc) {
     }
 
     // ------------------------------------------------------------------
@@ -119,9 +124,9 @@ public class ingData {
         int rows;
         String sqlSelect = "select * from ing_mstr where it_item = ?;";
         String sqlInsert = "insert into ing_mstr (it_item, ing_legalname, ing_category, ing_enumber, "
-                + "ing_iscompound, ing_active, ing_notes, ing_wt_per_uom_g) values (?,?,?,?,?,?,?,?);";
+                + "ing_iscompound, ing_active, ing_notes, ing_wt_per_uom_g, ing_reconstitutes_into) values (?,?,?,?,?,?,?,?,?);";
         String sqlUpdate = "update ing_mstr set ing_legalname = ?, ing_category = ?, ing_enumber = ?, "
-                + "ing_iscompound = ?, ing_active = ?, ing_notes = ?, ing_wt_per_uom_g = ? where it_item = ?;";
+                + "ing_iscompound = ?, ing_active = ?, ing_notes = ?, ing_wt_per_uom_g = ?, ing_reconstitutes_into = ? where it_item = ?;";
         try (PreparedStatement ps = con.prepareStatement(sqlSelect)) {
             ps.setString(1, x.it_item());
             try (ResultSet res = ps.executeQuery()) {
@@ -135,6 +140,7 @@ public class ingData {
                         psi.setString(6, x.ing_active());
                         psi.setString(7, x.ing_notes());
                         psi.setDouble(8, x.ing_wt_per_uom_g() <= 0 ? 1.0 : x.ing_wt_per_uom_g());
+                        psi.setString(9, x.ing_reconstitutes_into());
                         rows = psi.executeUpdate();
                     }
                 } else {
@@ -146,7 +152,8 @@ public class ingData {
                         psu.setString(5, x.ing_active());
                         psu.setString(6, x.ing_notes());
                         psu.setDouble(7, x.ing_wt_per_uom_g() <= 0 ? 1.0 : x.ing_wt_per_uom_g());
-                        psu.setString(8, x.it_item());
+                        psu.setString(8, x.ing_reconstitutes_into());
+                        psu.setString(9, x.it_item());
                         rows = psu.executeUpdate();
                     }
                 }
@@ -186,7 +193,8 @@ public class ingData {
                     r = new ing_mstr(m, res.getString("it_item"), res.getString("ing_legalname"),
                             res.getString("ing_category"), res.getString("ing_enumber"),
                             res.getString("ing_iscompound"), res.getString("ing_active"),
-                            res.getString("ing_notes"), res.getDouble("ing_wt_per_uom_g"));
+                            res.getString("ing_notes"), res.getDouble("ing_wt_per_uom_g"),
+                            res.getString("ing_reconstitutes_into"));
                 }
             }
         } catch (SQLException s) {
@@ -219,7 +227,7 @@ public class ingData {
                     }
                 }
                 ing_mstr x = new ing_mstr(null, ld[0], ld[1], ld[2], ld[3], ld[4].isBlank() ? "0" : ld[4], "1", "",
-                        wtPerUom <= 0 ? 1.0 : wtPerUom);
+                        wtPerUom <= 0 ? 1.0 : wtPerUom, "");
                 _addUpdateIngMstr(x, con);
                 ArrayList<String> codes = new ArrayList<>();
                 if (ld.length > 5 && !ld[5].isBlank()) {
@@ -418,6 +426,115 @@ public class ingData {
             }
         }
         return m;
+    }
+
+    // ------------------------------------------------------------------
+    // ing_quid (many-to-many finished item <-> ingredient item code requiring
+    // a Quantitative Ingredient Declaration on that finished item's label) -
+    // same "delete then reinsert" shape as ing_allergen/ing_subingredient.
+    // ------------------------------------------------------------------
+
+    public static ArrayList<String> getQuidItemCodes(String finishedItem) {
+        ArrayList<String> items = new ArrayList<>();
+        String sql = "select quid_item from ing_quid where it_item = ? and quid_active = '1';";
+        try (Connection con = (ds == null ? DriverManager.getConnection(url + db, user, pass) : ds.getConnection());
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, finishedItem);
+            try (ResultSet res = ps.executeQuery()) {
+                while (res.next()) {
+                    items.add(res.getString("quid_item"));
+                }
+            }
+        } catch (SQLException s) {
+            MainFrame.bslog(s);
+        }
+        return items;
+    }
+
+    public static String[] setQuidItemCodes(String finishedItem, ArrayList<String> items) {
+        String[] m;
+        Connection con = null;
+        try {
+            con = (ds == null ? DriverManager.getConnection(url + db, user, pass) : ds.getConnection());
+            con.setAutoCommit(false);
+            try (PreparedStatement pd = con.prepareStatement("delete from ing_quid where it_item = ?;")) {
+                pd.setString(1, finishedItem);
+                pd.executeUpdate();
+            }
+            try (PreparedStatement pi = con.prepareStatement(
+                    "insert into ing_quid (it_item, quid_item, quid_active) values (?,?,'1');")) {
+                for (String item : items) {
+                    pi.setString(1, finishedItem);
+                    pi.setString(2, item);
+                    pi.addBatch();
+                }
+                if (!items.isEmpty()) {
+                    pi.executeBatch();
+                }
+            }
+            con.commit();
+            m = new String[] {BlueSeerUtils.SuccessBit, BlueSeerUtils.updateRecordSuccess};
+        } catch (SQLException s) {
+            MainFrame.bslog(s);
+            try {
+                if (con != null) {
+                    con.rollback();
+                }
+            } catch (SQLException rb) {
+                MainFrame.bslog(rb);
+            }
+            m = new String[] {BlueSeerUtils.ErrorBit, BlueSeerUtils.updateRecordError};
+        } finally {
+            if (con != null) {
+                try {
+                    con.setAutoCommit(true);
+                    con.close();
+                } catch (SQLException ex) {
+                    MainFrame.bslog(ex);
+                }
+            }
+        }
+        return m;
+    }
+
+    // ------------------------------------------------------------------
+    // it_moistloss (item_mstr) - whether this FINISHED item's production
+    // process (cooking/baking/drying) loses moisture, switching QUID % from
+    // the mixing-bowl method to the finished-weight method. Lives on
+    // item_mstr rather than ing_mstr since it describes the finished item's
+    // own process, not a raw material's properties - but is maintained here
+    // (rather than invData.java) since it's only ever read/written by the
+    // ingredient-labeling feature.
+    // ------------------------------------------------------------------
+
+    public static boolean getMoistLoss(String item) {
+        String sql = "select it_moistloss from item_mstr where it_item = ?;";
+        try (Connection con = (ds == null ? DriverManager.getConnection(url + db, user, pass) : ds.getConnection());
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, item);
+            try (ResultSet res = ps.executeQuery()) {
+                return res.next() && "1".equals(res.getString("it_moistloss"));
+            }
+        } catch (SQLException s) {
+            MainFrame.bslog(s);
+            return false;
+        }
+    }
+
+    public static String[] setMoistLoss(String item, boolean moistLoss) {
+        String sql = "update item_mstr set it_moistloss = ? where it_item = ?;";
+        try (Connection con = (ds == null ? DriverManager.getConnection(url + db, user, pass) : ds.getConnection());
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, moistLoss ? "1" : "0");
+            ps.setString(2, item);
+            int rows = ps.executeUpdate();
+            return rows > 0
+                ? new String[] {BlueSeerUtils.SuccessBit, BlueSeerUtils.updateRecordSuccess}
+                : new String[] {BlueSeerUtils.ErrorBit, BlueSeerUtils.updateRecordError};
+        } catch (SQLException s) {
+            MainFrame.bslog(s);
+            return new String[] {BlueSeerUtils.ErrorBit, BlueSeerUtils.updateRecordError};
+        }
     }
 
     // ------------------------------------------------------------------

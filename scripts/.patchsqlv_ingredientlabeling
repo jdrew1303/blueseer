@@ -61,6 +61,37 @@ CREATE TABLE IF NOT EXISTS `warn_rule` (
   `warn_active` tinyint(1) NOT NULL DEFAULT '1'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+/* QUID (Quantitative Ingredient Declaration, FIC Annex VIII/FSAI guidance):
+   it_item is the FINISHED item being labeled, quid_item is the ingredient
+   item code (anywhere in that finished item's flattened BOM) whose
+   percentage must be stated - because it's named in the product name,
+   emphasized on the pack, or characterizes the product. This is a property
+   of the (finished item, ingredient) pair, not of the ingredient alone -
+   the same raw material may need QUID on one product's label and not
+   another's. */
+CREATE TABLE IF NOT EXISTS `ing_quid` (
+  `it_item` varchar(36) NOT NULL,
+  `quid_item` varchar(36) NOT NULL,
+  `quid_active` tinyint(1) NOT NULL DEFAULT '1',
+  PRIMARY KEY (`it_item`, `quid_item`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+select '*** ALTER TABLE SECTION (single-shot - not safely re-runnable, matching scripts/sqliteupgrade.txt's convention for plain column adds) ***';
+select '';
+
+/* it_moistloss: this FINISHED item's production process (cooking/baking/
+   drying) loses moisture, so QUID for its ingredients must be calculated
+   against this item's finished weight (item_mstr.it_net_wt) rather than
+   the pre-loss mixing-bowl total - see IngredientLabelEngine's QUID javadoc. */
+alter table item_mstr add column it_moistloss tinyint(1) NOT NULL DEFAULT '0';
+
+/* ing_reconstitutes_into: if set, this item's own accumulated BOM weight
+   (e.g. water used solely to rehydrate a milk powder) is folded into the
+   named item code's weight instead of appearing as its own ingredient-list
+   entry - FSAI guidance requires reconstituted ingredients' QUID to be
+   calculated post-rehydration, not on the dry/concentrated weight. */
+alter table ing_mstr add column ing_reconstitutes_into varchar(36) NOT NULL DEFAULT '';
+
 select '*** UPDATE RECORDS SECTION ***';
 select '';
 /* none */
