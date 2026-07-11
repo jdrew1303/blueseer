@@ -219,7 +219,7 @@ public class IngredientLabelEngine {
         public String toZplLabelBody(int x, int y, int width, int fontHeight, int lineSpacing,
                 String itemNumber, String netWeight) {
             StringBuilder zpl = new StringBuilder();
-            int cy = renderIngredientWords(zpl, x, y, width, fontHeight, lineSpacing);
+            int cy = renderIngredientWords(zpl, x, y, width, fontHeight, lineSpacing, "Ingredients: ");
 
             cy += 16;
             int disclaimerFontH = 20;
@@ -261,14 +261,27 @@ public class IngredientLabelEngine {
             return zpl.toString();
         }
 
-        /** Word-wraps and renders the bold-aware ingredient list into zpl, returning the Y just past the last line. */
-        private int renderIngredientWords(StringBuilder zpl, int x, int y, int width, int fontHeight, int lineSpacing) {
+        /**
+         * Word-wraps and renders the bold-aware ingredient list into zpl,
+         * returning the Y just past the last line. The label (e.g.
+         * "Ingredients: ") is rendered inline before the first word instead
+         * of on its own line/field, so the list starts on the same row -
+         * label space on the physical labels is tight enough that a whole
+         * blank line just for the header is wasteful. Only the first line
+         * shares the row with the label; wrapped lines still reset to x.
+         */
+        private int renderIngredientWords(StringBuilder zpl, int x, int y, int width, int fontHeight,
+                int lineSpacing, String label) {
             StringBuilder marked = new StringBuilder();
             appendSegmentsMarked(marked, segments);
             double spaceWidth = measureWidth(" ", fontHeight);
 
             int cx = x;
             int cy = y;
+            if (label != null && !label.isEmpty()) {
+                appendZplField(zpl, x, y, fontHeight, label, false);
+                cx = x + (int) Math.ceil(measureWidth(label, fontHeight));
+            }
             StringBuilder word = new StringBuilder();
             boolean wordBold = false;
             boolean inBold = false;
