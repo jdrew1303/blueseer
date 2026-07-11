@@ -712,11 +712,11 @@
                  below - jpackage builds+codesigns the .app bundle itself
                  before any DMG-specific wrapping even starts, so switching
                  the final packaging type alone doesn't avoid the codesign
-                 failure. Wrap the resulting target/installer/BlueSeer.app
-                 into a DMG yourself once you've confirmed it launches
-                 correctly: hdiutil create -volname BlueSeer -srcfolder
-                 target/installer/BlueSeer.app -ov -format UDZO
-                 target/installer/BlueSeer.dmg -->
+                 failure. The mac-postprocess execution below wraps the
+                 resulting, re-signed target/installer/BlueSeer.app into a
+                 real target/installer/BlueSeer.dmg itself via hdiutil, so
+                 "mvn package -Pjpackage" still produces one ready-to-ship
+                 installer artifact, same as windows/linux. -->
             <installer.type>APP_IMAGE</installer.type>
             <!-- no bundled .icns yet; jpackage falls back to a default icon -->
         </properties>
@@ -822,13 +822,17 @@
                        declared later in this profile's <plugins> list - same
                        ordering rule Maven uses for same-phase executions
                        from different plugins). Copies bs.cfg/.patch into the
-                       now-built, already-signed app bundle and re-signs.
-                       Copies into both Contents/ and Contents/app/ since
-                       this project hasn't independently confirmed which one
-                       is the running app's actual working directory on
-                       macOS (it's whichever jpackage's generated launcher
-                       chdir()s to before starting the JVM) - cheap
-                       insurance either way. -->
+                       now-built, already-signed app bundle, re-signs, then
+                       wraps the result into a .dmg. Copies into both
+                       Contents/ and Contents/app/ since this project hasn't
+                       independently confirmed on real macOS which one is the
+                       running app's actual working directory (it's whichever
+                       jpackage's generated launcher chdir()s to before
+                       starting the JVM) - cheap insurance either way, and
+                       Linux's structurally equivalent lib/ directory (this
+                       project's other jlink-based install layout) is
+                       confirmed to be its app's actual cwd, which is what
+                       Contents/app/ is modeled on. -->
                   <id>mac-postprocess</id>
                   <phase>package</phase>
                   <goals>
@@ -856,6 +860,24 @@
                         <arg value="--sign"/>
                         <arg value="-"/>
                         <arg value="${app.dir}"/>
+                      </exec>
+                      <!-- Wrap the finished, re-signed .app into a distributable
+                           .dmg - the same thing "mvn package -Pjpackage" produces
+                           on windows/linux (a single ready-to-ship installer
+                           artifact), just assembled ourselves instead of via
+                           jpackage's own dmg packaging type (which would hit the same
+                           codesign failure this whole profile works around). -->
+                      <delete file="${project.build.directory}/installer/BlueSeer.dmg" quiet="true"/>
+                      <exec executable="hdiutil" failonerror="true">
+                        <arg value="create"/>
+                        <arg value="-volname"/>
+                        <arg value="BlueSeer"/>
+                        <arg value="-srcfolder"/>
+                        <arg value="${app.dir}"/>
+                        <arg value="-ov"/>
+                        <arg value="-format"/>
+                        <arg value="UDZO"/>
+                        <arg value="${project.build.directory}/installer/BlueSeer.dmg"/>
                       </exec>
                     </target>
                   </configuration>
@@ -980,6 +1002,24 @@
                         <arg value="--sign"/>
                         <arg value="-"/>
                         <arg value="${app.dir}"/>
+                      </exec>
+                      <!-- Wrap the finished, re-signed .app into a distributable
+                           .dmg - the same thing "mvn package -Pjpackage" produces
+                           on windows/linux (a single ready-to-ship installer
+                           artifact), just assembled ourselves instead of via
+                           jpackage's own dmg packaging type (which would hit the same
+                           codesign failure this whole profile works around). -->
+                      <delete file="${project.build.directory}/installer/BlueSeer.dmg" quiet="true"/>
+                      <exec executable="hdiutil" failonerror="true">
+                        <arg value="create"/>
+                        <arg value="-volname"/>
+                        <arg value="BlueSeer"/>
+                        <arg value="-srcfolder"/>
+                        <arg value="${app.dir}"/>
+                        <arg value="-ov"/>
+                        <arg value="-format"/>
+                        <arg value="UDZO"/>
+                        <arg value="${project.build.directory}/installer/BlueSeer.dmg"/>
                       </exec>
                     </target>
                   </configuration>
