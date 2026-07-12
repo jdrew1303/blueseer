@@ -83,7 +83,7 @@ public class mf {
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
                 MainFrame frame = new MainFrame();
-                TopBarIcons.apply(frame);
+                TopBarPolish.apply(frame);
                 frame.setVisible(true);
             }
         });
