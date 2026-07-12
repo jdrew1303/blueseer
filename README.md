@@ -84,10 +84,6 @@ BlueSeer builds with Maven only — there is no Ant build anymore. You'll need t
    - (windows) `cd target && java -classpath "dist/*" com.blueseer.utl.mf`
    - The default login credentials are 'admin' and 'admin'.
 
-Only one dependency isn't on Maven Central: `lib/bsmf.jar`, the compiled main
-application frame — it's declared as a `system`-scoped dependency in `pom.xml` pointing
-at `lib/bsmf.jar` directly.
-
 <h2>Useful Maven targets</h2>
 
 * `mvn compile` — compile the source only (fastest feedback loop while developing).
