@@ -82,7 +82,9 @@ public class mf {
         /* Create and display the form */
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
-                new MainFrame().setVisible(true);
+                MainFrame frame = new MainFrame();
+                TopBarIcons.apply(frame);
+                frame.setVisible(true);
             }
         });
 
