@@ -78,7 +78,9 @@ import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
-import javax.swing.JTable;
+import javax.swing.JTable;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
 
 /**
  *
@@ -541,7 +543,7 @@ String syslabeldir = "";
         jLabel8.setText("Reference");
         jLabel8.setName("lblref"); // NOI18N
 
-        btlookupOrder.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btlookupOrder.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btlookupOrder.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btlookupOrderActionPerformed(evt);
@@ -575,7 +577,7 @@ String syslabeldir = "";
             }
         });
 
-        btlookupLine.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btlookupLine.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btlookupLine.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btlookupLineActionPerformed(evt);

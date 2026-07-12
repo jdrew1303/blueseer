@@ -43,7 +43,7 @@ Source: "C:\bs\blueseer\.patch"; DestDir: "{app}"; Flags: ignoreversion
 Source: "C:\bs\blueseer\scripts\bsconfig.sqlite"; DestDir: "{app}"; DestName: "{#bsconfig}"; Flags: ignoreversion
 Source: "C:\bs\bsmf\documentation\documentation.pdf"; DestDir: "{app}"; Flags: ignoreversion
 Source: "C:\bs\blueseer\sf\data\*"; DestDir: "{app}\data"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "C:\bs\blueseer\dist\*"; DestDir: "{app}\dist"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "C:\bs\blueseer\target\dist\*"; DestDir: "{app}\dist"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "C:\bs\blueseer\sf\temp\*"; DestDir: "{app}\temp"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "C:\bs\blueseer\sf\patches\*"; DestDir: "{app}\patches"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "C:\bs\blueseer\sf\edi\*"; DestDir: "{app}\edi"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -55,8 +55,8 @@ Source: "C:\java\jre11\*"; DestDir: "{app}\jre11"; Flags: ignoreversion recurses
 
 [Icons]
 ;Name: "{commonprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}" ; WorkingDir: "{app}";
-Name: "{commonprograms}\{#MyAppName}"; Filename: "{app}\jre11\bin\javaw.exe"; WorkingDir: "{app}"; Parameters: "-Djava.util.logging.config.file=bslogging.properties -cp dist/* bsmf.MainFrame" ; Tasks: desktopicon ; IconFilename: "{app}\images\bs.ico"
-Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\jre11\bin\javaw.exe"; WorkingDir: "{app}"; Parameters: "-Djava.util.logging.config.file=bslogging.properties -cp dist/* bsmf.MainFrame" ; Tasks: desktopicon ; IconFilename: "{app}\images\bs.ico"
+Name: "{commonprograms}\{#MyAppName}"; Filename: "{app}\jre11\bin\javaw.exe"; WorkingDir: "{app}"; Parameters: "-Djava.util.logging.config.file=bslogging.properties -cp dist/* com.blueseer.utl.mf" ; Tasks: desktopicon ; IconFilename: "{app}\images\bs.ico"
+Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\jre11\bin\javaw.exe"; WorkingDir: "{app}"; Parameters: "-Djava.util.logging.config.file=bslogging.properties -cp dist/* com.blueseer.utl.mf" ; Tasks: desktopicon ; IconFilename: "{app}\images\bs.ico"
 
 [Run]
 ;Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: shellexec postinstall skipifsilent

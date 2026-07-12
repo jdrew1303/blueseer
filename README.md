@@ -44,74 +44,100 @@ BlueSeer provides modules for the following generic set of business concepts :
 * EDI Communications (FTP, AS2 server/client)
 * Automated Task/Cron Scheduler
 * UCC Label Generation
+* EU/Irish FIC-compliant ingredient labeling (allergens, QUID, additive warnings)
 * Materials Resource Planning (MRP)
 * Human Resources (HR)
 
 <h1>Technology</h1>
-BlueSeer ERP is written entirely in Java.  The application is a non-web based
-desktop application that relies heavily on the Java Swing widget
-toolkit/library.  There are currently two database engines available for
-BlueSeer. 
-For single client deployment, The relational database SQLite is used for
-it's deployment ease and server-less design.  For multi-client
-deployment scenarios, the open-source relational database MySQL is used as the
-back-end database server.  The MySQL backend can be hosted on a local network or in
-the Cloud for a remote DB deployment configuration. 
+
+BlueSeer ERP is written entirely in Java and is a non-web desktop application built on
+Java Swing. It supports two database backends: SQLite for single-client, server-less
+deployments, and MySQL for multi-client deployments (on a local network or hosted in the
+cloud). The UI is themed with <a href="https://www.formdev.com/flatlaf/">FlatLaf</a> for
+a modern, flat appearance, and is optionally run on the
+<a href="https://github.com/JetBrains/JetBrainsRuntime">JetBrains Runtime (JBR)</a> for
+better Swing rendering (see "Building a native installer" below).
 </br>
-BlueSeer is a menu-driven application.  It's composition is a collection of Java Swing
-JPanel widgets.  Each business function, i.e. Order Entry, Item Master
-Maintenance, etc is a stand-alone JPanel widget.  Each JPanel widget is loaded
-at runtime using Reflection to 'inject' the JPanel
-into the JFrame on user
-demand.  JPanel class names are stored in the database and associated
-with  menu options which are further associated with user permissions.  This
-archtitecture increases the capability of customization and extension by
-engaging BlueSeer as
-a Desktop Application Framework.  Applications independent of the core
-software can be quickly deployed 
-given the menu/class management and
-permissions functionality that's built into the BlueSeer framework.
+BlueSeer is menu-driven: each business function (Order Entry, Item Master Maintenance,
+etc.) is a stand-alone Swing `JPanel` loaded at runtime via reflection and 'injected'
+into the main frame on demand. `JPanel` class names are stored in the database and
+associated with menu options, which are in turn associated with user permissions. This
+architecture makes BlueSeer usable as a Desktop Application Framework — applications
+independent of the core software can be quickly deployed given the menu/class
+management and permissions functionality already built in.
 </br>
 
-<h1>Build/Compile Instructions (all builds should utilize JDK version 26 or higher)</h1>
+<h1>Building from Source</h1>
+
+BlueSeer builds with Maven only — there is no Ant build anymore. You'll need the JDK
+(version 26 or higher) and Maven installed and on your PATH.
+
+1. Download the source: `git clone https://github.com/BlueSeerERP/blueseer.git`
+2. From the `blueseer` directory, run: `mvn package`
+   This compiles the source, resolves every third-party dependency from Maven Central,
+   and assembles a complete, runnable application under `target/`:
+   `target/dist` (the application jar plus every dependency jar), and
+   `target/{data,edi,jasper,zebra,images,conf,logs,attachments,temp}` plus
+   `target/bs.cfg` (a default SQLite configuration) — everything the app needs to run.
+3. Run it:
+   - (linux) `cd target && java -cp "dist/*" com.blueseer.utl.mf`
+   - (windows) `cd target && java -classpath "dist/*" com.blueseer.utl.mf`
+   - The default login credentials are 'admin' and 'admin'.
+
+<h2>Useful Maven targets</h2>
+
+* `mvn compile` — compile the source only (fastest feedback loop while developing).
+* `mvn package` — full build, produces the runnable `target/` layout described above.
+* `mvn package -DskipTests` — skip the test suite for a faster package build.
+* `mvn test` — run the test suite on its own.
+* `mvn package -Pjpackage` — build a native installer (see below).
+
+<h2>Using Apache Netbeans (or any Maven-aware IDE)</h2>
+
+Since the project is plain Maven, open the `blueseer` folder directly in any
+Maven-aware IDE (NetBeans, IntelliJ IDEA, Eclipse/m2e, VS Code + Java extensions) —
+it will be recognized automatically via `pom.xml`. Set the run/working directory to
+`target` (after running `mvn package` once) so the app can find `bs.cfg`, `data/`,
+etc., then run `com.blueseer.utl.mf` as the main class.
 </br>
 
-<h2>Using Apache Netbeans</h2>
+<h2>Building a native installer (jpackage)</h2>
 
-To use Netbeans, you will first need to download the Netbeans IDE. Once you have Netbeans installed, the following steps can be used to compile BlueSeer and bring up a test instance of the application :
-1. Download the blueseer source from github. You can either 'git clone https://github.com/BlueSeerERP/blueseer.git' or download the zipped version of Blueseer from github.com/BlueseerERP and extract the contents into a directory called 'blueseer'.
-2. Open a command prompt and cd to the install directory 'blueseer/test'. This will be your working/testing directory
-3. Type './refresh_test_win.bat' or ('./refresh_test_linux.sh' for linux) to establish a test instance of the blueseer application along with the bs.cfg file and database instance
-4. Start Netbeans and choose 'Open Project' to open the blueseer project files.
-5. Right click on the blueseer project and go to Project Properties
-6. Click on the 'run' portion of the properties and set the working directory to the 'test' directory where the instance config files and data directories are located.
-7. You should now be able to build and run the application. The default login credentials are 'admin' and 'admin' respectively.
+`mvn package -Pjpackage` produces a self-contained native installer under
+`target/installer` — a `.deb` on Linux, an `.msi` on Windows, an unpacked `.app` on
+macOS (jpackage only builds an installer for the OS you run it on) — with the app, all
+its dependency jars, its runtime resources (`bs.cfg`, `data/`, `jasper/`, etc.), and a
+bundled Java runtime (built with jlink, so it's a fraction of a full JDK install), so
+end users just install and run it like any other desktop application; no
+separately-installed JDK required.
+
+macOS builds via `APP_IMAGE` under the hood rather than jpackage's own `.dmg` type:
+jpackage always ad-hoc-codesigns the app bundle it builds on macOS, and that codesign
+step reproducibly fails when bundling `bs.cfg`/`.patch` as loose top-level files (a
+real jpackage limitation, not a project-specific misconfiguration). See the
+`mac-aarch64`/`mac-x86_64` profiles in `pom.xml` for the full workaround: a post-build
+step copies those two files into the built `target/installer/BlueSeer.app` afterward,
+re-signs it with `codesign`, then wraps it into a real, ready-to-ship
+`target/installer/BlueSeer.dmg` itself via `hdiutil` - so `mvn package -Pjpackage`
+still produces one installer artifact directly, same as windows/linux.
+
+The build bundles <a href="https://github.com/JetBrains/JetBrainsRuntime">JetBrains
+Runtime</a> automatically (recommended for better Swing rendering — see "Technology"
+above): the first `-Pjpackage` build downloads the pinned JBR release for your OS/arch
+into `.jbr-cache/` and reuses it on later builds. Override with
+`-Djbr.home=/path/to/some/other/jbr` to bundle a different, manually-managed runtime
+instead — this skips the automatic download entirely. The pinned version lives in
+`pom.xml`'s `jbr.version`/`jbr.build` properties; bump both together to pick up a newer
+JBR release (matching `maven.compiler.release`, since a JBR built on an older JDK can't
+load this project's own class files).
+
+The installer type/icon are picked automatically based on the OS running the build
+(see the `windows` / `linux-x86_64` / `mac-aarch64` / `mac-x86_64` profiles in
+`pom.xml`); override `-Dinstaller.type=...` to build a different package type (e.g.
+`app-image` for a plain, unpackaged app folder, useful for testing before building a
+real installer). Values are jpackage's own lowercase `--type` names (`app-image`,
+`dmg`, `pkg`, `exe`, `msi`, `rpm`, `deb`).
 </br>
-
-<h2>Using Ant</h2>
-
-Pre-requisite: You will need the JDK (version 26 or higher preferred) installed to run Ant.  You will then need to download the Ant build tool and install.  Make sure the ant executable is in your Environment Variables.  Once you have Ant installed, the following steps can be used to compile BlueSeer and bring up a test instance of the application:
-
-1. Download the blueseer source from github. You can either 'git clone https://github.com/BlueSeerERP/blueseer.git' or download the zipped version of Blueseer from github.com/BlueseerERP and extract the contents into a directory called 'blueseer'.
-2. In the newly created blueseer directory, edit the build.xml file to adjust the location of your JDK (search the file for property name 'JDK')
-3. Once you've updated the build.xml with your JDK path, open a bash or powershell prompt and cd to the blueseer directory
-4. type the following to compile: ant main
-5. cd to blueseer/test and execute type ./refresh_test_linux.sh  (or refresh_test_win.bat)  ###this will create the necessary files to run the app
-6. cd to parent blueseer directory and type the following to run: ant run
-</br>
-
-<h2>Using Maven</h2>
-
-Pre-requisite:  You will need the JDK (version 26 or higher preferred) installed to run Maven.  You will then need to download the maven build tool and install.  Make sure the mvn executable is in your Environment Variables.  Once you have maven installed, the following steps can be used to compile BlueSeer and bring up a test instance of the application:
-
-1.  Download the blueseer source from github. You can either 'git clone https://github.com/BlueSeerERP/blueseer.git' or download the zipped version of Blueseer from github.com/BlueseerERP and extract the contents into a directory called 'blueseer'.
-2.  Open a powershell prompt or bash shell and cd to the blueseer directory
-3.  type and execute: mvn -U package dependency:copy-dependencies -DoutputDirectory="./target/lib"
-4.  cd to the newly created target directory
-5.  (windows) type and execute: java -classpath ".;lib/*" bsmf.MainFrame
-5.  (linux) type and execute: java -cp ".:lib/*" bsmf.MainFrame
-</br>
-
 
 <h1>Contributing</h1>
 

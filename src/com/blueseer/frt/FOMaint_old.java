@@ -116,7 +116,9 @@ import jcifs.smb.SmbException;
 import jcifs.smb.SmbFile;
 import jcifs.smb.SmbFileInputStream;
 import org.w3c.dom.Document;
-import org.xml.sax.SAXException;
+import org.xml.sax.SAXException;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
 
 
 /**
@@ -1405,7 +1407,7 @@ public class FOMaint_old extends javax.swing.JPanel {
         jLabel87.setText("Status");
         jLabel87.setName("lblstatus"); // NOI18N
 
-        btlookup.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/lookup.png"))); // NOI18N
+        btlookup.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btlookup.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btlookupActionPerformed(evt);

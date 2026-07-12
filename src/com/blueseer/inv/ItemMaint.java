@@ -77,7 +77,7 @@ import com.blueseer.utl.DTData;
 import com.blueseer.utl.IBlueSeerT;
 import static com.blueseer.utl.OVData.printImageJasper;
 import static com.blueseer.utl.OVData.printJasperItem;
-import static com.blueseer.utl.OVData.showPDFusingIcePDF;
+import static com.blueseer.utl.OVData.openPDF;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Image;
@@ -115,6 +115,8 @@ import javax.swing.JViewport;
 import javax.swing.SwingWorker;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
 
 /**
  *
@@ -497,6 +499,7 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
     public void newAction(String x) {
        setPanelComponentState(this, true);
         setComponentDefaultValues();
+        ingredientPanel.clear();
         BlueSeerUtils.message(new String[]{"0",BlueSeerUtils.addRecordInit});
         btupdate.setEnabled(false);
         btdelete.setEnabled(false);
@@ -616,7 +619,9 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
        jTabbedPane1.add(getClassLabelTag("costbom", this.getClass().getSimpleName()), CostBOMPanel);
        jTabbedPane1.add(getClassLabelTag("images", this.getClass().getSimpleName()), ImagePanel);
        jTabbedPane1.add(getClassLabelTag("attachments", this.getClass().getSimpleName()), panelAttachment);
-        setPanelComponentState(this, false); 
+       jTabbedPane1.add(getClassLabelTag("ingredientdata", this.getClass().getSimpleName()), ingredientPanel);
+       populateLabelDropdown();
+        setPanelComponentState(this, false);
         btnew.setEnabled(true);
         btlookup.setEnabled(true);
         if (initDataSet == null) {
@@ -631,10 +636,28 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
             tbkey.setEnabled(true);
             tbkey.setEditable(true);
             tbkey.requestFocus();
+            ingredientPanel.clear();
         }
-        
+
    }
-        
+
+    /**
+     * Loads the Label combo from label_zebra (lblz_type = 'item') instead of
+     * the fixed {"itemPDF", "itemZPL"} NetBeans design-time list, so a new
+     * label template registered via label_zebra (e.g. a new Zebra template
+     * added for a different product line) shows up here without a code
+     * change. Falls back to the previous item's label if it's no longer in
+     * the list rather than silently clearing the combo.
+     */
+    private void populateLabelDropdown() {
+        String current = ddlabel.getSelectedItem() != null ? ddlabel.getSelectedItem().toString() : "";
+        ArrayList<String> codes = com.blueseer.lbl.lblData.getLabelFileList("item");
+        ddlabel.setModel(new javax.swing.DefaultComboBoxModel<>(codes.toArray(new String[0])));
+        if (!current.isBlank() && codes.contains(current)) {
+            ddlabel.setSelectedItem(current);
+        }
+    }
+
     public String[] addRecord(String[] x) {
      
         String[] m = new String[2];
@@ -655,6 +678,7 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
           // now add item cost record for later use
           OVData.addItemCostRec(tbkey.getText(), ddsite.getSelectedItem().toString(), "standard", mtlcost, ovhcost, outcost, (mtlcost + ovhcost + outcost));
           OVData.addItemCostRec(tbkey.getText(), ddsite.getSelectedItem().toString(), "current", mtlcost, ovhcost, outcost, (mtlcost + ovhcost + outcost));
+          ingredientPanel.saveData(tbkey.getText());
           return m;
        
      }
@@ -687,6 +711,7 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
         
         String[] m = updateItemMstr(createRecord());
         rebaseCurrentCost(tbkey.getText(), mtlcost, ovhcost, outcost);
+        ingredientPanel.saveData(tbkey.getText());
         return m;
     }
     
@@ -702,9 +727,10 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
      }
     
     public String[] getRecord(String[] key) {
-        item_mstr z = getItemMstr(key);  
+        item_mstr z = getItemMstr(key);
         x = z;
         getAttachments(key[0]);
+        ingredientPanel.loadData(key[0]);
        return x.m();
     }
     
@@ -1046,6 +1072,7 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
         jLabel9 = new javax.swing.JLabel();
         jLabel10 = new javax.swing.JLabel();
         btprintlabel = new javax.swing.JButton();
+        btpreviewlabel = new javax.swing.JButton();
         tbexpiredays = new javax.swing.JTextField();
         jLabel11 = new javax.swing.JLabel();
         ddlabel = new javax.swing.JComboBox<>();
@@ -1189,7 +1216,7 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
             }
         });
 
-        btlookup.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/lookup.png"))); // NOI18N
+        btlookup.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btlookup.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btlookupActionPerformed(evt);
@@ -1499,6 +1526,14 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
             }
         });
 
+        btpreviewlabel.setText("Preview Label");
+        btpreviewlabel.setName("btpreviewlabel"); // NOI18N
+        btpreviewlabel.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btpreviewlabelActionPerformed(evt);
+            }
+        });
+
         jLabel11.setText("Expire Days");
         jLabel11.setName("lblexpiredays"); // NOI18N
 
@@ -1570,6 +1605,8 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
                                 .addGap(0, 0, Short.MAX_VALUE))
                             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel4Layout.createSequentialGroup()
                                 .addGap(0, 0, Short.MAX_VALUE)
+                                .addComponent(btpreviewlabel)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(btprintlabel)))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(btdelete)
@@ -1688,7 +1725,8 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
                             .addComponent(btadd)
                             .addComponent(btupdate)
                             .addComponent(btdelete)
-                            .addComponent(btprintlabel)))
+                            .addComponent(btprintlabel)
+                            .addComponent(btpreviewlabel)))
                     .addGroup(jPanel4Layout.createSequentialGroup()
                         .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(cbmrp)
@@ -1902,11 +1940,11 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
         jLabel6.setText("TotalCost");
         jLabel6.setName("lbltotal"); // NOI18N
 
-        jLabel7.setFont(new java.awt.Font("Cantarell", 1, 18)); // NOI18N
+        jLabel7.putClientProperty("FlatLaf.styleClass", "h3");
         jLabel7.setText("Standard");
         jLabel7.setName("lblstandard"); // NOI18N
 
-        jLabel8.setFont(new java.awt.Font("Cantarell", 1, 18)); // NOI18N
+        jLabel8.putClientProperty("FlatLaf.styleClass", "h3");
         jLabel8.setText("Current");
         jLabel8.setName("lblcurrent"); // NOI18N
 
@@ -2258,7 +2296,7 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
             imageIcon.setImage(newimage);
             imagelabel.setIcon(imageIcon);
             if (ddimage.getSelectedItem().toString().toLowerCase().endsWith("pdf")) {
-            showPDFusingIcePDF(ddimage.getSelectedItem().toString());
+            openPDF(ddimage.getSelectedItem().toString());
             }
         } else {
          btdeleteimage.setEnabled(false);  
@@ -2593,21 +2631,85 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
             if (lz.lblz_file().endsWith("jasper")) {
                 printJasperItem(tbkey.getText(), lz.lblz_file());
             } else {
-                //bsmf.MainFrame.show(getMessageTag(1206));  
-        
+                //bsmf.MainFrame.show(getMessageTag(1206));
+
                 if (OVData.isValidPrinter(printer)) {
                     try {
-                        OVData.printLabelItem(tbkey.getText(), defaultprinter, lz.lblz_file());
-                    } catch (IOException ex) { 
+                        String[] lotAndBestBefore = new String[2];
+                        com.blueseer.ing.IngredientLabelEngine.IngredientLabelResult ingLabel =
+                                resolveIngredientLabel(lotAndBestBefore);
+                        String lotNbr = lotAndBestBefore[0];
+                        String bestBefore = lotAndBestBefore[1];
+                        if (ingLabel != null) {
+                            OVData.printLabelItem(tbkey.getText(), defaultprinter, lz.lblz_file(),
+                                    ingLabel, ingLabel.toPlainWarnings(), lotNbr, bestBefore,
+                                    tbdesc.getText(), formatNetWeightForLabel());
+                        } else {
+                            OVData.printLabelItem(tbkey.getText(), defaultprinter, lz.lblz_file());
+                        }
+                    } catch (IOException ex) {
                         ex.printStackTrace();
                     } catch (PrintException ex) {
                         ex.printStackTrace();
-                    } 
+                    }
                 } else {
                     bsmf.MainFrame.show(getMessageTag(1139));
                 }
             }
     }//GEN-LAST:event_btprintlabelActionPerformed
+
+    private void btpreviewlabelActionPerformed(java.awt.event.ActionEvent evt) {
+        lblData.label_zebra lz = getLabelZebraMstr(new String[]{ddlabel.getSelectedItem().toString()});
+        if (lz.lblz_file().endsWith("jasper")) {
+            bsmf.MainFrame.show("Preview isn't available yet for Jasper-based labels.");
+            return;
+        }
+        try {
+            String[] lotAndBestBefore = new String[2];
+            com.blueseer.ing.IngredientLabelEngine.IngredientLabelResult ingLabel =
+                    resolveIngredientLabel(lotAndBestBefore);
+            String allergenWarnings = ingLabel != null ? ingLabel.toPlainWarnings() : "";
+            String zplText = OVData.buildLabelZpl(tbkey.getText(), lz.lblz_file(), ingLabel,
+                    allergenWarnings, lotAndBestBefore[0], lotAndBestBefore[1], tbdesc.getText(),
+                    formatNetWeightForLabel());
+            java.io.File pdf = com.blueseer.ing.LabelPreview.renderToPdf(zplText);
+            OVData.openPDF(pdf.getAbsolutePath());
+        } catch (Exception ex) {
+            MainFrame.bslog(ex);
+            bsmf.MainFrame.show("Unable to generate label preview: " + ex.getMessage());
+        }
+    }
+
+    /**
+     * Resolves the ingredient-label content for the currently loaded item -
+     * shared by Print Label and Preview Label so both always agree on what
+     * the label says. Uses the most recent on-hand lot as a default; a
+     * screen that knows the actual production lot being packed (e.g. work
+     * order completion) should pass that lot's real in_serial/in_expire
+     * instead. lotAndBestBefore[0]/[1] are filled with the resolved lot
+     * number and best-before date even if ingredient generation itself
+     * fails.
+     */
+    private com.blueseer.ing.IngredientLabelEngine.IngredientLabelResult resolveIngredientLabel(
+            String[] lotAndBestBefore) {
+        lotAndBestBefore[0] = "";
+        lotAndBestBefore[1] = "";
+        com.blueseer.ing.IngredientLabelEngine.IngredientLabelResult ingLabel = null;
+        try {
+            String[] lot = com.blueseer.ing.ingData.getMostRecentLot(tbkey.getText());
+            lotAndBestBefore[0] = lot[0];
+            lotAndBestBefore[1] = lot[1];
+            ingLabel = new com.blueseer.ing.IngredientLabelEngine().generate(tbkey.getText(),
+                    lotAndBestBefore[0], lotAndBestBefore[1]);
+        } catch (Exception ex) {
+            MainFrame.bslog(ex);
+        }
+        return ingLabel;
+    }
+
+    private String formatNetWeightForLabel() {
+        return tbnetwt.getText().isBlank() ? "" : tbnetwt.getText() + "g";
+    }
 
     private void btclearActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btclearActionPerformed
         BlueSeerUtils.messagereset();
@@ -2663,6 +2765,11 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
     }//GEN-LAST:event_tableattachmentMouseClicked
 
 
+    // EU/Irish FIC ingredient regulatory data tab - hand-written, kept out of
+    // the generated initComponents()/GEN-BEGIN block below on purpose so it
+    // isn't at risk if this form is ever regenerated.
+    private final com.blueseer.ing.IngredientPanel ingredientPanel = new com.blueseer.ing.IngredientPanel();
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel CostBOMPanel;
     private javax.swing.JPanel ImagePanel;
@@ -2679,6 +2786,7 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
     private javax.swing.JButton btlookup;
     private javax.swing.JButton btnew;
     private javax.swing.JButton btprintlabel;
+    private javax.swing.JButton btpreviewlabel;
     private javax.swing.JButton btstandard;
     private javax.swing.JButton btupdate;
     private javax.swing.JCheckBox cbdefault;

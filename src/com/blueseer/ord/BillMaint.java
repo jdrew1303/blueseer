@@ -121,7 +121,10 @@ import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JViewport;
 import javax.swing.SwingWorker;
-import javax.swing.event.TableModelEvent;
+import javax.swing.event.TableModelEvent;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignP;
 
 
 /**
@@ -1299,7 +1302,7 @@ public class BillMaint extends javax.swing.JPanel implements IBlueSeerV {
             }
         });
 
-        btlookup.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/lookup.png"))); // NOI18N
+        btlookup.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btlookup.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btlookupActionPerformed(evt);
@@ -1356,7 +1359,7 @@ public class BillMaint extends javax.swing.JPanel implements IBlueSeerV {
         jLabel13.setText("Discounts");
         jLabel13.setName("lbltotaldisc"); // NOI18N
 
-        btLookUpItemDesc.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btLookUpItemDesc.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btLookUpItemDesc.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btLookUpItemDescActionPerformed(evt);
@@ -1385,7 +1388,7 @@ public class BillMaint extends javax.swing.JPanel implements IBlueSeerV {
         jLabel17.setText("Taxes");
         jLabel17.setName("lbltotaltaxes"); // NOI18N
 
-        btchangelog.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/change.png"))); // NOI18N
+        btchangelog.setIcon(FontIcon.of(MaterialDesignP.PENCIL, 16)); // NOI18N
         btchangelog.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btchangelogActionPerformed(evt);
@@ -1399,7 +1402,7 @@ public class BillMaint extends javax.swing.JPanel implements IBlueSeerV {
 
         cbautobill.setText("Auto Bill");
 
-        btLookUpBillTo.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btLookUpBillTo.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btLookUpBillTo.setToolTipText("lookup");
         btLookUpBillTo.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {

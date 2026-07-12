@@ -149,6 +149,8 @@ public class Browse extends javax.swing.JPanel {
 
         jLabel2.setText("Text Search:");
 
+        tbtext.putClientProperty("JTextField.placeholderText", "Search...");
+        tbtext.putClientProperty("JTextField.showClearButton", true);
         tbtext.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 tbtextActionPerformed(evt);

@@ -85,7 +85,11 @@ import javax.swing.event.TableModelEvent;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.MutableTreeNode;
-import javax.swing.tree.TreeNode;
+import javax.swing.tree.TreeNode;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignC;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignP;
 
 /**
  *
@@ -1656,21 +1660,21 @@ public class BOMMaint extends javax.swing.JPanel {
             }
         });
 
-        btlookup.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/lookup.png"))); // NOI18N
+        btlookup.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btlookup.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btlookupActionPerformed(evt);
             }
         });
 
-        btlookupbom.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btlookupbom.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btlookupbom.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btlookupbomActionPerformed(evt);
             }
         });
 
-        btnewbom.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/add.png"))); // NOI18N
+        btnewbom.setIcon(FontIcon.of(MaterialDesignP.PLUS_CIRCLE, 16)); // NOI18N
         btnewbom.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnewbomActionPerformed(evt);
@@ -1699,7 +1703,7 @@ public class BOMMaint extends javax.swing.JPanel {
             }
         });
 
-        btsave.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/save.png"))); // NOI18N
+        btsave.setIcon(FontIcon.of(MaterialDesignC.CONTENT_SAVE, 16)); // NOI18N
         btsave.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btsaveActionPerformed(evt);

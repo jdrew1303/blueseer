@@ -26,7 +26,15 @@ SOFTWARE.
 package com.blueseer.utl;
 
 import bsmf.MainFrame;
+import com.formdev.flatlaf.FlatLightLaf;
+import java.io.File;
+import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import javax.swing.InputMap;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
 import javax.swing.KeyStroke;
 import javax.swing.UIManager;
 
@@ -40,44 +48,93 @@ public class mf {
      * @param args the command line arguments
      */
     public static void main(String args[]) {
-        /* Set the Nimbus look and feel */
+        if (relaunchInAppDirectoryIfNeeded(args)) {
+            return;
+        }
+
+        /* Set the FlatLaf look and feel */
         //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
-        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
-         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
+        /* FlatLaf (https://www.formdev.com/flatlaf/) gives Swing a modern, flat
+         * appearance and respects the OS font/scaling settings. Falls back to the
+         * platform default look and feel if FlatLaf can't be installed.
          */
-         
         //</editor-fold>
-        
-        
-        
+
+        // Let FlatLaf draw the window title bar/border and merge the menu bar
+        // into it, like a modern browser or VS Code, instead of the plain OS
+        // title bar with a separate menu bar underneath.
+        JFrame.setDefaultLookAndFeelDecorated(true);
+        JDialog.setDefaultLookAndFeelDecorated(true);
+        UIManager.put("TitlePane.menuBarEmbedded", true);
+
+        FlatLightLaf.setup();
+
         try {
-            
-            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
-             //   MainFrame.show(info.getClassName().toString());
-                if ("Nimbus".equals(info.getName())) {
-                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
-                     // TEV 20160318 added the below for windows 'doclick' fix
-                     InputMap im = (InputMap)UIManager.get("Button.focusInputMap");
-                     im.put( KeyStroke.getKeyStroke( "ENTER" ), "pressed" );
-                     im.put( KeyStroke.getKeyStroke( "released ENTER" ), "released" );
-                    break;
-                }
-                
-            }
-            
-        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | javax.swing.UnsupportedLookAndFeelException ex) {
+            // TEV 20160318 added the below for windows 'doclick' fix
+            InputMap im = (InputMap) UIManager.get("Button.focusInputMap");
+            im.put(KeyStroke.getKeyStroke("ENTER"), "pressed");
+            im.put(KeyStroke.getKeyStroke("released ENTER"), "released");
+        } catch (Exception ex) {
             MainFrame.bslog(ex);
         }
-        
-       
+
+
         /* Create and display the form */
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
-                new MainFrame().setVisible(true);
+                MainFrame frame = new MainFrame();
+                TopBarPolish.apply(frame);
+                frame.setVisible(true);
             }
         });
-        
-        
+
+
     }
-    
+
+    /**
+     * bs.cfg, data/, jasper/, etc. are all read relative to the process's
+     * working directory. That's fine when launched from a shell in the right
+     * place, but a jpackage-built native launcher (and desktop/menu shortcuts)
+     * doesn't set one, so it inherits whatever directory the user happened to
+     * be in. If bs.cfg isn't next to us, look one level above the jar we were
+     * loaded from -- that's where the packaging (both the Maven "target" layout
+     * and the jpackage app image layout) places it alongside the app's dist/
+     * or lib/app/ jars -- and relaunch ourselves there.
+     *
+     * @return true if a relaunch was performed (the caller should return
+     * immediately; this process is just supervising the real one)
+     */
+    private static boolean relaunchInAppDirectoryIfNeeded(String[] args) {
+        if (new File("bs.cfg").isFile()) {
+            return false;
+        }
+        try {
+            File jarFile = new File(mf.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+            File appDir = jarFile.getParentFile().getParentFile();
+            if (appDir == null || !new File(appDir, "bs.cfg").isFile()) {
+                return false;
+            }
+
+            String javaBin = System.getProperty("java.home") + File.separator + "bin" + File.separator + "java";
+            List<String> command = new ArrayList<>();
+            command.add(javaBin);
+            for (String prop : new String[]{"java.util.logging.config.file", "user.language", "user.country"}) {
+                String value = System.getProperty(prop);
+                if (value != null) {
+                    command.add("-D" + prop + "=" + value);
+                }
+            }
+            command.add("-cp");
+            command.add(System.getProperty("java.class.path"));
+            command.add(mf.class.getName());
+            command.addAll(Arrays.asList(args));
+
+            Process process = new ProcessBuilder(command).directory(appDir).inheritIO().start();
+            System.exit(process.waitFor());
+            return true;
+        } catch (URISyntaxException | java.io.IOException | InterruptedException ex) {
+            return false;
+        }
+    }
+
 }

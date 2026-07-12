@@ -127,6 +127,8 @@ String mystring = "";
         textarea = new javax.swing.JTextArea();
         jPanel1 = new javax.swing.JPanel();
         tbsearch = new javax.swing.JTextField();
+        tbsearch.putClientProperty("JTextField.placeholderText", "Search...");
+        tbsearch.putClientProperty("JTextField.showClearButton", true);
         btWhereUsed = new javax.swing.JButton();
         jLabel1 = new javax.swing.JLabel();
         rbtop = new javax.swing.JRadioButton();

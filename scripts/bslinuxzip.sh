@@ -18,7 +18,7 @@ zip -r ../scripts/$bszip edi/*
 zip -u ../scripts/$bszip images/*
 cd ../scripts
 cp bs.cfg.sqlite.linux bs.cfg
-zip -u $bszip ../dist/*
+zip -u $bszip ../target/dist/*
 zip -u $bszip bs.cfg
 zip -u $bszip bs.cfg.sqlite
 zip -u $bszip bs.cfg.mysql

@@ -88,7 +88,11 @@ import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JViewport;
-import javax.swing.SwingWorker;
+import javax.swing.SwingWorker;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignD;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignP;
 
 /**
  *
@@ -811,7 +815,7 @@ public class StructMaint extends javax.swing.JPanel  {
             }
         });
 
-        btlookup.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/lookup.png"))); // NOI18N
+        btlookup.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btlookup.setName("btlookup"); // NOI18N
         btlookup.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -860,7 +864,7 @@ public class StructMaint extends javax.swing.JPanel  {
 
         jLabel13.setText("LoopCount");
 
-        btaddrow.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/add.png"))); // NOI18N
+        btaddrow.setIcon(FontIcon.of(MaterialDesignP.PLUS_CIRCLE, 16)); // NOI18N
         btaddrow.setToolTipText("Add Row");
         btaddrow.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -868,7 +872,7 @@ public class StructMaint extends javax.swing.JPanel  {
             }
         });
 
-        btupdaterow.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/change.png"))); // NOI18N
+        btupdaterow.setIcon(FontIcon.of(MaterialDesignP.PENCIL, 16)); // NOI18N
         btupdaterow.setToolTipText("Update Row");
         btupdaterow.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -876,7 +880,7 @@ public class StructMaint extends javax.swing.JPanel  {
             }
         });
 
-        btdeleterow.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/delete.png"))); // NOI18N
+        btdeleterow.setIcon(FontIcon.of(MaterialDesignD.DELETE, 16)); // NOI18N
         btdeleterow.setToolTipText("Delete Row");
         btdeleterow.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -1097,7 +1101,7 @@ public class StructMaint extends javax.swing.JPanel  {
 
         jLabel14.setText("Delimiter");
 
-        btlookupele.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btlookupele.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btlookupele.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btlookupeleActionPerformed(evt);

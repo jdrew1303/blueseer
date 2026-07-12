@@ -69,7 +69,9 @@ import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JViewport;
-import javax.swing.SwingWorker;
+import javax.swing.SwingWorker;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
 
 /**
  *
@@ -766,7 +768,7 @@ public class ShiftMaint extends javax.swing.JPanel implements IBlueSeer {
             }
         });
 
-        btlookup.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btlookup.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btlookup.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btlookupActionPerformed(evt);

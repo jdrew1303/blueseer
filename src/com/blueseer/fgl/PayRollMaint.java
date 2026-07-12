@@ -130,7 +130,9 @@ import org.jfree.chart.JFreeChart;
 import org.jfree.chart.labels.PieSectionLabelGenerator;
 import org.jfree.chart.labels.StandardPieSectionLabelGenerator;
 import org.jfree.chart.plot.PiePlot;
-import org.jfree.data.general.DefaultPieDataset;
+import org.jfree.data.general.DefaultPieDataset;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
 
 /**
  *
@@ -2024,7 +2026,7 @@ public class PayRollMaint extends javax.swing.JPanel {
         cbsalary.setText("Salaried");
         cbsalary.setName("cbsalaried"); // NOI18N
 
-        btlookup.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/lookup.png"))); // NOI18N
+        btlookup.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btlookup.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btlookupActionPerformed(evt);

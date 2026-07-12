@@ -136,7 +136,11 @@ import javax.swing.UIManager;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
-import net.sf.jasperreports.engine.JRException;
+import net.sf.jasperreports.engine.JRException;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignD;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignP;
 
 
 /**
@@ -2310,7 +2314,7 @@ public class CFOMaint extends javax.swing.JPanel implements IBlueSeerT {
             }
         });
 
-        btlookup.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/lookup.png"))); // NOI18N
+        btlookup.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btlookup.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btlookupActionPerformed(evt);
@@ -2348,7 +2352,7 @@ public class CFOMaint extends javax.swing.JPanel implements IBlueSeerT {
             }
         });
 
-        btfinddriver.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btfinddriver.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btfinddriver.setFocusable(false);
         btfinddriver.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btfinddriver.setName("btlookup"); // NOI18N
@@ -2465,7 +2469,7 @@ public class CFOMaint extends javax.swing.JPanel implements IBlueSeerT {
         jLabel101.setText("Truck ID");
         jLabel101.setName("lblcarrier"); // NOI18N
 
-        btaddshipper.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/add.png"))); // NOI18N
+        btaddshipper.setIcon(FontIcon.of(MaterialDesignP.PLUS_CIRCLE, 16)); // NOI18N
         btaddshipper.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btaddshipperActionPerformed(evt);
@@ -2478,7 +2482,7 @@ public class CFOMaint extends javax.swing.JPanel implements IBlueSeerT {
 
         ddservicetype.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "test1", "test2", "test3" }));
 
-        btfindvehicle.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btfindvehicle.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btfindvehicle.setFocusable(false);
         btfindvehicle.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btfindvehicle.setName("btlookup"); // NOI18N
@@ -2489,7 +2493,7 @@ public class CFOMaint extends javax.swing.JPanel implements IBlueSeerT {
             }
         });
 
-        btfindequiptype.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btfindequiptype.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btfindequiptype.setFocusable(false);
         btfindequiptype.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btfindequiptype.setName("btlookup"); // NOI18N
@@ -3300,14 +3304,14 @@ public class CFOMaint extends javax.swing.JPanel implements IBlueSeerT {
         ));
         jScrollPane1.setViewportView(itemdet);
 
-        btadditem.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/add.png"))); // NOI18N
+        btadditem.setIcon(FontIcon.of(MaterialDesignP.PLUS_CIRCLE, 16)); // NOI18N
         btadditem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btadditemActionPerformed(evt);
             }
         });
 
-        btdeleteitem.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/delete.png"))); // NOI18N
+        btdeleteitem.setIcon(FontIcon.of(MaterialDesignD.DELETE, 16)); // NOI18N
         btdeleteitem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btdeleteitemActionPerformed(evt);
@@ -3530,7 +3534,7 @@ public class CFOMaint extends javax.swing.JPanel implements IBlueSeerT {
 
         jLabel5.setText("Charge Code");
 
-        btfindchargecode.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btfindchargecode.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btfindchargecode.setFocusable(false);
         btfindchargecode.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btfindchargecode.setName("btlookup"); // NOI18N

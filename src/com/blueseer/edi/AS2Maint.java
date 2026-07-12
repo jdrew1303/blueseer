@@ -87,7 +87,11 @@ import javax.swing.JViewport;
 import javax.swing.SwingWorker;
 import org.bouncycastle.cms.CMSException;
 import org.bouncycastle.mail.smime.SMIMEException;
-import org.bouncycastle.util.Store;
+import org.bouncycastle.util.Store;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignD;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignP;
 
 /**
  *
@@ -863,14 +867,14 @@ public class AS2Maint extends javax.swing.JPanel implements IBlueSeerT {
 
         jScrollPane1.setViewportView(headerlist);
 
-        btdeleteheader.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/delete.png"))); // NOI18N
+        btdeleteheader.setIcon(FontIcon.of(MaterialDesignD.DELETE, 16)); // NOI18N
         btdeleteheader.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btdeleteheaderActionPerformed(evt);
             }
         });
 
-        btaddheader.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/add.png"))); // NOI18N
+        btaddheader.setIcon(FontIcon.of(MaterialDesignP.PLUS_CIRCLE, 16)); // NOI18N
         btaddheader.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btaddheaderActionPerformed(evt);
@@ -994,7 +998,7 @@ public class AS2Maint extends javax.swing.JPanel implements IBlueSeerT {
             }
         });
 
-        btlookup.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/lookup.png"))); // NOI18N
+        btlookup.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btlookup.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btlookupActionPerformed(evt);

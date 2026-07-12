@@ -428,6 +428,8 @@ public class CustBrowse extends javax.swing.JPanel {
         jLabel2 = new javax.swing.JLabel();
         jLabel7 = new javax.swing.JLabel();
         tbsearch = new javax.swing.JTextField();
+        tbsearch.putClientProperty("JTextField.placeholderText", "Search...");
+        tbsearch.putClientProperty("JTextField.showClearButton", true);
         rbname = new javax.swing.JRadioButton();
         rbnumber = new javax.swing.JRadioButton();
         rbzip = new javax.swing.JRadioButton();

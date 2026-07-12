@@ -152,7 +152,9 @@ import javax.swing.JTable;
 import javax.swing.JViewport;
 import javax.swing.SwingWorker;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableColumnModel;
+import javax.swing.table.TableColumnModel;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
 
 /**
  *
@@ -1163,7 +1165,7 @@ public class ShipOrderLine extends javax.swing.JPanel {
         jLabel8.setText("Reference");
         jLabel8.setName("lblref"); // NOI18N
 
-        btlookupOrder.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btlookupOrder.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btlookupOrder.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btlookupOrderActionPerformed(evt);
@@ -1202,7 +1204,7 @@ public class ShipOrderLine extends javax.swing.JPanel {
             }
         });
 
-        btlookupLine.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btlookupLine.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btlookupLine.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btlookupLineActionPerformed(evt);
@@ -1251,7 +1253,7 @@ public class ShipOrderLine extends javax.swing.JPanel {
 
         jLabel5.setText("Shipper Key");
 
-        btlookup.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/lookup.png"))); // NOI18N
+        btlookup.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btlookup.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btlookupActionPerformed(evt);

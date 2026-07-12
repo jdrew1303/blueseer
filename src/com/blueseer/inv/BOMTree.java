@@ -73,7 +73,9 @@ import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.MutableTreeNode;
 import javax.swing.tree.TreeCellRenderer;
-import javax.swing.tree.TreeNode;
+import javax.swing.tree.TreeNode;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
 
 /**
  *
@@ -478,7 +480,7 @@ DefaultTreeModel levelmodel = null;
             }
         });
 
-        btbrowse.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/lookup.png"))); // NOI18N
+        btbrowse.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btbrowse.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btbrowseActionPerformed(evt);

@@ -131,7 +131,12 @@ import javax.swing.DefaultListModel;
 import javax.swing.table.TableColumnModel;
 
 
-import org.bouncycastle.util.Store;
+import org.bouncycastle.util.Store;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignC;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignD;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignP;
 
 /**
  *
@@ -1140,7 +1145,7 @@ public class APIMaint extends javax.swing.JPanel implements IBlueSeerT {
             }
         });
 
-        btlookup.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/lookup.png"))); // NOI18N
+        btlookup.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btlookup.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btlookupActionPerformed(evt);
@@ -1415,14 +1420,14 @@ public class APIMaint extends javax.swing.JPanel implements IBlueSeerT {
 
         jPanel5.setBorder(javax.swing.BorderFactory.createTitledBorder("Parameters"));
 
-        btdeleteparam.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/delete.png"))); // NOI18N
+        btdeleteparam.setIcon(FontIcon.of(MaterialDesignD.DELETE, 16)); // NOI18N
         btdeleteparam.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btdeleteparamActionPerformed(evt);
             }
         });
 
-        btaddparam.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/add.png"))); // NOI18N
+        btaddparam.setIcon(FontIcon.of(MaterialDesignP.PLUS_CIRCLE, 16)); // NOI18N
         btaddparam.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btaddparamActionPerformed(evt);
@@ -1440,7 +1445,7 @@ public class APIMaint extends javax.swing.JPanel implements IBlueSeerT {
 
         jLabel20.setText("Value");
 
-        btupdateparam.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/save.png"))); // NOI18N
+        btupdateparam.setIcon(FontIcon.of(MaterialDesignC.CONTENT_SAVE, 16)); // NOI18N
         btupdateparam.setToolTipText("Update Element");
         btupdateparam.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -1501,21 +1506,21 @@ public class APIMaint extends javax.swing.JPanel implements IBlueSeerT {
                 .addContainerGap())
         );
 
-        btadddetail.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/add.png"))); // NOI18N
+        btadddetail.setIcon(FontIcon.of(MaterialDesignP.PLUS_CIRCLE, 16)); // NOI18N
         btadddetail.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btadddetailActionPerformed(evt);
             }
         });
 
-        btdeletedetail.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/delete.png"))); // NOI18N
+        btdeletedetail.setIcon(FontIcon.of(MaterialDesignD.DELETE, 16)); // NOI18N
         btdeletedetail.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btdeletedetailActionPerformed(evt);
             }
         });
 
-        btupdatedetail.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/save.png"))); // NOI18N
+        btupdatedetail.setIcon(FontIcon.of(MaterialDesignC.CONTENT_SAVE, 16)); // NOI18N
         btupdatedetail.setToolTipText("Update Row");
         btupdatedetail.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {

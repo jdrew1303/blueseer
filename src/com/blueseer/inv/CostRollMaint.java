@@ -70,7 +70,9 @@ import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
-import javax.swing.SwingWorker;
+import javax.swing.SwingWorker;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
 
 /**
  *
@@ -930,7 +932,7 @@ public class CostRollMaint extends javax.swing.JPanel {
             }
         });
 
-        btLookUpItemDesc.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btLookUpItemDesc.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btLookUpItemDesc.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btLookUpItemDescActionPerformed(evt);

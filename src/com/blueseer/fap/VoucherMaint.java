@@ -97,7 +97,9 @@ import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JViewport;
 import javax.swing.SwingWorker;
-import javax.swing.event.TableModelEvent;
+import javax.swing.event.TableModelEvent;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
 
 
 /**
@@ -1150,7 +1152,7 @@ public class VoucherMaint extends javax.swing.JPanel implements IBlueSeerV {
         jLabel10.setText("Site");
         jLabel10.setName("lblsite"); // NOI18N
 
-        btlookup.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/lookup.png"))); // NOI18N
+        btlookup.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btlookup.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btlookupActionPerformed(evt);
@@ -1190,7 +1192,7 @@ public class VoucherMaint extends javax.swing.JPanel implements IBlueSeerV {
 
         jLabel14.setText("Service Charge");
 
-        btLookUpAccount.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btLookUpAccount.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btLookUpAccount.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btLookUpAccountActionPerformed(evt);

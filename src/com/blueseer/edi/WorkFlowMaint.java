@@ -77,7 +77,11 @@ import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JViewport;
-import javax.swing.SwingWorker;
+import javax.swing.SwingWorker;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignD;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignP;
 
 /**
  *
@@ -859,7 +863,7 @@ public class WorkFlowMaint extends javax.swing.JPanel implements IBlueSeerT {
             }
         });
 
-        btaddrow.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/add.png"))); // NOI18N
+        btaddrow.setIcon(FontIcon.of(MaterialDesignP.PLUS_CIRCLE, 16)); // NOI18N
         btaddrow.setToolTipText("Add Row");
         btaddrow.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -867,7 +871,7 @@ public class WorkFlowMaint extends javax.swing.JPanel implements IBlueSeerT {
             }
         });
 
-        btdeleterow.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/delete.png"))); // NOI18N
+        btdeleterow.setIcon(FontIcon.of(MaterialDesignD.DELETE, 16)); // NOI18N
         btdeleterow.setToolTipText("Delete Row");
         btdeleterow.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -917,7 +921,7 @@ public class WorkFlowMaint extends javax.swing.JPanel implements IBlueSeerT {
         jPanel3.setBorder(javax.swing.BorderFactory.createTitledBorder("Header Maintenance"));
         jPanel3.setName("panelheader"); // NOI18N
 
-        btlookup.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/lookup.png"))); // NOI18N
+        btlookup.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btlookup.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btlookupActionPerformed(evt);
@@ -941,7 +945,7 @@ public class WorkFlowMaint extends javax.swing.JPanel implements IBlueSeerT {
             }
         });
 
-        btchangelog.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/change.png"))); // NOI18N
+        btchangelog.setIcon(FontIcon.of(MaterialDesignP.PENCIL, 16)); // NOI18N
         btchangelog.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btchangelogActionPerformed(evt);

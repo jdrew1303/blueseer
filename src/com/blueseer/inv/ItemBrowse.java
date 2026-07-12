@@ -83,7 +83,9 @@ import javax.swing.JTabbedPane;
 import javax.swing.SwingWorker;
 import net.sf.jasperreports.engine.JRDataSource;
 import net.sf.jasperreports.engine.JRException;
-import net.sf.jasperreports.engine.data.ListOfArrayDataSource;
+import net.sf.jasperreports.engine.data.ListOfArrayDataSource;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
 
 /**
  *
@@ -610,14 +612,14 @@ public class ItemBrowse extends javax.swing.JPanel {
         jLabel4.setText("From Class");
         jLabel4.setName("lblfromclass"); // NOI18N
 
-        btLookUpItemDescFrom.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btLookUpItemDescFrom.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btLookUpItemDescFrom.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btLookUpItemDescFromActionPerformed(evt);
             }
         });
 
-        btLookUpItemDescTo.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btLookUpItemDescTo.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btLookUpItemDescTo.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btLookUpItemDescToActionPerformed(evt);

@@ -75,7 +75,9 @@ import javax.swing.JRadioButton;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
-import javax.swing.SwingWorker;
+import javax.swing.SwingWorker;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
 
 /**
  *
@@ -633,14 +635,14 @@ public class GLTranRpt1 extends javax.swing.JPanel {
 
         cbunposted.setText("UnPosted Transactions");
 
-        btLookUpAccountFrom.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btLookUpAccountFrom.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btLookUpAccountFrom.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btLookUpAccountFromActionPerformed(evt);
             }
         });
 
-        btLookUpAccountTo.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btLookUpAccountTo.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btLookUpAccountTo.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btLookUpAccountToActionPerformed(evt);

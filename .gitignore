@@ -8,8 +8,8 @@ jre11
 jre16
 jre17
 jre26
+.jbr-cache
 test
-!scripts/build.xml
 nbproject/private/
 .nb-gradle/
 *.zip

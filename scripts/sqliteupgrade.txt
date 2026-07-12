@@ -35,6 +35,41 @@ CREATE TABLE IF NOT EXISTS "edi_attr" (
   "exa_key" varchar(50) NOT NULL COLLATE NOCASE DEFAULT '',
   "exa_value" varchar(50) NOT NULL COLLATE NOCASE DEFAULT ''
 );
+CREATE TABLE IF NOT EXISTS "ing_mstr" (
+  "it_item" varchar(36) NOT NULL COLLATE NOCASE PRIMARY KEY,
+  "ing_legalname" varchar(200) NOT NULL COLLATE NOCASE DEFAULT '',
+  "ing_category" varchar(60) NOT NULL COLLATE NOCASE DEFAULT '',
+  "ing_enumber" varchar(10) NOT NULL COLLATE NOCASE DEFAULT '',
+  "ing_iscompound" tinyint(1) NOT NULL COLLATE NOCASE DEFAULT '0',
+  "ing_active" tinyint(1) NOT NULL COLLATE NOCASE DEFAULT '1',
+  "ing_notes" varchar(500) NOT NULL COLLATE NOCASE DEFAULT '',
+  "ing_wt_per_uom_g" decimal(12,5) NOT NULL DEFAULT '1'
+);
+CREATE TABLE IF NOT EXISTS "ing_allergen_ref" (
+  "allergen_code" varchar(20) NOT NULL COLLATE NOCASE PRIMARY KEY,
+  "allergen_desc" varchar(100) NOT NULL COLLATE NOCASE DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS "ing_allergen" (
+  "it_item" varchar(36) NOT NULL COLLATE NOCASE,
+  "allergen_code" varchar(20) NOT NULL COLLATE NOCASE,
+  PRIMARY KEY ("it_item", "allergen_code")
+);
+CREATE TABLE IF NOT EXISTS "ing_subingredient" (
+  "it_item" varchar(36) NOT NULL COLLATE NOCASE,
+  "seq" int(4) NOT NULL DEFAULT '0',
+  "sub_name" varchar(200) NOT NULL COLLATE NOCASE DEFAULT '',
+  "sub_enumber" varchar(10) NOT NULL COLLATE NOCASE DEFAULT '',
+  "is_allergen" tinyint(1) NOT NULL COLLATE NOCASE DEFAULT '0',
+  PRIMARY KEY ("it_item", "seq")
+);
+CREATE TABLE IF NOT EXISTS "warn_rule" (
+  "warn_code" varchar(30) NOT NULL COLLATE NOCASE PRIMARY KEY,
+  "trigger_type" varchar(20) NOT NULL COLLATE NOCASE DEFAULT '',
+  "trigger_value" varchar(60) NOT NULL COLLATE NOCASE DEFAULT '',
+  "threshold_pct" decimal(8,4) NOT NULL DEFAULT '0',
+  "warning_text" varchar(300) NOT NULL COLLATE NOCASE DEFAULT '',
+  "warn_active" tinyint(1) NOT NULL COLLATE NOCASE DEFAULT '1'
+);
 CREATE TABLE IF NOT EXISTS "ship_log" (
   "shl_id" varchar(8) NOT NULL COLLATE NOCASE DEFAULT '',
   "shl_type" varchar(8) NOT NULL COLLATE NOCASE DEFAULT '',
@@ -60,6 +95,34 @@ alter table gl_hist add column glh_recon tinyint(1) COLLATE NOCASE DEFAULT '0';
 alter table code_mstr add column code_internal tinyint(1) COLLATE NOCASE DEFAULT '0';
 alter table item_mstr add column it_cont varchar(30) NOT NULL DEFAULT '';
 alter table item_mstr add column it_contqty int(8) COLLATE NOCASE DEFAULT '0';
+/* */
+/* */
+/* EU FIC Annex II allergens - seeded once, referenced by ing_allergen.allergen_code */
+insert into ing_allergen_ref (allergen_code, allergen_desc) select 'GLUTEN', 'Cereals containing gluten (wheat, rye, barley, oats, spelt, kamut) and products thereof' where not exists(select 1 from ing_allergen_ref where allergen_code = 'GLUTEN');
+insert into ing_allergen_ref (allergen_code, allergen_desc) select 'CRUSTACEANS', 'Crustaceans and products thereof' where not exists(select 1 from ing_allergen_ref where allergen_code = 'CRUSTACEANS');
+insert into ing_allergen_ref (allergen_code, allergen_desc) select 'EGGS', 'Eggs and products thereof' where not exists(select 1 from ing_allergen_ref where allergen_code = 'EGGS');
+insert into ing_allergen_ref (allergen_code, allergen_desc) select 'FISH', 'Fish and products thereof' where not exists(select 1 from ing_allergen_ref where allergen_code = 'FISH');
+insert into ing_allergen_ref (allergen_code, allergen_desc) select 'PEANUTS', 'Peanuts and products thereof' where not exists(select 1 from ing_allergen_ref where allergen_code = 'PEANUTS');
+insert into ing_allergen_ref (allergen_code, allergen_desc) select 'SOYBEANS', 'Soybeans and products thereof' where not exists(select 1 from ing_allergen_ref where allergen_code = 'SOYBEANS');
+insert into ing_allergen_ref (allergen_code, allergen_desc) select 'MILK', 'Milk and products thereof (including lactose)' where not exists(select 1 from ing_allergen_ref where allergen_code = 'MILK');
+insert into ing_allergen_ref (allergen_code, allergen_desc) select 'NUTS', 'Nuts (almonds, hazelnuts, walnuts, cashews, pecans, brazil nuts, pistachios, macadamia/Queensland nuts) and products thereof' where not exists(select 1 from ing_allergen_ref where allergen_code = 'NUTS');
+insert into ing_allergen_ref (allergen_code, allergen_desc) select 'CELERY', 'Celery and products thereof' where not exists(select 1 from ing_allergen_ref where allergen_code = 'CELERY');
+insert into ing_allergen_ref (allergen_code, allergen_desc) select 'MUSTARD', 'Mustard and products thereof' where not exists(select 1 from ing_allergen_ref where allergen_code = 'MUSTARD');
+insert into ing_allergen_ref (allergen_code, allergen_desc) select 'SESAME', 'Sesame seeds and products thereof' where not exists(select 1 from ing_allergen_ref where allergen_code = 'SESAME');
+insert into ing_allergen_ref (allergen_code, allergen_desc) select 'SULPHITES', 'Sulphur dioxide and sulphites at concentrations of more than 10mg/kg or 10mg/litre (as SO2)' where not exists(select 1 from ing_allergen_ref where allergen_code = 'SULPHITES');
+insert into ing_allergen_ref (allergen_code, allergen_desc) select 'LUPIN', 'Lupin and products thereof' where not exists(select 1 from ing_allergen_ref where allergen_code = 'LUPIN');
+insert into ing_allergen_ref (allergen_code, allergen_desc) select 'MOLLUSCS', 'Molluscs and products thereof' where not exists(select 1 from ing_allergen_ref where allergen_code = 'MOLLUSCS');
+/* Common mandatory warnings - starting point only, needs compliance review before go-live */
+insert into warn_rule (warn_code, trigger_type, trigger_value, threshold_pct, warning_text) select 'ASPARTAME', 'E_NUMBER', 'E951', 0, 'Contains a source of phenylalanine' where not exists(select 1 from warn_rule where warn_code = 'ASPARTAME');
+insert into warn_rule (warn_code, trigger_type, trigger_value, threshold_pct, warning_text) select 'ACESULFAME_ASPARTAME_SALT', 'E_NUMBER', 'E962', 0, 'Contains a source of phenylalanine' where not exists(select 1 from warn_rule where warn_code = 'ACESULFAME_ASPARTAME_SALT');
+insert into warn_rule (warn_code, trigger_type, trigger_value, threshold_pct, warning_text) select 'POLYOLS', 'CATEGORY', 'Sweetener (polyol)', 10, 'Excessive consumption may produce laxative effects' where not exists(select 1 from warn_rule where warn_code = 'POLYOLS');
+insert into warn_rule (warn_code, trigger_type, trigger_value, threshold_pct, warning_text) select 'COLOUR_E110', 'E_NUMBER', 'E110', 0, 'May have an adverse effect on activity and attention in children' where not exists(select 1 from warn_rule where warn_code = 'COLOUR_E110');
+insert into warn_rule (warn_code, trigger_type, trigger_value, threshold_pct, warning_text) select 'COLOUR_E104', 'E_NUMBER', 'E104', 0, 'May have an adverse effect on activity and attention in children' where not exists(select 1 from warn_rule where warn_code = 'COLOUR_E104');
+insert into warn_rule (warn_code, trigger_type, trigger_value, threshold_pct, warning_text) select 'COLOUR_E122', 'E_NUMBER', 'E122', 0, 'May have an adverse effect on activity and attention in children' where not exists(select 1 from warn_rule where warn_code = 'COLOUR_E122');
+insert into warn_rule (warn_code, trigger_type, trigger_value, threshold_pct, warning_text) select 'COLOUR_E129', 'E_NUMBER', 'E129', 0, 'May have an adverse effect on activity and attention in children' where not exists(select 1 from warn_rule where warn_code = 'COLOUR_E129');
+insert into warn_rule (warn_code, trigger_type, trigger_value, threshold_pct, warning_text) select 'COLOUR_E102', 'E_NUMBER', 'E102', 0, 'May have an adverse effect on activity and attention in children' where not exists(select 1 from warn_rule where warn_code = 'COLOUR_E102');
+insert into warn_rule (warn_code, trigger_type, trigger_value, threshold_pct, warning_text) select 'COLOUR_E124', 'E_NUMBER', 'E124', 0, 'May have an adverse effect on activity and attention in children' where not exists(select 1 from warn_rule where warn_code = 'COLOUR_E124');
+insert into warn_rule (warn_code, trigger_type, trigger_value, threshold_pct, warning_text) select 'SULPHITES', 'ALLERGEN_CODE', 'SULPHITES', 0, 'Contains sulphites' where not exists(select 1 from warn_rule where warn_code = 'SULPHITES');
 /* */
 /* */
 delete from menu_mstr;

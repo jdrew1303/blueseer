@@ -80,7 +80,9 @@ import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JViewport;
 import javax.swing.SwingWorker;
-import net.sf.jasperreports.engine.JRException;
+import net.sf.jasperreports.engine.JRException;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
 
 /**
  *
@@ -1050,7 +1052,7 @@ public class QPRMaint extends javax.swing.JPanel implements IBlueSeerV {
 
         dcclose.setDateFormatString("yyyy-MM-dd");
 
-        btlookup.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/lookup.png"))); // NOI18N
+        btlookup.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btlookup.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btlookupActionPerformed(evt);
@@ -1065,7 +1067,7 @@ public class QPRMaint extends javax.swing.JPanel implements IBlueSeerV {
 
         jLabel20.setText("site:");
 
-        jLabel5.setFont(new java.awt.Font("Tahoma", 1, 13)); // NOI18N
+        jLabel5.putClientProperty("FlatLaf.styleClass", "h4");
         jLabel5.setText("Source Of Reject");
         jLabel5.setName("lblsourceofreject"); // NOI18N
 

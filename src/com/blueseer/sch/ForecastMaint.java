@@ -65,7 +65,9 @@ import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JViewport;
-import javax.swing.SwingWorker;
+import javax.swing.SwingWorker;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
 
 /**
  *
@@ -1059,7 +1061,7 @@ public class ForecastMaint extends javax.swing.JPanel implements IBlueSeer {
         jLabel1.setText("Part");
         jLabel1.setName("lblitem"); // NOI18N
 
-        btbrowse.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/lookup.png"))); // NOI18N
+        btbrowse.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btbrowse.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btbrowseActionPerformed(evt);

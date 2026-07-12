@@ -74,7 +74,9 @@ import javax.swing.JRadioButton;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
-import javax.swing.SwingWorker;
+import javax.swing.SwingWorker;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
 
 /**
  *
@@ -541,7 +543,7 @@ public class UOMConvMaint extends javax.swing.JPanel    {
             }
         });
 
-        btbrowsekey1.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/lookup.png"))); // NOI18N
+        btbrowsekey1.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btbrowsekey1.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btbrowsekey1ActionPerformed(evt);

@@ -25,7 +25,7 @@ echo "COUNTRY=US" >>$bsshare/bs.cfg
 
 cp bslogging.properties $bsshare/
 cp ../.patch $bsshare/
-cp -R ../dist $bsshare/
+cp -R ../target/dist $bsshare/
 cp -R ../sf/data $bsshare/
 cp -R ../sf/zebra $bsshare/
 cp -R ../sf/edi $bsshare/
@@ -40,7 +40,7 @@ cp -R ../sf/images $bsshare/
 cp -R /home/vcs/jre26 $bsshare/
 
 rm -f $bs/usr/bin/blueseer
-echo "cd /usr/share/blueseer; jre26/bin/java -D\"java.util.logging.config.file=bslogging.properties\" -cp \".:custom/*:dist/*:edi/maps/*\" bsmf.MainFrame" >>$bs/usr/bin/blueseer
+echo "cd /usr/share/blueseer; jre26/bin/java -D\"java.util.logging.config.file=bslogging.properties\" -cp \".:custom/*:dist/*:edi/maps/*\" com.blueseer.utl.mf" >>$bs/usr/bin/blueseer
 
 chmod -R 0755 $bs
 chmod -R 0777 $bsshare/data

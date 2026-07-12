@@ -30,12 +30,13 @@ import bsmf.MainFrame;
 import java.awt.Color;
 import java.awt.Component;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import javax.swing.JTable;
+import javax.swing.SwingWorker;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import net.miginfocom.swing.MigLayout;
 import static bsmf.MainFrame.checkperms;
 import static bsmf.MainFrame.db;
 import static bsmf.MainFrame.ds;
@@ -129,6 +130,7 @@ public class OVDevBrowse extends javax.swing.JPanel {
         rbinactive = new javax.swing.JRadioButton();
         btview = new javax.swing.JButton();
         jLabel1 = new javax.swing.JLabel();
+        pgloading = new javax.swing.JProgressBar();
         jScrollPane1 = new javax.swing.JScrollPane();
         tablereport = new javax.swing.JTable();
 
@@ -154,43 +156,20 @@ public class OVDevBrowse extends javax.swing.JPanel {
         jLabel1.setForeground(new java.awt.Color(255, 0, 9));
         jLabel1.setText("Enter first couple of chars:");
 
-        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
-        jPanel1.setLayout(jPanel1Layout);
-        jPanel1Layout.setHorizontalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel1Layout.createSequentialGroup()
-                .addGap(23, 23, 23)
-                .addComponent(jLabel1)
-                .addGap(18, 18, 18)
-                .addComponent(jLabel2)
-                .addGap(3, 3, 3)
-                .addComponent(tbtext, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(18, 18, 18)
-                .addComponent(rbactive)
-                .addGap(5, 5, 5)
-                .addComponent(rbinactive)
-                .addGap(5, 5, 5)
-                .addComponent(btview)
-                .addContainerGap())
-        );
-        jPanel1Layout.setVerticalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel1Layout.createSequentialGroup()
-                .addGap(5, 5, 5)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel2)
-                    .addComponent(jLabel1)
-                    .addComponent(tbtext, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-            .addGroup(jPanel1Layout.createSequentialGroup()
-                .addGap(9, 9, 9)
-                .addComponent(rbactive))
-            .addGroup(jPanel1Layout.createSequentialGroup()
-                .addGap(9, 9, 9)
-                .addComponent(rbinactive))
-            .addGroup(jPanel1Layout.createSequentialGroup()
-                .addGap(5, 5, 5)
-                .addComponent(btview))
-        );
+        pgloading.setIndeterminate(true);
+        pgloading.setVisible(false);
+
+        // Migrated from javax.swing.GroupLayout to MigLayout (see the "Layout"
+        // section in README): a single row, baseline-aligned, that reflows
+        // sanely instead of relying on fixed pixel gaps.
+        jPanel1.setLayout(new MigLayout("insets 5 23 5 5", "[]18[]3[]18[]5[]5[]5[]", "[]"));
+        jPanel1.add(jLabel1);
+        jPanel1.add(jLabel2);
+        jPanel1.add(tbtext, "width 80!");
+        jPanel1.add(rbactive);
+        jPanel1.add(rbinactive);
+        jPanel1.add(btview);
+        jPanel1.add(pgloading, "width 80!, wrap");
 
         tablereport.setAutoCreateRowSorter(true);
         tablereport.setModel(new javax.swing.table.DefaultTableModel(
@@ -219,21 +198,13 @@ public class OVDevBrowse extends javax.swing.JPanel {
         });
         jScrollPane1.setViewportView(tablereport);
 
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
-        this.setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jPanel1, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-            .addComponent(jScrollPane1)
-        );
-        layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 356, Short.MAX_VALUE))
-        );
+        // Migrated from javax.swing.GroupLayout to MigLayout: the toolbar row
+        // keeps its natural height, the table grows to fill whatever space is
+        // left, and both reflow properly on resize/HiDPI instead of relying on
+        // a fixed "356" pixel table height.
+        this.setLayout(new MigLayout("fill, insets 11 0 0 0", "[grow]", "[]related[grow]"));
+        this.add(jPanel1, "growx, wrap");
+        this.add(jScrollPane1, "grow");
     }// </editor-fold>//GEN-END:initComponents
 
     private void btviewActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btviewActionPerformed
@@ -242,63 +213,60 @@ public class OVDevBrowse extends javax.swing.JPanel {
             bsmf.MainFrame.show("Select either active OR inactive...not both");
             return;
         }
-        
-        
-        try {
-            Connection con = null;
-        if (ds != null) {
-          con = ds.getConnection();
-        } else {
-          con = DriverManager.getConnection(url + db, user, pass);  
-        }
-            Statement st = con.createStatement();
-            ResultSet res = null;
-            try {
 
-                int i = 0;
+        // Runs the query on a background thread instead of the EDT (see the
+        // "Asynchronous Database Calls" section in README) so the UI doesn't
+        // freeze while this executes; pgloading gives the user a visual cue
+        // that something is happening in the meantime.
+        final boolean active = rbactive.isSelected();
+        final String search = tbtext.getText();
+        btview.setEnabled(false);
+        pgloading.setVisible(true);
 
+        new SwingWorker<javax.swing.table.DefaultTableModel, Void>() {
+            @Override
+            protected javax.swing.table.DefaultTableModel doInBackground() throws Exception {
                 javax.swing.table.DefaultTableModel mymodel = new javax.swing.table.DefaultTableModel(new Object[][]{},
                     new String[]{"ID", "Title", "Status", "NoteDate", "Notes"});
-                tablereport.setModel(mymodel);
-                 tablereport.getColumnModel().getColumn(0).setCellRenderer(new OVDevBrowse.SomeRenderer());       
-                // ReportPanel.TableReport.getColumn("CallID").setCellRenderer(new ButtonRenderer());
-                //          ReportPanel.TableReport.getColumn("CallID").setCellEditor(
-                    //       new ButtonEditor(new JCheckBox()));
 
-                if (rbactive.isSelected()) {
-                res = st.executeQuery("SELECT ovdm_id, ovdm_title, ovdm_status, ovdd_date, ovdd_note FROM  ov_devm  " +
-                    " left outer join ov_devd on ovdd_parent = ovdm_id where ovdm_status = 'open' and ovdm_title like " + "'%" + tbtext.getText().toString() + "%' ;") ;
-                } else {
-              res = st.executeQuery("SELECT ovdm_id, ovdm_title, ovdm_status, ovdd_date, ovdd_note FROM  ov_devm  " +
-                    " left outer join ov_devd on ovdd_parent = ovdm_id where ovdm_status = 'closed' and ovdm_title like " + "'%" + tbtext.getText().toString() + "%' ;") ;
+                Connection con = (ds != null) ? ds.getConnection() : DriverManager.getConnection(url + db, user, pass);
+                try {
+                    String sql = "SELECT ovdm_id, ovdm_title, ovdm_status, ovdd_date, ovdd_note FROM ov_devm "
+                        + "left outer join ov_devd on ovdd_parent = ovdm_id where ovdm_status = ? and ovdm_title like ?";
+                    try (PreparedStatement ps = con.prepareStatement(sql)) {
+                        ps.setString(1, active ? "open" : "closed");
+                        ps.setString(2, "%" + search + "%");
+                        try (ResultSet res = ps.executeQuery()) {
+                            while (res.next()) {
+                                mymodel.addRow(new Object[]{res.getString("ovdm_id"),
+                                    res.getString("ovdm_title"),
+                                    res.getString("ovdm_status"),
+                                    res.getString("ovdd_date"),
+                                    res.getString("ovdd_note")
+                                });
+                            }
+                        }
+                    }
+                } finally {
+                    con.close();
                 }
-
-                while (res.next()) {
-                    i++;
-
-                    mymodel.addRow(new Object[]{res.getString("ovdm_id"),
-                        res.getString("ovdm_title"),
-                        res.getString("ovdm_status"),
-                        res.getString("ovdd_date"),
-                        res.getString("ovdd_note")
-                    });
-                }
-
-            } catch (SQLException s) {
-                MainFrame.bslog(s);
-                bsmf.MainFrame.show("Sql code does not execute");
-            } finally {
-                if (res != null) {
-                    res.close();
-                }
-                if (st != null) {
-                    st.close();
-                }
-                con.close();
+                return mymodel;
             }
-        } catch (Exception e) {
-            MainFrame.bslog(e);
-        }
+
+            @Override
+            protected void done() {
+                btview.setEnabled(true);
+                pgloading.setVisible(false);
+                try {
+                    javax.swing.table.DefaultTableModel mymodel = get();
+                    tablereport.setModel(mymodel);
+                    tablereport.getColumnModel().getColumn(0).setCellRenderer(new OVDevBrowse.SomeRenderer());
+                } catch (Exception e) {
+                    MainFrame.bslog(e);
+                    bsmf.MainFrame.show("Sql code does not execute");
+                }
+            }
+        }.execute();
     }//GEN-LAST:event_btviewActionPerformed
 
     private void tbtextActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_tbtextActionPerformed
@@ -322,6 +290,7 @@ public class OVDevBrowse extends javax.swing.JPanel {
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JPanel jPanel1;
+    private javax.swing.JProgressBar pgloading;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JRadioButton rbactive;
     private javax.swing.JRadioButton rbinactive;

@@ -166,7 +166,10 @@ import javax.swing.JTextField;
 import javax.swing.SwingWorker;
 import javax.swing.event.TableModelEvent;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableColumnModel;
+import javax.swing.table.TableColumnModel;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignP;
 
 
 /**
@@ -3243,7 +3246,7 @@ public class OrderMaint extends javax.swing.JPanel implements IBlueSeerV {
         jLabel12.setText("Country");
         jLabel12.setName("lblcountry"); // NOI18N
 
-        btLookUpShipTo.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btLookUpShipTo.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btLookUpShipTo.setToolTipText("lookup");
         btLookUpShipTo.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -3405,7 +3408,7 @@ public class OrderMaint extends javax.swing.JPanel implements IBlueSeerV {
             }
         });
 
-        btLookUpBillTo.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btLookUpBillTo.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btLookUpBillTo.setToolTipText("lookup");
         btLookUpBillTo.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -3413,7 +3416,7 @@ public class OrderMaint extends javax.swing.JPanel implements IBlueSeerV {
             }
         });
 
-        btlookup.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/lookup.png"))); // NOI18N
+        btlookup.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btlookup.setToolTipText("search");
         btlookup.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -3455,7 +3458,7 @@ public class OrderMaint extends javax.swing.JPanel implements IBlueSeerV {
             }
         });
 
-        btchangelog.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/change.png"))); // NOI18N
+        btchangelog.setIcon(FontIcon.of(MaterialDesignP.PENCIL, 16)); // NOI18N
         btchangelog.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btchangelogActionPerformed(evt);
@@ -3627,7 +3630,7 @@ public class OrderMaint extends javax.swing.JPanel implements IBlueSeerV {
         jLabel9.setText("Description");
         jLabel9.setName("lbldesc"); // NOI18N
 
-        btLookUpItemDesc.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btLookUpItemDesc.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btLookUpItemDesc.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btLookUpItemDescActionPerformed(evt);
@@ -3837,7 +3840,7 @@ public class OrderMaint extends javax.swing.JPanel implements IBlueSeerV {
         jLabel10.setText("ShipTo");
         jLabel10.setName("lblshipto"); // NOI18N
 
-        btLookUpItemShipTo.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btLookUpItemShipTo.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btLookUpItemShipTo.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btLookUpItemShipToActionPerformed(evt);

@@ -102,7 +102,10 @@ import javax.swing.JTextField;
 import javax.swing.SwingWorker;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
-import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.io.FilenameUtils;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignP;
 
 
 /**
@@ -1576,7 +1579,7 @@ public class CashTran extends javax.swing.JPanel {
         jLabel36.setText("Date");
         jLabel36.setName("sell_lbldate"); // NOI18N
 
-        lbtitle1.setFont(new java.awt.Font("Tahoma", 0, 36)); // NOI18N
+        lbtitle1.putClientProperty("FlatLaf.styleClass", "h1");
 
         btaddentity1.setText("add new customer");
         btaddentity1.setName("btaddcustomer"); // NOI18N
@@ -1632,7 +1635,7 @@ public class CashTran extends javax.swing.JPanel {
         jLabel9.setText("Rmks (optional)");
         jLabel9.setName("sell_lblremarks"); // NOI18N
 
-        btLookUpItemDesc.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btLookUpItemDesc.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btLookUpItemDesc.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btLookUpItemDescActionPerformed(evt);
@@ -1709,7 +1712,7 @@ public class CashTran extends javax.swing.JPanel {
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
-        btLookUpBillTo.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btLookUpBillTo.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btLookUpBillTo.setToolTipText("lookup");
         btLookUpBillTo.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -1875,7 +1878,7 @@ public class CashTran extends javax.swing.JPanel {
         jLabel35.setText("Date");
         jLabel35.setName("buy_lbldate"); // NOI18N
 
-        lbtitle.setFont(new java.awt.Font("Tahoma", 0, 36)); // NOI18N
+        lbtitle.putClientProperty("FlatLaf.styleClass", "h1");
 
         btaddentity.setText("add new vendor");
         btaddentity.setName("btaddvendor"); // NOI18N
@@ -2131,7 +2134,7 @@ public class CashTran extends javax.swing.JPanel {
         jLabel37.setText("Date");
         jLabel37.setName("expense_lbldate"); // NOI18N
 
-        lbtitle2.setFont(new java.awt.Font("Tahoma", 0, 36)); // NOI18N
+        lbtitle2.putClientProperty("FlatLaf.styleClass", "h1");
 
         btexpenseAddEntity.setText("add new vendor");
         btexpenseAddEntity.setName("btaddvendor"); // NOI18N
@@ -2205,7 +2208,7 @@ public class CashTran extends javax.swing.JPanel {
         jLabel14.setText("PO# (optional)");
         jLabel14.setName("expense_lblpo"); // NOI18N
 
-        btLookUpExpAccount.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btLookUpExpAccount.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btLookUpExpAccount.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btLookUpExpAccountActionPerformed(evt);
@@ -2520,7 +2523,7 @@ public class CashTran extends javax.swing.JPanel {
             }
         });
 
-        btexpaddacct.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/add.png"))); // NOI18N
+        btexpaddacct.setIcon(FontIcon.of(MaterialDesignP.PLUS_CIRCLE, 16)); // NOI18N
         btexpaddacct.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btexpaddacctActionPerformed(evt);
@@ -2547,7 +2550,7 @@ public class CashTran extends javax.swing.JPanel {
         lblentity3.setText("VendorCode");
         lblentity3.setName("recurexpense_lblvendor"); // NOI18N
 
-        btaddentity3.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/add.png"))); // NOI18N
+        btaddentity3.setIcon(FontIcon.of(MaterialDesignP.PLUS_CIRCLE, 16)); // NOI18N
         btaddentity3.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btaddentity3ActionPerformed(evt);
@@ -2804,7 +2807,7 @@ public class CashTran extends javax.swing.JPanel {
         jLabel39.setText("Date");
         jLabel39.setName("income_lbldate"); // NOI18N
 
-        lbtitleIncome.setFont(new java.awt.Font("Tahoma", 0, 36)); // NOI18N
+        lbtitleIncome.putClientProperty("FlatLaf.styleClass", "h1");
 
         lbitem4.setText("Description:");
         lbitem4.setName("income_lbldesc"); // NOI18N

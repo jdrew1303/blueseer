@@ -144,7 +144,6 @@ import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
-import java.io.PrintStream;
 import java.math.BigDecimal;
 import java.net.Socket;
 import java.net.URI;
@@ -190,9 +189,6 @@ import net.sf.jasperreports.engine.JasperExportManager;
 import net.sf.jasperreports.engine.data.JRTableModelDataSource;
 import net.sf.jasperreports.engine.data.ListOfArrayDataSource;
 import org.apache.commons.lang3.time.DateUtils;
-import org.icepdf.ri.common.ComponentKeyBinding;
-import org.icepdf.ri.common.SwingController;
-import org.icepdf.ri.common.SwingViewBuilder;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -20489,53 +20485,21 @@ return mystring;
        
     } 
        
-    public static void showPDFusingIcePDF(String file) {
-        
-        PrintStream orgStream   = null;
-        PrintStream fileStream  = null;
-        
+    /**
+     * Opens a PDF in the user's OS-default PDF viewer instead of an embedded
+     * viewer, avoiding the need to bundle a PDF rendering engine at all.
+     */
+    public static void openPDF(String file) {
         try {
-        
-        // this redirect of Std Err is necessary for icePDF warnings/crap that you are using free stuff  
-        // anyone know how to suppress these warnings...I'm all ears.
-        
-        orgStream = System.out;
-        fileStream = new PrintStream(new FileOutputStream("icePDF.log",true));
-        System.setErr(fileStream);
-        
-        Path pdfpath = FileSystems.getDefault().getPath(file);
-
-        // build a controller
-        SwingController controller = new SwingController();
-
-        // Build a SwingViewFactory configured with the controller
-        SwingViewBuilder factory = new SwingViewBuilder(controller);
-
-        // Use the factory to build a JPanel that is pre-configured
-        //with a complete, active Viewer UI.
-        JPanel viewerComponentPanel = factory.buildViewerPanel();
-
-        // add copy keyboard command
-        ComponentKeyBinding.install(controller, viewerComponentPanel);
-
-        // add interactive mouse link annotation support via callback
-        controller.getDocumentViewController().setAnnotationCallback(
-              new org.icepdf.ri.common.MyAnnotationCallback(
-                     controller.getDocumentViewController())); 
-
-        // Create a JFrame to display the panel in
-        JFrame window = new JFrame("Viewer"); 
-        window.getContentPane().add(viewerComponentPanel);
-        window.pack();
-        window.setVisible(true);
-
-        // Open a PDF document to view
-        controller.openDocument(pdfpath.toString());
-        
+            if (!java.awt.Desktop.isDesktopSupported()
+                    || !java.awt.Desktop.getDesktop().isSupported(java.awt.Desktop.Action.OPEN)) {
+                MainFrame.show("No default PDF viewer is available on this system.");
+                return;
+            }
+            java.awt.Desktop.getDesktop().open(new java.io.File(file));
         } catch (Exception ex) {
             bslog(ex);
-        } finally {
-           System.setErr(orgStream);
+            MainFrame.show("Unable to open " + file);
         }
     }
     
@@ -21043,27 +21007,21 @@ return mystring;
     }    
         
     public static void printLabelItem(String item, String printer, String labelfile) throws IOException, PrintException {
-          String this_printer = "";
-          try {
+        printLabelItem(item, printer, labelfile, null, "", "", "", "", "");
+    }
 
-          if (printer.isEmpty()) {
-              this_printer = OVData.getDefaultLabelPrinter();
-          } else {
-              this_printer = printer;
-          }
-          
-          if (this_printer.isEmpty())
-              return;
-          
-      
-        String[] prt = OVData.getPrinterInfo(this_printer);
-        if (prt[2].equals("DirectToIP") && prt[1].isEmpty()) {
-            prt[1] = "9100";
-        }
-        
-        
-        Path template = checkForCustomPath(getSystemLabelDirectory(), labelfile);       
-                
+    /**
+     * Reads a .prn label template and substitutes its tokens, returning the
+     * final ZPL text without sending it anywhere - shared by printLabelItem
+     * (which sends this over the printer socket) and the Preview Label
+     * button (which renders it to a PDF instead via com.blueseer.ing.LabelPreview).
+     */
+    public static String buildLabelZpl(String item, String labelfile,
+            com.blueseer.ing.IngredientLabelEngine.IngredientLabelResult ingLabel,
+            String allergenWarnings, String lotNbr, String bestBefore, String itemDesc,
+            String netWeight) throws IOException {
+        Path template = checkForCustomPath(getSystemLabelDirectory(), labelfile);
+
         BufferedReader fsr = new BufferedReader(new FileReader(template.toFile(), StandardCharsets.UTF_8));
         String line = "";
         String concatline = "";
@@ -21072,12 +21030,50 @@ return mystring;
             concatline += line;
         }
         fsr.close();
-        // fos.write(concatline.getBytes());
-
-        java.util.Date now = new java.util.Date();
-        DateFormat dfdate = new SimpleDateFormat("MM/dd/yyyy");
 
         concatline = concatline.replace("$ITEMNBR", item);
+        concatline = spliceIngredientListZpl(concatline, ingLabel, item, netWeight);
+        concatline = concatline.replace("$ALLERGENWARNINGS", allergenWarnings);
+        concatline = concatline.replace("$LOTNBR", lotNbr);
+        concatline = concatline.replace("$BESTBEFORE", bestBefore);
+        concatline = concatline.replace("$ITEMDESC", itemDesc);
+        concatline = concatline.replace("$NETWEIGHT", netWeight);
+        return concatline;
+    }
+
+    /**
+     * Same as printLabelItem(item, printer, labelfile), plus the EU/Irish FIC
+     * ingredient label tokens: $INGREDIENTLIST, $ALLERGENWARNINGS, $LOTNBR,
+     * $BESTBEFORE, $ITEMDESC, $NETWEIGHT (see com.blueseer.ing.IngredientLabelEngine).
+     * Allergens are rendered bold in $INGREDIENTLIST via
+     * {@link #spliceIngredientListZpl} - see that method for the template
+     * convention this depends on.
+     */
+    public static void printLabelItem(String item, String printer, String labelfile,
+            com.blueseer.ing.IngredientLabelEngine.IngredientLabelResult ingLabel,
+            String allergenWarnings, String lotNbr, String bestBefore, String itemDesc,
+            String netWeight) throws IOException, PrintException {
+          String this_printer = "";
+          try {
+
+          if (printer.isEmpty()) {
+              this_printer = OVData.getDefaultLabelPrinter();
+          } else {
+              this_printer = printer;
+          }
+
+          if (this_printer.isEmpty())
+              return;
+
+
+        String[] prt = OVData.getPrinterInfo(this_printer);
+        if (prt[2].equals("DirectToIP") && prt[1].isEmpty()) {
+            prt[1] = "9100";
+        }
+
+
+        String concatline = buildLabelZpl(item, labelfile, ingLabel, allergenWarnings, lotNbr,
+                bestBefore, itemDesc, netWeight);
 
          if (prt[2].equals("DirectToIP")) {
             Socket soc = null;
@@ -21113,7 +21109,59 @@ return mystring;
 MainFrame.bslog(e);
 }
       }
-      
+
+    /**
+     * Replaces $INGREDIENTLIST with the entire dynamic lower section of the
+     * label - the bold-allergen-aware ingredient text, disclaimer, any
+     * regulatory warnings, a divider, the Net Weight/Best Before/Batch-Lot
+     * column and the barcode beside it - since one ^FD field can't mix font
+     * weights, and every one of those elements' Y position depends on how
+     * many lines the ingredient list actually wrapped to. Layout stays
+     * template-editable: the token must sit inside a
+     * "^FOx,y^A0N,h,w^FBwidth,lines,spacing,justify^FD$INGREDIENTLIST^FS"
+     * block (a normal ^FO + ^A0N + optional ^FB immediately before the ^FD),
+     * exactly like every other field in a .prn template - x/y/font size/wrap
+     * width are read straight out of that block, so moving or resizing the
+     * ingredient list on the label is still just an edit to the .prn text
+     * file, not a code change. Falls back to a plain, non-bold substitution
+     * if the token isn't wrapped that way (e.g. an older/malformed template).
+     */
+    private static String spliceIngredientListZpl(String template,
+            com.blueseer.ing.IngredientLabelEngine.IngredientLabelResult ingLabel,
+            String item, String netWeight) {
+        String tokenField = "^FD$INGREDIENTLIST^FS";
+        int fsIdx = template.indexOf(tokenField);
+        if (fsIdx < 0) {
+            return template;
+        }
+        if (ingLabel == null) {
+            return template.replace(tokenField, "");
+        }
+        int blockStart = template.lastIndexOf("^FO", fsIdx);
+        int prevFieldEnd = template.lastIndexOf("^FS", fsIdx);
+        if (blockStart < 0 || blockStart < prevFieldEnd) {
+            return template.replace("$INGREDIENTLIST", ingLabel.toPlainIngredientList());
+        }
+        String blockPrefix = template.substring(blockStart, fsIdx);
+        java.util.regex.Matcher foM = java.util.regex.Pattern.compile("\\^FO(\\d+),(\\d+)").matcher(blockPrefix);
+        java.util.regex.Matcher fontM = java.util.regex.Pattern.compile("\\^A0N,(\\d+),(\\d+)").matcher(blockPrefix);
+        java.util.regex.Matcher fbM = java.util.regex.Pattern.compile("\\^FB(\\d+),(\\d+),(\\d+)").matcher(blockPrefix);
+        if (!foM.find() || !fontM.find()) {
+            return template.replace("$INGREDIENTLIST", ingLabel.toPlainIngredientList());
+        }
+        int x = Integer.parseInt(foM.group(1));
+        int y = Integer.parseInt(foM.group(2));
+        int fontHeight = Integer.parseInt(fontM.group(1));
+        int width = 400;
+        int lineSpacing = 0;
+        if (fbM.find()) {
+            width = Integer.parseInt(fbM.group(1));
+            lineSpacing = Integer.parseInt(fbM.group(3));
+        }
+        String zplBlock = ingLabel.toZplLabelBody(x, y, width, fontHeight, lineSpacing, item, netWeight);
+        return template.substring(0, blockStart) + zplBlock + template.substring(fsIdx + tokenField.length());
+    }
+
     public static void printLabelStream(String text, String printer) throws IOException, PrintException {
           prt_mstr prt = getPrtMstr(new String[]{printer});
           String port = (prt.prt_port().isBlank()) ? "9100" : prt.prt_port();

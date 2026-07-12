@@ -90,7 +90,10 @@ import javax.swing.JTable;
 import javax.swing.JViewport;
 import javax.swing.ListModel;
 import javax.swing.SwingWorker;
-import javax.swing.table.DefaultTableModel;
+import javax.swing.table.DefaultTableModel;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignP;
 
 /**
  *
@@ -908,7 +911,7 @@ public class GLIncStmtDef extends javax.swing.JPanel  {
             }
         });
 
-        btLookUpAccountFrom.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btLookUpAccountFrom.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btLookUpAccountFrom.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btLookUpAccountFromActionPerformed(evt);
@@ -979,7 +982,7 @@ public class GLIncStmtDef extends javax.swing.JPanel  {
                 .addContainerGap())
         );
 
-        btlookup.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/lookup.png"))); // NOI18N
+        btlookup.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btlookup.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btlookupActionPerformed(evt);
@@ -1005,7 +1008,7 @@ public class GLIncStmtDef extends javax.swing.JPanel  {
 
         jLabel8.setText("Description");
 
-        btaddcat.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/add.png"))); // NOI18N
+        btaddcat.setIcon(FontIcon.of(MaterialDesignP.PLUS_CIRCLE, 16)); // NOI18N
         btaddcat.setToolTipText("Add Category");
         btaddcat.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {

@@ -187,7 +187,10 @@ import javax.tools.JavaCompiler;
 import javax.tools.JavaCompiler.CompilationTask;
 import javax.tools.JavaFileObject;
 import javax.tools.SimpleJavaFileObject;
-import javax.tools.ToolProvider;
+import javax.tools.ToolProvider;
+import org.kordamp.ikonli.swing.FontIcon;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignC;
+import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
 
 /**
  *
@@ -2790,7 +2793,7 @@ public class MapMaint extends javax.swing.JPanel implements IBlueSeerT  {
         });
         toolbar.add(btdelete);
 
-        btupdate.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/save.png"))); // NOI18N
+        btupdate.setIcon(FontIcon.of(MaterialDesignC.CONTENT_SAVE, 16)); // NOI18N
         btupdate.setToolTipText("Save");
         btupdate.setFocusable(false);
         btupdate.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
@@ -2938,7 +2941,7 @@ public class MapMaint extends javax.swing.JPanel implements IBlueSeerT  {
 
         jLabel10.setText("Version");
 
-        btfind.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/find.png"))); // NOI18N
+        btfind.setIcon(FontIcon.of(MaterialDesignM.MAGNIFY, 16)); // NOI18N
         btfind.setFocusable(false);
         btfind.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btfind.setName("btlookup"); // NOI18N

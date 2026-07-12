@@ -303,6 +303,8 @@ public class MetaMaint extends javax.swing.JPanel {
         btclear = new javax.swing.JButton();
         ddtable = new javax.swing.JComboBox<>();
         tbkeysearch = new javax.swing.JTextField();
+        tbkeysearch.putClientProperty("JTextField.placeholderText", "Search...");
+        tbkeysearch.putClientProperty("JTextField.showClearButton", true);
         jLabel3 = new javax.swing.JLabel();
         jScrollPane1 = new javax.swing.JScrollPane();
         tablereport = new javax.swing.JTable();
