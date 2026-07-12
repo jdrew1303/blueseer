@@ -524,6 +524,14 @@
     </dependency>
 
     <dependency>
+    <groupId>com.blueseer.bsmf</groupId>
+    <artifactId>bsmf</artifactId>
+    <version>1.0</version>
+    <scope>system</scope>
+    <systemPath>${project.basedir}/lib/bsmf.jar</systemPath>
+    </dependency>
+
+    <dependency>
       <groupId>io.github.varunsermaldev</groupId>
       <artifactId>JavaZPL2PDF</artifactId>
       <version>1.0.0</version>
@@ -1035,8 +1043,8 @@
    <targetPath>resources</targetPath>
   </resource>
   <resource>
-   <!-- bsmf.MainFrame loads its icons via getClass().getResource, e.g.
-        "/images/foo.png"; keep them on the classpath. -->
+   <!-- bsmf.MainFrame (compiled, no source in this repo) loads its icons via
+        getClass().getResource, e.g. "/images/foo.png"; keep them on the classpath. -->
    <directory>src/images</directory>
    <targetPath>images</targetPath>
   </resource>
