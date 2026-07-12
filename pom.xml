@@ -654,8 +654,16 @@
                          the stage/move steps just redo a few seconds of
                          local file I/O. -->
                     <mkdir dir="${jbr.cache}"/>
+                    <!-- The GitHub releases page lists these assets, but its
+                         actual download links all point through JetBrains'
+                         own CDN, not github.com/.../releases/download/... -
+                         confirmed by inspecting the real hrefs on the
+                         release page after the previous URL (guessed from
+                         the asset filenames shown, which don't reflect
+                         where they're actually hosted) 404'd on a real
+                         build. -->
                     <get skipexisting="true" verbose="true"
-                         src="https://github.com/JetBrains/JetBrainsRuntime/releases/download/jbr-release-${jbr.version}${jbr.build}/jbr-${jbr.version}-${jbr.os}-${jbr.arch}-${jbr.build}.tar.gz"
+                         src="https://cache-redirector.jetbrains.com/intellij-jbr/jbr-${jbr.version}-${jbr.os}-${jbr.arch}-${jbr.build}.tar.gz"
                          dest="${jbr.cache}/jbr-${jbr.version}-${jbr.os}-${jbr.arch}-${jbr.build}.tar.gz"/>
                     <delete dir="${jbr.cache}/stage" quiet="true"/>
                     <mkdir dir="${jbr.cache}/stage"/>
