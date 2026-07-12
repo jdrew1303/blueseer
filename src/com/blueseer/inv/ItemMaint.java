@@ -2640,10 +2640,18 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
                                 resolveIngredientLabel(lotAndBestBefore);
                         String lotNbr = lotAndBestBefore[0];
                         String bestBefore = lotAndBestBefore[1];
+                        com.blueseer.ing.NutritionLabelEngine.NutritionLabelResult nutLabel =
+                                resolveNutritionLabel();
+                        if (nutLabel != null && !nutLabel.dataComplete()
+                                && !confirmIncompleteNutritionData(nutLabel)) {
+                            return;
+                        }
+                        String[] storageUsage = resolveStorageUsage();
                         if (ingLabel != null) {
                             OVData.printLabelItem(tbkey.getText(), defaultprinter, lz.lblz_file(),
                                     ingLabel, ingLabel.toPlainWarnings(), lotNbr, bestBefore,
-                                    tbdesc.getText(), formatNetWeightForLabel());
+                                    tbdesc.getText(), formatNetWeightForLabel(), nutLabel,
+                                    storageUsage[0], storageUsage[1]);
                         } else {
                             OVData.printLabelItem(tbkey.getText(), defaultprinter, lz.lblz_file());
                         }
@@ -2669,9 +2677,16 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
             com.blueseer.ing.IngredientLabelEngine.IngredientLabelResult ingLabel =
                     resolveIngredientLabel(lotAndBestBefore);
             String allergenWarnings = ingLabel != null ? ingLabel.toPlainWarnings() : "";
+            com.blueseer.ing.NutritionLabelEngine.NutritionLabelResult nutLabel = resolveNutritionLabel();
+            if (nutLabel != null && !nutLabel.dataComplete()) {
+                bsmf.MainFrame.show("Nutrition data is incomplete for this item (missing mandatory values for: "
+                        + String.join(", ", nutLabel.incompleteIngredients())
+                        + ") - the preview below is calculated from partial data.");
+            }
+            String[] storageUsage = resolveStorageUsage();
             String zplText = OVData.buildLabelZpl(tbkey.getText(), lz.lblz_file(), ingLabel,
                     allergenWarnings, lotAndBestBefore[0], lotAndBestBefore[1], tbdesc.getText(),
-                    formatNetWeightForLabel());
+                    formatNetWeightForLabel(), nutLabel, storageUsage[0], storageUsage[1]);
             java.io.File pdf = com.blueseer.ing.LabelPreview.renderToPdf(zplText);
             OVData.openPDF(pdf.getAbsolutePath());
         } catch (Exception ex) {
@@ -2705,6 +2720,60 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
             MainFrame.bslog(ex);
         }
         return ingLabel;
+    }
+
+    /**
+     * Resolves the calculated nutrition-declaration panel for the currently
+     * loaded item, honoring its configured placement (item_nut_cfg) - returns
+     * null when placement is NONE (not shown at all, e.g. an Annex V point 19
+     * exemption) or MAIN_LABEL/SEPARATE_LABEL both return the same calculated
+     * result; which label template actually references $NUTRITIONPANEL (the
+     * main one, or a separate one selected from the label dropdown) is a
+     * template-authoring choice, not something this method needs to decide.
+     */
+    private com.blueseer.ing.NutritionLabelEngine.NutritionLabelResult resolveNutritionLabel() {
+        String item = tbkey.getText();
+        if (item == null || item.isBlank()) {
+            return null;
+        }
+        com.blueseer.ing.nutData.item_nut_cfg cfg = com.blueseer.ing.nutData.getItemNutCfg(item);
+        if (com.blueseer.ing.nutData.item_nut_cfg.NONE.equals(cfg.nut_placement())) {
+            return null;
+        }
+        try {
+            return new com.blueseer.ing.NutritionLabelEngine().generate(item);
+        } catch (Exception ex) {
+            MainFrame.bslog(ex);
+            return null;
+        }
+    }
+
+    /** {storage instructions, usage instructions} (FIC Article 9(1)(g)/(j)) for the currently loaded item. */
+    private String[] resolveStorageUsage() {
+        String item = tbkey.getText();
+        if (item == null || item.isBlank()) {
+            return new String[]{"", ""};
+        }
+        com.blueseer.ing.ingData.ing_mstr rec = com.blueseer.ing.ingData.getIngMstr(item);
+        boolean found = rec.m() != null && rec.m().length > 0 && rec.m()[0].equals(BlueSeerUtils.SuccessBit);
+        return found ? new String[]{rec.ing_storage_instr(), rec.ing_usage_instr()} : new String[]{"", ""};
+    }
+
+    /**
+     * Print Label (unlike Preview Label) sends output straight to a physical
+     * printer, so incomplete nutrition data gets an explicit stop-and-confirm
+     * rather than Preview's softer inline warning - a legally-binding figure
+     * calculated from partial data is the wrong thing to let out the door
+     * silently (see NUTR-13).
+     */
+    private boolean confirmIncompleteNutritionData(com.blueseer.ing.NutritionLabelEngine.NutritionLabelResult nutLabel) {
+        int choice = javax.swing.JOptionPane.showConfirmDialog(this,
+                "Nutrition data is incomplete for this item (missing mandatory values for: "
+                        + String.join(", ", nutLabel.incompleteIngredients())
+                        + ").\nThe calculated panel is based on partial data. Print anyway?",
+                "Incomplete nutrition data", javax.swing.JOptionPane.YES_NO_OPTION,
+                javax.swing.JOptionPane.WARNING_MESSAGE);
+        return choice == javax.swing.JOptionPane.YES_OPTION;
     }
 
     private String formatNetWeightForLabel() {
