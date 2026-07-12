@@ -567,7 +567,7 @@
       <swt.groupId>org.eclipse.platform</swt.groupId>
       <swt.artifactId>org.eclipse.swt.win32.win32.x86_64</swt.artifactId>
       <swt.version>3.129.0</swt.version>
-      <installer.type>MSI</installer.type>
+      <installer.type>msi</installer.type>
       <installer.icon>${project.basedir}/sf/images/bs.ico</installer.icon>
       <!-- JBR release asset naming tokens - see jbr.version/jbr.build and
            the "download-jbr" antrun execution in the "jpackage" profile. -->
@@ -577,115 +577,103 @@
     <build>
       <plugins>
         <plugin>
-          <groupId>org.panteleyev</groupId>
-          <artifactId>jpackage-maven-plugin</artifactId>
-          <version>1.8.0</version>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-antrun-plugin</artifactId>
+          <version>3.1.0</version>
           <executions>
             <execution>
-              <!-- Declared here (not in the shared "jpackage" profile) so
-                   this is the only active profile declaring jpackage-run's
-                   configuration on Windows: a real build on macOS showed that
-                   when the SAME plugin+execution id is declared in two
-                   simultaneously-active profiles (the shared "jpackage"
-                   profile plus mac-aarch64/mac-x86_64's OS-activated one),
-                   the lifecycle silently never invokes the mojo at all - no
-                   log banner, no error, just skipped. See the mac-aarch64/
-                   mac-x86_64 profiles for the platform-specific mac
-                   equivalent of this same execution. -->
+              <!-- Invokes the downloaded JBR's own bin/jpackage directly
+                   with <exec>, rather than using org.panteleyev's
+                   jpackage-maven-plugin: that plugin runs jpackage from
+                   whatever JDK is running Maven itself (java.home), not
+                   from jbr.home. A real build showed jlink then fails with
+                   "cannot find the build signature in the java.base
+                   specified on module path, likely from an earlier build" -
+                   jlink refuses to link jmods from a JDK build other than
+                   the one its own jlink binary belongs to, so the
+                   module-path jmods (from the downloaded JBR) have to be
+                   linked by that SAME JBR's own jpackage/jlink, not the
+                   build's system JDK. Options/order below match the
+                   equivalent org.panteleyev jpackage-maven-plugin
+                   invocation exactly (see the mac-aarch64/mac-x86_64
+                   profiles for the analogous mac exec, and the module list's
+                   own comment there for how it was computed). -->
               <id>jpackage-run</id>
               <phase>package</phase>
               <goals>
-                <goal>jpackage</goal>
+                <goal>run</goal>
               </goals>
+              <configuration>
+                <target>
+                  <exec executable="${jbr.home}/bin/jpackage" failonerror="true">
+                    <arg value="--name"/>
+                    <arg value="BlueSeer"/>
+                    <arg value="--dest"/>
+                    <arg value="${project.build.directory}/installer"/>
+                    <arg value="--type"/>
+                    <arg value="${installer.type}"/>
+                    <arg value="--app-version"/>
+                    <arg value="${installer.appVersion}"/>
+                    <arg value="--description"/>
+                    <arg value="BlueSeer ERP"/>
+                    <arg value="--input"/>
+                    <arg value="${project.build.directory}/dist"/>
+                    <arg value="--vendor"/>
+                    <arg value="BlueSeer"/>
+                    <arg value="--main-class"/>
+                    <arg value="com.blueseer.utl.mf"/>
+                    <arg value="--main-jar"/>
+                    <arg value="${project.build.finalName}.jar"/>
+                    <arg value="--icon"/>
+                    <arg value="${installer.icon}"/>
+                    <arg value="--module-path"/>
+                    <arg value="${jbr.home}/jmods"/>
+                    <arg value="--add-modules"/>
+                    <arg value="java.base,java.compiler,java.desktop,java.instrument,java.logging,java.management,java.naming,java.rmi,java.security.jgss,java.security.sasl,java.sql,java.sql.rowset,java.xml,jdk.charsets,jdk.crypto.ec,jdk.localedata,jdk.management,jdk.unsupported,jdk.xml.dom"/>
+                    <!-- stripNativeCommands stays off (no strip-native-commands
+                         flag) because com.blueseer.utl.mf shells out to
+                         $JAVA_HOME/bin/java to relaunch itself in the app's own
+                         directory (see relaunchInAppDirectoryIfNeeded in mf.java),
+                         so that binary has to survive jlink. -->
+                    <arg value="--jlink-options"/>
+                    <arg value="--no-header-files --no-man-pages --strip-debug"/>
+                    <arg value="--java-options"/>
+                    <arg value="-Djava.util.logging.config.file=bslogging.properties"/>
+                    <!-- The app reads bs.cfg, data/, jasper/, etc. as relative
+                         paths from its working directory, so ship them
+                         alongside the jars inside the installed app image (not
+                         just on the classpath). Fine on windows/linux, where
+                         jpackage never codesigns anything - see the mac
+                         profiles for why this same approach doesn't survive
+                         macOS packaging unmodified. -->
+                    <arg value="--app-content"/>
+                    <arg value="${project.build.directory}/bs.cfg"/>
+                    <arg value="--app-content"/>
+                    <arg value="${project.build.directory}/.patch"/>
+                    <arg value="--app-content"/>
+                    <arg value="${project.build.directory}/data"/>
+                    <arg value="--app-content"/>
+                    <arg value="${project.build.directory}/edi"/>
+                    <arg value="--app-content"/>
+                    <arg value="${project.build.directory}/jasper"/>
+                    <arg value="--app-content"/>
+                    <arg value="${project.build.directory}/zebra"/>
+                    <arg value="--app-content"/>
+                    <arg value="${project.build.directory}/conf"/>
+                    <arg value="--app-content"/>
+                    <arg value="${project.build.directory}/logs"/>
+                    <arg value="--app-content"/>
+                    <arg value="${project.build.directory}/attachments"/>
+                    <arg value="--app-content"/>
+                    <arg value="${project.build.directory}/temp"/>
+                    <arg value="--win-dir-chooser"/>
+                    <arg value="--win-menu"/>
+                    <arg value="--win-shortcut"/>
+                  </exec>
+                </target>
+              </configuration>
             </execution>
           </executions>
-          <configuration>
-            <name>BlueSeer</name>
-            <appVersion>${installer.appVersion}</appVersion>
-            <vendor>BlueSeer</vendor>
-            <description>BlueSeer ERP</description>
-            <destination>${project.build.directory}/installer</destination>
-            <!-- Instead of the runtime-image option (which copies the
-                 entire JDK, 300MB+), point jpackage's built-in jlink step
-                 at the JDK's own jmods and hand it only the modules this
-                 app actually uses, so the installer bundles a much smaller
-                 custom runtime. The list below was computed by running the
-                 jdeps print module deps mode over every jar in target/dist
-                 (see the "App size" section in README for the exact
-                 command) plus jdk.crypto.ec and jdk.charsets, two modules
-                 jdeps' static analysis reliably misses but that matter here
-                 (TLS with EC cipher suites for HTTPS/AS2/SFTP/MySQL, and
-                 non-Latin charsets given this app's Arabic/Chinese/etc.
-                 language support). Regenerate this list if dependencies
-                 change, and re-test thoroughly after any change: an
-                 under-listed module fails at runtime, not at build time. -->
-            <modulePaths>
-              <path>${jbr.home}/jmods</path>
-            </modulePaths>
-            <!-- The plugin's own jlink defaults strip the java/javac/etc.
-                 launcher binaries (stripNativeCommands), which is normally
-                 fine for a packaged app, except com.blueseer.utl.mf shells
-                 out to $JAVA_HOME/bin/java to relaunch itself in the app's
-                 own directory (see the relaunchInAppDirectoryIfNeeded
-                 comment in mf.java), so that binary has to stay. -->
-            <jLink>
-              <stripDebug>true</stripDebug>
-              <noHeaderFiles>true</noHeaderFiles>
-              <noManPages>true</noManPages>
-              <stripNativeCommands>false</stripNativeCommands>
-            </jLink>
-            <addModules>
-              <module>java.base</module>
-              <module>java.compiler</module>
-              <module>java.desktop</module>
-              <module>java.instrument</module>
-              <module>java.logging</module>
-              <module>java.management</module>
-              <module>java.naming</module>
-              <module>java.rmi</module>
-              <module>java.security.jgss</module>
-              <module>java.security.sasl</module>
-              <module>java.sql</module>
-              <module>java.sql.rowset</module>
-              <module>java.xml</module>
-              <module>jdk.charsets</module>
-              <module>jdk.crypto.ec</module>
-              <module>jdk.localedata</module>
-              <module>jdk.management</module>
-              <module>jdk.unsupported</module>
-              <module>jdk.xml.dom</module>
-            </addModules>
-            <input>${project.build.directory}/dist</input>
-            <mainJar>${project.build.finalName}.jar</mainJar>
-            <mainClass>com.blueseer.utl.mf</mainClass>
-            <icon>${installer.icon}</icon>
-            <type>${installer.type}</type>
-            <javaOptions>
-              <option>-Djava.util.logging.config.file=bslogging.properties</option>
-            </javaOptions>
-            <!-- The app reads bs.cfg, data/, jasper/, etc. as relative paths
-                 from its working directory, so ship them alongside the jars
-                 inside the installed app image (not just on the classpath).
-                 Fine on windows/linux, where jpackage never codesigns
-                 anything - see the mac profiles for why this same approach
-                 doesn't survive macOS packaging unmodified. -->
-            <appContentPaths>
-              <path>${project.build.directory}/bs.cfg</path>
-              <path>${project.build.directory}/.patch</path>
-              <path>${project.build.directory}/data</path>
-              <path>${project.build.directory}/edi</path>
-              <path>${project.build.directory}/jasper</path>
-              <path>${project.build.directory}/zebra</path>
-              <path>${project.build.directory}/conf</path>
-              <path>${project.build.directory}/logs</path>
-              <path>${project.build.directory}/attachments</path>
-              <path>${project.build.directory}/temp</path>
-            </appContentPaths>
-            <winDirChooser>true</winDirChooser>
-            <winMenu>true</winMenu>
-            <winShortcut>true</winShortcut>
-            <linuxShortcut>true</linuxShortcut>
-          </configuration>
         </plugin>
       </plugins>
     </build>
@@ -702,7 +690,7 @@
             <swt.groupId>org.eclipse.swt</swt.groupId>
             <swt.artifactId>org.eclipse.swt.gtk.linux.x86_64</swt.artifactId>
             <swt.version>4.3</swt.version>
-            <installer.type>DEB</installer.type>
+            <installer.type>deb</installer.type>
             <installer.icon>${project.basedir}/sf/images/bs.png</installer.icon>
             <!-- JBR release asset naming tokens - see jbr.version/jbr.build
                  and the "download-jbr" antrun execution in the "jpackage"
@@ -713,82 +701,77 @@
         <build>
           <plugins>
             <plugin>
-              <groupId>org.panteleyev</groupId>
-              <artifactId>jpackage-maven-plugin</artifactId>
-              <version>1.8.0</version>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-antrun-plugin</artifactId>
+              <version>3.1.0</version>
               <executions>
                 <execution>
-                  <!-- See the "windows" profile above for why this is
-                       declared per-OS-profile rather than in the shared
-                       "jpackage" profile. -->
+                  <!-- See the "windows" profile above for the full rationale
+                       for invoking jbr.home's own bin/jpackage directly via
+                       <exec> instead of org.panteleyev's
+                       jpackage-maven-plugin. -->
                   <id>jpackage-run</id>
                   <phase>package</phase>
                   <goals>
-                    <goal>jpackage</goal>
+                    <goal>run</goal>
                   </goals>
+                  <configuration>
+                    <target>
+                      <exec executable="${jbr.home}/bin/jpackage" failonerror="true">
+                        <arg value="--name"/>
+                        <arg value="BlueSeer"/>
+                        <arg value="--dest"/>
+                        <arg value="${project.build.directory}/installer"/>
+                        <arg value="--type"/>
+                        <arg value="${installer.type}"/>
+                        <arg value="--app-version"/>
+                        <arg value="${installer.appVersion}"/>
+                        <arg value="--description"/>
+                        <arg value="BlueSeer ERP"/>
+                        <arg value="--input"/>
+                        <arg value="${project.build.directory}/dist"/>
+                        <arg value="--vendor"/>
+                        <arg value="BlueSeer"/>
+                        <arg value="--main-class"/>
+                        <arg value="com.blueseer.utl.mf"/>
+                        <arg value="--main-jar"/>
+                        <arg value="${project.build.finalName}.jar"/>
+                        <arg value="--icon"/>
+                        <arg value="${installer.icon}"/>
+                        <arg value="--module-path"/>
+                        <arg value="${jbr.home}/jmods"/>
+                        <arg value="--add-modules"/>
+                        <arg value="java.base,java.compiler,java.desktop,java.instrument,java.logging,java.management,java.naming,java.rmi,java.security.jgss,java.security.sasl,java.sql,java.sql.rowset,java.xml,jdk.charsets,jdk.crypto.ec,jdk.localedata,jdk.management,jdk.unsupported,jdk.xml.dom"/>
+                        <arg value="--jlink-options"/>
+                        <arg value="--no-header-files --no-man-pages --strip-debug"/>
+                        <arg value="--java-options"/>
+                        <arg value="-Djava.util.logging.config.file=bslogging.properties"/>
+                        <arg value="--app-content"/>
+                        <arg value="${project.build.directory}/bs.cfg"/>
+                        <arg value="--app-content"/>
+                        <arg value="${project.build.directory}/.patch"/>
+                        <arg value="--app-content"/>
+                        <arg value="${project.build.directory}/data"/>
+                        <arg value="--app-content"/>
+                        <arg value="${project.build.directory}/edi"/>
+                        <arg value="--app-content"/>
+                        <arg value="${project.build.directory}/jasper"/>
+                        <arg value="--app-content"/>
+                        <arg value="${project.build.directory}/zebra"/>
+                        <arg value="--app-content"/>
+                        <arg value="${project.build.directory}/conf"/>
+                        <arg value="--app-content"/>
+                        <arg value="${project.build.directory}/logs"/>
+                        <arg value="--app-content"/>
+                        <arg value="${project.build.directory}/attachments"/>
+                        <arg value="--app-content"/>
+                        <arg value="${project.build.directory}/temp"/>
+                        <arg value="--linux-shortcut"/>
+                      </exec>
+                    </target>
+                  </configuration>
                 </execution>
               </executions>
-              <configuration>
-                <name>BlueSeer</name>
-                <appVersion>${installer.appVersion}</appVersion>
-                <vendor>BlueSeer</vendor>
-                <description>BlueSeer ERP</description>
-                <destination>${project.build.directory}/installer</destination>
-                <modulePaths>
-                  <path>${jbr.home}/jmods</path>
-                </modulePaths>
-                <jLink>
-                  <stripDebug>true</stripDebug>
-                  <noHeaderFiles>true</noHeaderFiles>
-                  <noManPages>true</noManPages>
-                  <stripNativeCommands>false</stripNativeCommands>
-                </jLink>
-                <addModules>
-                  <module>java.base</module>
-                  <module>java.compiler</module>
-                  <module>java.desktop</module>
-                  <module>java.instrument</module>
-                  <module>java.logging</module>
-                  <module>java.management</module>
-                  <module>java.naming</module>
-                  <module>java.rmi</module>
-                  <module>java.security.jgss</module>
-                  <module>java.security.sasl</module>
-                  <module>java.sql</module>
-                  <module>java.sql.rowset</module>
-                  <module>java.xml</module>
-                  <module>jdk.charsets</module>
-                  <module>jdk.crypto.ec</module>
-                  <module>jdk.localedata</module>
-                  <module>jdk.management</module>
-                  <module>jdk.unsupported</module>
-                  <module>jdk.xml.dom</module>
-                </addModules>
-                <input>${project.build.directory}/dist</input>
-                <mainJar>${project.build.finalName}.jar</mainJar>
-                <mainClass>com.blueseer.utl.mf</mainClass>
-                <icon>${installer.icon}</icon>
-                <type>${installer.type}</type>
-                <javaOptions>
-                  <option>-Djava.util.logging.config.file=bslogging.properties</option>
-                </javaOptions>
-                <appContentPaths>
-                  <path>${project.build.directory}/bs.cfg</path>
-                  <path>${project.build.directory}/.patch</path>
-                  <path>${project.build.directory}/data</path>
-                  <path>${project.build.directory}/edi</path>
-                  <path>${project.build.directory}/jasper</path>
-                  <path>${project.build.directory}/zebra</path>
-                  <path>${project.build.directory}/conf</path>
-                  <path>${project.build.directory}/logs</path>
-                  <path>${project.build.directory}/attachments</path>
-                  <path>${project.build.directory}/temp</path>
-                </appContentPaths>
-                <winDirChooser>true</winDirChooser>
-                <winMenu>true</winMenu>
-                <winShortcut>true</winShortcut>
-                <linuxShortcut>true</linuxShortcut>
-              </configuration>
             </plugin>
           </plugins>
         </build>
@@ -801,15 +784,17 @@
            the target OS: jpackage does not cross-build installers.
 
            This profile only owns the JBR download - the actual
-           jpackage-maven-plugin/"jpackage-run" execution lives entirely
-           inside each OS-specific profile (windows/linux-x86_64/
-           mac-aarch64/mac-x86_64) instead of being shared here. A real
-           macOS build showed that when the same plugin+execution id is
-           declared in two simultaneously-active profiles (this one plus an
-           OS-activated one), Maven's lifecycle silently never invokes the
-           mojo at all - no log banner, no error, the execution just never
-           runs. Keeping exactly one declaration per OS avoids that
-           entirely. -->
+           "jpackage-run" execution (which invokes jbr.home's own
+           bin/jpackage directly via antrun/exec, so jlink links its jmods
+           with the matching jlink build - see the windows/mac-aarch64
+           profiles' comments for why) lives entirely inside each
+           OS-specific profile (windows/linux-x86_64/mac-aarch64/
+           mac-x86_64) instead of being shared here. A real macOS build
+           showed that declaring the same plugin+execution id in two
+           simultaneously-active profiles (this one plus an OS-activated
+           one) makes Maven's lifecycle silently never invoke it at all -
+           no log banner, no error, the execution just never runs. Keeping
+           exactly one declaration per OS avoids that entirely. -->
       <id>jpackage</id>
       <build>
         <plugins>
@@ -884,6 +869,18 @@
                       <mapper type="regexp" from="^[^/]+/(.*)$" to="\1"/>
                     </move>
                     <delete dir="${jbr.cache}/stage" quiet="true"/>
+                    <!-- Ant's <untar> doesn't preserve the tar entries' Unix
+                         executable permissions - a real build confirmed the
+                         extracted bin/jpackage (and every other bin/* tool)
+                         comes out non-executable, which fails the jpackage-run
+                         execution's <exec> below with "Permission denied".
+                         Covers both the flat windows/linux layout and macOS's
+                         Contents/Home/bin nesting with one fileset. -->
+                    <chmod perm="755">
+                      <fileset dir="${jbr.auto.home}">
+                        <include name="**/bin/*"/>
+                      </fileset>
+                    </chmod>
                   </target>
                 </configuration>
               </execution>
@@ -914,7 +911,7 @@
                  target/installer/BlueSeer.dmg itself via hdiutil, so
                  "mvn package -Pjpackage" still produces one ready-to-ship
                  installer artifact, same as windows/linux. -->
-            <installer.type>APP_IMAGE</installer.type>
+            <installer.type>app-image</installer.type>
             <!-- no bundled .icns yet; jpackage falls back to a default icon -->
             <!-- JBR release asset naming tokens - see jbr.version/jbr.build
                  and the "download-jbr" antrun execution in the "jpackage"
@@ -930,106 +927,101 @@
         <build>
           <plugins>
             <plugin>
-              <groupId>org.panteleyev</groupId>
-              <artifactId>jpackage-maven-plugin</artifactId>
-              <version>1.8.0</version>
-              <executions>
-                <execution>
-                  <!-- This profile is the sole declaration of jpackage-run
-                       on macOS (see the "jpackage" profile's comment for why
-                       it isn't also declared there): a real build showed
-                       that the same plugin+execution id declared in two
-                       simultaneously-active profiles causes the mojo to
-                       silently never run at all. appContentPaths below
-                       drops bs.cfg/.patch compared to windows/linux - see
-                       the mac-postprocess execution below, which adds them
-                       back a different way. -->
-                  <id>jpackage-run</id>
-                  <phase>package</phase>
-                  <goals>
-                    <goal>jpackage</goal>
-                  </goals>
-                </execution>
-              </executions>
-              <configuration>
-                <name>BlueSeer</name>
-                <appVersion>${installer.appVersion}</appVersion>
-                <vendor>BlueSeer</vendor>
-                <description>BlueSeer ERP</description>
-                <destination>${project.build.directory}/installer</destination>
-                <modulePaths>
-                  <path>${jbr.home}/jmods</path>
-                </modulePaths>
-                <jLink>
-                  <stripDebug>true</stripDebug>
-                  <noHeaderFiles>true</noHeaderFiles>
-                  <noManPages>true</noManPages>
-                  <stripNativeCommands>false</stripNativeCommands>
-                </jLink>
-                <addModules>
-                  <module>java.base</module>
-                  <module>java.compiler</module>
-                  <module>java.desktop</module>
-                  <module>java.instrument</module>
-                  <module>java.logging</module>
-                  <module>java.management</module>
-                  <module>java.naming</module>
-                  <module>java.rmi</module>
-                  <module>java.security.jgss</module>
-                  <module>java.security.sasl</module>
-                  <module>java.sql</module>
-                  <module>java.sql.rowset</module>
-                  <module>java.xml</module>
-                  <module>jdk.charsets</module>
-                  <module>jdk.crypto.ec</module>
-                  <module>jdk.localedata</module>
-                  <module>jdk.management</module>
-                  <module>jdk.unsupported</module>
-                  <module>jdk.xml.dom</module>
-                </addModules>
-                <input>${project.build.directory}/dist</input>
-                <mainJar>${project.build.finalName}.jar</mainJar>
-                <mainClass>com.blueseer.utl.mf</mainClass>
-                <icon>${installer.icon}</icon>
-                <type>${installer.type}</type>
-                <javaOptions>
-                  <option>-Djava.util.logging.config.file=bslogging.properties</option>
-                </javaOptions>
-                <!-- bs.cfg and .patch deliberately excluded here - see the
-                     mac-postprocess execution below, which adds them back
-                     after jpackage runs instead of alongside these
-                     directories. Passing bs.cfg/.patch to jpackage's own
-                     app-content option (as the windows/linux profile does)
-                     reproducibly breaks jpackage's mandatory ad-hoc codesign
-                     pass on macOS: "code object is not signed at all. In
-                     subcomponent: .../Contents/.patch" - confirmed on a real
-                     build, and not caused by stray extended attributes
-                     (xattr -cr on target/ first made no difference). The
-                     directories below only trigger a benign "not a standard
-                     subdirectory name" warning, not a failure, so they stay
-                     here. -->
-                <appContentPaths>
-                  <path>${project.build.directory}/data</path>
-                  <path>${project.build.directory}/edi</path>
-                  <path>${project.build.directory}/jasper</path>
-                  <path>${project.build.directory}/zebra</path>
-                  <path>${project.build.directory}/conf</path>
-                  <path>${project.build.directory}/logs</path>
-                  <path>${project.build.directory}/attachments</path>
-                  <path>${project.build.directory}/temp</path>
-                </appContentPaths>
-              </configuration>
-            </plugin>
-            <plugin>
               <groupId>org.apache.maven.plugins</groupId>
               <artifactId>maven-antrun-plugin</artifactId>
               <version>3.1.0</version>
               <executions>
                 <execution>
-                  <!-- Runs after jpackage-run (same "package" phase, plugin
-                       declared later in this profile's <plugins> list - same
-                       ordering rule Maven uses for same-phase executions
-                       from different plugins). Copies bs.cfg/.patch into the
+                  <!-- Invokes jbr.home's own bin/jpackage directly via
+                       <exec>, rather than org.panteleyev's
+                       jpackage-maven-plugin: that plugin runs jpackage from
+                       whatever JDK is running Maven itself (java.home), not
+                       from jbr.home. A real build showed jlink then fails
+                       with "cannot find the build signature in the
+                       java.base specified on module path, likely from an
+                       earlier build" - jlink refuses to link jmods from a
+                       JDK build other than the one its own jlink binary
+                       belongs to, so the downloaded JBR's jmods have to be
+                       linked by that SAME JBR's own jpackage/jlink. This is
+                       also the sole declaration of jpackage-run on macOS -
+                       see the "jpackage" profile's comment for why it isn't
+                       declared there too. The app-content args below drop
+                       bs.cfg/.patch compared to windows/linux - see the
+                       mac-postprocess execution below, which adds them back
+                       a different way. -->
+                  <id>jpackage-run</id>
+                  <phase>package</phase>
+                  <goals>
+                    <goal>run</goal>
+                  </goals>
+                  <configuration>
+                    <target>
+                      <exec executable="${jbr.home}/bin/jpackage" failonerror="true">
+                        <arg value="--name"/>
+                        <arg value="BlueSeer"/>
+                        <arg value="--dest"/>
+                        <arg value="${project.build.directory}/installer"/>
+                        <arg value="--type"/>
+                        <arg value="${installer.type}"/>
+                        <arg value="--app-version"/>
+                        <arg value="${installer.appVersion}"/>
+                        <arg value="--description"/>
+                        <arg value="BlueSeer ERP"/>
+                        <arg value="--input"/>
+                        <arg value="${project.build.directory}/dist"/>
+                        <arg value="--vendor"/>
+                        <arg value="BlueSeer"/>
+                        <arg value="--main-class"/>
+                        <arg value="com.blueseer.utl.mf"/>
+                        <arg value="--main-jar"/>
+                        <arg value="${project.build.finalName}.jar"/>
+                        <arg value="--module-path"/>
+                        <arg value="${jbr.home}/jmods"/>
+                        <arg value="--add-modules"/>
+                        <arg value="java.base,java.compiler,java.desktop,java.instrument,java.logging,java.management,java.naming,java.rmi,java.security.jgss,java.security.sasl,java.sql,java.sql.rowset,java.xml,jdk.charsets,jdk.crypto.ec,jdk.localedata,jdk.management,jdk.unsupported,jdk.xml.dom"/>
+                        <arg value="--jlink-options"/>
+                        <arg value="--no-header-files --no-man-pages --strip-debug"/>
+                        <arg value="--java-options"/>
+                        <arg value="-Djava.util.logging.config.file=bslogging.properties"/>
+                        <!-- bs.cfg and .patch deliberately excluded here - see
+                             the mac-postprocess execution below, which adds
+                             them back after jpackage runs instead of alongside
+                             these directories. Passing bs.cfg/.patch to
+                             jpackage's own app-content option (as
+                             windows/linux do) reproducibly breaks jpackage's
+                             mandatory ad-hoc codesign pass on macOS: "code
+                             object is not signed at all. In subcomponent:
+                             .../Contents/.patch" - confirmed on a real build,
+                             and not caused by stray extended attributes
+                             (xattr -cr on target/ first made no difference).
+                             The directories below only trigger a benign "not
+                             a standard subdirectory name" warning, not a
+                             failure, so they stay here. -->
+                        <arg value="--app-content"/>
+                        <arg value="${project.build.directory}/data"/>
+                        <arg value="--app-content"/>
+                        <arg value="${project.build.directory}/edi"/>
+                        <arg value="--app-content"/>
+                        <arg value="${project.build.directory}/jasper"/>
+                        <arg value="--app-content"/>
+                        <arg value="${project.build.directory}/zebra"/>
+                        <arg value="--app-content"/>
+                        <arg value="${project.build.directory}/conf"/>
+                        <arg value="--app-content"/>
+                        <arg value="${project.build.directory}/logs"/>
+                        <arg value="--app-content"/>
+                        <arg value="${project.build.directory}/attachments"/>
+                        <arg value="--app-content"/>
+                        <arg value="${project.build.directory}/temp"/>
+                      </exec>
+                    </target>
+                  </configuration>
+                </execution>
+                <execution>
+                  <!-- Runs after jpackage-run (same "package" phase, same
+                       plugin - Maven runs same-plugin executions within one
+                       phase in the order they're declared here). Copies
+                       bs.cfg/.patch into the
                        now-built, already-signed app bundle, re-signs, then
                        wraps the result into a .dmg. Copies into both
                        Contents/ and Contents/app/ since this project hasn't
@@ -1108,7 +1100,7 @@
             <swt.artifactId>org.eclipse.swt.cocoa.macosx.x86_64</swt.artifactId>
             <swt.version>3.129.0</swt.version>
             <!-- see the identical property in mac-aarch64 above for why -->
-            <installer.type>APP_IMAGE</installer.type>
+            <installer.type>app-image</installer.type>
             <!-- no bundled .icns yet; jpackage falls back to a default icon -->
             <!-- see the identical properties in mac-aarch64 above for why -->
             <jbr.os>osx</jbr.os>
@@ -1118,9 +1110,9 @@
         <build>
           <plugins>
             <plugin>
-              <groupId>org.panteleyev</groupId>
-              <artifactId>jpackage-maven-plugin</artifactId>
-              <version>1.8.0</version>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-antrun-plugin</artifactId>
+              <version>3.1.0</version>
               <executions>
                 <execution>
                   <!-- See mac-aarch64's identical execution above for the
@@ -1128,71 +1120,57 @@
                   <id>jpackage-run</id>
                   <phase>package</phase>
                   <goals>
-                    <goal>jpackage</goal>
+                    <goal>run</goal>
                   </goals>
+                  <configuration>
+                    <target>
+                      <exec executable="${jbr.home}/bin/jpackage" failonerror="true">
+                        <arg value="--name"/>
+                        <arg value="BlueSeer"/>
+                        <arg value="--dest"/>
+                        <arg value="${project.build.directory}/installer"/>
+                        <arg value="--type"/>
+                        <arg value="${installer.type}"/>
+                        <arg value="--app-version"/>
+                        <arg value="${installer.appVersion}"/>
+                        <arg value="--description"/>
+                        <arg value="BlueSeer ERP"/>
+                        <arg value="--input"/>
+                        <arg value="${project.build.directory}/dist"/>
+                        <arg value="--vendor"/>
+                        <arg value="BlueSeer"/>
+                        <arg value="--main-class"/>
+                        <arg value="com.blueseer.utl.mf"/>
+                        <arg value="--main-jar"/>
+                        <arg value="${project.build.finalName}.jar"/>
+                        <arg value="--module-path"/>
+                        <arg value="${jbr.home}/jmods"/>
+                        <arg value="--add-modules"/>
+                        <arg value="java.base,java.compiler,java.desktop,java.instrument,java.logging,java.management,java.naming,java.rmi,java.security.jgss,java.security.sasl,java.sql,java.sql.rowset,java.xml,jdk.charsets,jdk.crypto.ec,jdk.localedata,jdk.management,jdk.unsupported,jdk.xml.dom"/>
+                        <arg value="--jlink-options"/>
+                        <arg value="--no-header-files --no-man-pages --strip-debug"/>
+                        <arg value="--java-options"/>
+                        <arg value="-Djava.util.logging.config.file=bslogging.properties"/>
+                        <arg value="--app-content"/>
+                        <arg value="${project.build.directory}/data"/>
+                        <arg value="--app-content"/>
+                        <arg value="${project.build.directory}/edi"/>
+                        <arg value="--app-content"/>
+                        <arg value="${project.build.directory}/jasper"/>
+                        <arg value="--app-content"/>
+                        <arg value="${project.build.directory}/zebra"/>
+                        <arg value="--app-content"/>
+                        <arg value="${project.build.directory}/conf"/>
+                        <arg value="--app-content"/>
+                        <arg value="${project.build.directory}/logs"/>
+                        <arg value="--app-content"/>
+                        <arg value="${project.build.directory}/attachments"/>
+                        <arg value="--app-content"/>
+                        <arg value="${project.build.directory}/temp"/>
+                      </exec>
+                    </target>
+                  </configuration>
                 </execution>
-              </executions>
-              <configuration>
-                <name>BlueSeer</name>
-                <appVersion>${installer.appVersion}</appVersion>
-                <vendor>BlueSeer</vendor>
-                <description>BlueSeer ERP</description>
-                <destination>${project.build.directory}/installer</destination>
-                <modulePaths>
-                  <path>${jbr.home}/jmods</path>
-                </modulePaths>
-                <jLink>
-                  <stripDebug>true</stripDebug>
-                  <noHeaderFiles>true</noHeaderFiles>
-                  <noManPages>true</noManPages>
-                  <stripNativeCommands>false</stripNativeCommands>
-                </jLink>
-                <addModules>
-                  <module>java.base</module>
-                  <module>java.compiler</module>
-                  <module>java.desktop</module>
-                  <module>java.instrument</module>
-                  <module>java.logging</module>
-                  <module>java.management</module>
-                  <module>java.naming</module>
-                  <module>java.rmi</module>
-                  <module>java.security.jgss</module>
-                  <module>java.security.sasl</module>
-                  <module>java.sql</module>
-                  <module>java.sql.rowset</module>
-                  <module>java.xml</module>
-                  <module>jdk.charsets</module>
-                  <module>jdk.crypto.ec</module>
-                  <module>jdk.localedata</module>
-                  <module>jdk.management</module>
-                  <module>jdk.unsupported</module>
-                  <module>jdk.xml.dom</module>
-                </addModules>
-                <input>${project.build.directory}/dist</input>
-                <mainJar>${project.build.finalName}.jar</mainJar>
-                <mainClass>com.blueseer.utl.mf</mainClass>
-                <icon>${installer.icon}</icon>
-                <type>${installer.type}</type>
-                <javaOptions>
-                  <option>-Djava.util.logging.config.file=bslogging.properties</option>
-                </javaOptions>
-                <appContentPaths>
-                  <path>${project.build.directory}/data</path>
-                  <path>${project.build.directory}/edi</path>
-                  <path>${project.build.directory}/jasper</path>
-                  <path>${project.build.directory}/zebra</path>
-                  <path>${project.build.directory}/conf</path>
-                  <path>${project.build.directory}/logs</path>
-                  <path>${project.build.directory}/attachments</path>
-                  <path>${project.build.directory}/temp</path>
-                </appContentPaths>
-              </configuration>
-            </plugin>
-            <plugin>
-              <groupId>org.apache.maven.plugins</groupId>
-              <artifactId>maven-antrun-plugin</artifactId>
-              <version>3.1.0</version>
-              <executions>
                 <execution>
                   <!-- See mac-aarch64's identical execution above for the
                        full rationale. -->
