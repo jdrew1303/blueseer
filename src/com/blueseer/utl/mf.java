@@ -84,6 +84,7 @@ public class mf {
             public void run() {
                 MainFrame frame = new MainFrame();
                 TopBarPolish.apply(frame);
+                StatusBar.apply(frame);
                 frame.setVisible(true);
             }
         });
