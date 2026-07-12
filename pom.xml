@@ -33,8 +33,10 @@
          not "latest", so builds stay reproducible. Bump both jbr.version and
          jbr.build together to a newer release from
          https://github.com/JetBrains/JetBrainsRuntime/releases, matching the
-         exact asset filename (e.g. jbr-25.0.3-linux-x64-b508.16.tar.gz ->
-         jbr.version=25.0.3, jbr.build=b508.16). -->
+         exact asset filename (e.g. jbrsdk-25.0.3-linux-x64-b508.16.tar.gz ->
+         jbr.version=25.0.3, jbr.build=b508.16). Must be the "jbrsdk" variant,
+         not plain "jbr" - the latter is a runtime-only build with no jmods/
+         directory, which jpackage's jlink step (modulePaths, below) needs. -->
     <jbr.version>25.0.3</jbr.version>
     <jbr.build>b508.16</jbr.build>
     <!-- The "download-jbr" execution (see the windows/linux-x86_64/
@@ -47,7 +49,7 @@
          the auto-download entirely, since that always targets its own
          jbr.auto.home path, never jbr.home itself). -->
     <jbr.cache>${project.basedir}/.jbr-cache</jbr.cache>
-    <jbr.auto.home>${jbr.cache}/jbr-${jbr.version}${jbr.build}-${jbr.os}-${jbr.arch}</jbr.auto.home>
+    <jbr.auto.home>${jbr.cache}/jbrsdk-${jbr.version}${jbr.build}-${jbr.os}-${jbr.arch}</jbr.auto.home>
     <jbr.home>${jbr.auto.home}</jbr.home>
   </properties>
 
@@ -661,14 +663,24 @@
                          release page after the previous URL (guessed from
                          the asset filenames shown, which don't reflect
                          where they're actually hosted) 404'd on a real
-                         build. -->
+                         build.
+
+                         "jbrsdk" (not plain "jbr"): a real macOS build
+                         confirmed the plain "jbr" runtime-only archive has
+                         no jmods/ under Contents/Home, which jpackage's
+                         jlink step (modulePaths, below) requires - it
+                         silently produced a broken, unsigned-app-shaped
+                         .app (missing Contents/MacOS, Info.plist, and
+                         runtime/) that only surfaced as a confusing
+                         codesign failure in the unrelated mac-postprocess
+                         step afterwards. -->
                     <get skipexisting="true" verbose="true"
-                         src="https://cache-redirector.jetbrains.com/intellij-jbr/jbr-${jbr.version}-${jbr.os}-${jbr.arch}-${jbr.build}.tar.gz"
-                         dest="${jbr.cache}/jbr-${jbr.version}-${jbr.os}-${jbr.arch}-${jbr.build}.tar.gz"/>
+                         src="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-${jbr.version}-${jbr.os}-${jbr.arch}-${jbr.build}.tar.gz"
+                         dest="${jbr.cache}/jbrsdk-${jbr.version}-${jbr.os}-${jbr.arch}-${jbr.build}.tar.gz"/>
                     <delete dir="${jbr.cache}/stage" quiet="true"/>
                     <mkdir dir="${jbr.cache}/stage"/>
                     <untar compression="gzip"
-                           src="${jbr.cache}/jbr-${jbr.version}-${jbr.os}-${jbr.arch}-${jbr.build}.tar.gz"
+                           src="${jbr.cache}/jbrsdk-${jbr.version}-${jbr.os}-${jbr.arch}-${jbr.build}.tar.gz"
                            dest="${jbr.cache}/stage"/>
                     <!-- The archive's single top-level directory name isn't
                          guaranteed to exactly match the asset filename, so
