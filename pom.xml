@@ -874,11 +874,21 @@
                          extracted bin/jpackage (and every other bin/* tool)
                          comes out non-executable, which fails the jpackage-run
                          execution's <exec> below with "Permission denied".
+                         lib/jspawnhelper also needs it back: it's the native
+                         helper the JVM's own ProcessBuilder relies on to fork
+                         subprocesses on POSIX, and jpackage's app-image build
+                         forks codesign internally on macOS - without it,
+                         that fork fails with a generic, misleading
+                         "posix_spawn failed, error: 0 (none) ... Spawn helper
+                         ran into JDK version mismatch" (confirmed on a real
+                         build - the real cause was just the lost +x bit).
                          Covers both the flat windows/linux layout and macOS's
-                         Contents/Home/bin nesting with one fileset. -->
+                         Contents/Home/bin,lib nesting with one fileset. -->
                     <chmod perm="755">
                       <fileset dir="${jbr.auto.home}">
                         <include name="**/bin/*"/>
+                        <include name="**/lib/jspawnhelper"/>
+                        <include name="**/lib/jexec"/>
                       </fileset>
                     </chmod>
                   </target>
