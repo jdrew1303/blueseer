@@ -12,7 +12,12 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <maven.compiler.release>26</maven.compiler.release>
+    <!-- Pinned to 25 (not 26) because JetBrains hasn't shipped a JBR built on
+         JDK 26 yet (see jbr.version/jbr.build below) - a JBR built on an
+         older JDK than this release setting can't load this project's own
+         class files (UnsupportedClassVersionError). Bump both together once
+         a JBR26 release exists. -->
+    <maven.compiler.release>25</maven.compiler.release>
 
     <!-- jpackage installer defaults (see the "jpackage" profile below and the
          "windows" / "linux-x86_64" / "mac-aarch64" / "mac-x86_64" profiles for
@@ -22,11 +27,28 @@
     <installer.appVersion>8.0.0</installer.appVersion>
     <installer.type>APP_IMAGE</installer.type>
     <installer.icon></installer.icon>
-    <!-- Point this at an extracted JetBrains Runtime to bundle it in the
-         installer, e.g. -Djbr.home=/opt/jbr-26. Defaults to whatever JDK is
-         running Maven, so building with a JBR-based JAVA_HOME/toolchain bundles
-         that runtime with no extra flags. -->
-    <jbr.home>${java.home}</jbr.home>
+
+    <!-- JetBrains Runtime version to bundle via jlink for the packaged
+         installer (see "Building a native installer" in README) - pinned,
+         not "latest", so builds stay reproducible. Bump both jbr.version and
+         jbr.build together to a newer release from
+         https://github.com/JetBrains/JetBrainsRuntime/releases, matching the
+         exact asset filename (e.g. jbr-25.0.3-linux-x64-b508.16.tar.gz ->
+         jbr.version=25.0.3, jbr.build=b508.16). -->
+    <jbr.version>25.0.3</jbr.version>
+    <jbr.build>b508.16</jbr.build>
+    <!-- The "download-jbr" execution (see the windows/linux-x86_64/
+         mac-aarch64/mac-x86_64 profiles) downloads and extracts the jbr.os/
+         jbr.arch-appropriate release into this fixed, cached location if
+         it isn't already there, and each of those profiles points jbr.home
+         at it by default - so "mvn package -Pjpackage" bundles JBR with no
+         manual download/extraction step. Override with -Djbr.home=/some/path
+         to use a different, manually-managed runtime instead (this skips
+         the auto-download entirely, since that always targets its own
+         jbr.auto.home path, never jbr.home itself). -->
+    <jbr.cache>${project.basedir}/.jbr-cache</jbr.cache>
+    <jbr.auto.home>${jbr.cache}/jbr-${jbr.version}${jbr.build}-${jbr.os}-${jbr.arch}</jbr.auto.home>
+    <jbr.home>${jbr.auto.home}</jbr.home>
   </properties>
 
 
@@ -545,6 +567,10 @@
       <swt.version>3.129.0</swt.version>
       <installer.type>MSI</installer.type>
       <installer.icon>${project.basedir}/sf/images/bs.ico</installer.icon>
+      <!-- JBR release asset naming tokens - see jbr.version/jbr.build and
+           the "download-jbr" antrun execution in the "jpackage" profile. -->
+      <jbr.os>windows</jbr.os>
+      <jbr.arch>x64</jbr.arch>
     </properties>
   </profile>
   <profile>
@@ -561,13 +587,19 @@
             <swt.version>4.3</swt.version>
             <installer.type>DEB</installer.type>
             <installer.icon>${project.basedir}/sf/images/bs.png</installer.icon>
+            <!-- JBR release asset naming tokens - see jbr.version/jbr.build
+                 and the "download-jbr" antrun execution in the "jpackage"
+                 profile. -->
+            <jbr.os>linux</jbr.os>
+            <jbr.arch>x64</jbr.arch>
         </properties>
     </profile>
     <profile>
-      <!-- Build a native installer with jpackage: mvn package -Pjpackage
-           (add -Djbr.home=/path/to/jetbrains-runtime to bundle JBR instead of
-           whatever JDK is running Maven). Must run on the target OS: jpackage
-           does not cross-build installers.
+      <!-- Build a native installer with jpackage: mvn package -Pjpackage.
+           Downloads and bundles JetBrains Runtime automatically (see the
+           "download-jbr" execution below); pass -Djbr.home=/some/other/jbr
+           to use a different, manually-managed runtime instead. Must run on
+           the target OS: jpackage does not cross-build installers.
 
            This is the windows/linux configuration. macOS needs a different
            jpackage execution (see the mac-aarch64/mac-x86_64 profiles below,
@@ -583,6 +615,72 @@
       <id>jpackage</id>
       <build>
         <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-antrun-plugin</artifactId>
+            <version>3.1.0</version>
+            <executions>
+              <execution>
+                <!-- Runs in an early phase, well before jpackage-run's
+                     "package" phase, so jbr.home is already populated by
+                     the time jpackage's jlink step reads it. This same
+                     execution (different id from jpackage-run/
+                     mac-postprocess, both below) also covers the mac
+                     profiles: Maven merges different-execution-id blocks of
+                     the same plugin across simultaneously-active profiles
+                     rather than replacing them, and a macOS build always
+                     has both this "jpackage" profile (explicit -Pjpackage)
+                     and mac-aarch64/mac-x86_64 (OS/arch auto-activation)
+                     active together. Those two profiles just set jbr.os/
+                     jbr.arch/jbr.home themselves; nothing here is
+                     mac-specific. -->
+                <id>download-jbr</id>
+                <phase>generate-sources</phase>
+                <goals>
+                  <goal>run</goal>
+                </goals>
+                <configuration>
+                  <target>
+                    <!-- No if/unless gating: this Ant version only honors
+                         if/unless on <target> itself (maven-antrun always
+                         wraps this whole block in one synthetic target, so
+                         that's not usable here), not on individual tasks
+                         like <get>/<sequential>. Instead, every step below
+                         is made idempotent so re-running this on a build
+                         that already has JBR cached is cheap and safe
+                         rather than being skipped outright: <get
+                         skipexisting> avoids re-downloading over the
+                         network (the only genuinely expensive part), and
+                         the stage/move steps just redo a few seconds of
+                         local file I/O. -->
+                    <mkdir dir="${jbr.cache}"/>
+                    <get skipexisting="true" verbose="true"
+                         src="https://github.com/JetBrains/JetBrainsRuntime/releases/download/jbr-release-${jbr.version}${jbr.build}/jbr-${jbr.version}-${jbr.os}-${jbr.arch}-${jbr.build}.tar.gz"
+                         dest="${jbr.cache}/jbr-${jbr.version}-${jbr.os}-${jbr.arch}-${jbr.build}.tar.gz"/>
+                    <delete dir="${jbr.cache}/stage" quiet="true"/>
+                    <mkdir dir="${jbr.cache}/stage"/>
+                    <untar compression="gzip"
+                           src="${jbr.cache}/jbr-${jbr.version}-${jbr.os}-${jbr.arch}-${jbr.build}.tar.gz"
+                           dest="${jbr.cache}/stage"/>
+                    <!-- The archive's single top-level directory name isn't
+                         guaranteed to exactly match the asset filename, so
+                         strip whatever it actually is (one path component)
+                         rather than assuming it. Delete any previous
+                         extraction first since <move> won't cleanly
+                         overwrite an existing target directory. -->
+                    <delete dir="${jbr.auto.home}" quiet="true"/>
+                    <move todir="${jbr.auto.home}">
+                      <fileset dir="${jbr.cache}/stage">
+                        <include name="**/*"/>
+                      </fileset>
+                      <mapper type="regexp" from="^[^/]+/(.*)$" to="\1"/>
+                    </move>
+                    <delete dir="${jbr.cache}/stage" quiet="true"/>
+                  </target>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
           <plugin>
             <groupId>org.panteleyev</groupId>
             <artifactId>jpackage-maven-plugin</artifactId>
@@ -711,6 +809,16 @@
                  installer artifact, same as windows/linux. -->
             <installer.type>APP_IMAGE</installer.type>
             <!-- no bundled .icns yet; jpackage falls back to a default icon -->
+            <!-- JBR release asset naming tokens - see jbr.version/jbr.build
+                 and the "download-jbr" antrun execution in the "jpackage"
+                 profile. macOS JBR archives nest the actual JDK-shaped
+                 layout (bin/, jmods/, etc.) one level deeper than windows/
+                 linux archives do, inside Contents/Home, matching the
+                 standard macOS JDK bundle layout - jbr.home has to point
+                 there directly, not at the archive's top level. -->
+            <jbr.os>osx</jbr.os>
+            <jbr.arch>aarch64</jbr.arch>
+            <jbr.home>${jbr.auto.home}/Contents/Home</jbr.home>
         </properties>
         <build>
           <plugins>
@@ -894,6 +1002,10 @@
             <!-- see the identical property in mac-aarch64 above for why -->
             <installer.type>APP_IMAGE</installer.type>
             <!-- no bundled .icns yet; jpackage falls back to a default icon -->
+            <!-- see the identical properties in mac-aarch64 above for why -->
+            <jbr.os>osx</jbr.os>
+            <jbr.arch>x64</jbr.arch>
+            <jbr.home>${jbr.auto.home}/Contents/Home</jbr.home>
         </properties>
         <build>
           <plugins>

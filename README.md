@@ -121,13 +121,16 @@ re-signs it with `codesign`, then wraps it into a real, ready-to-ship
 `target/installer/BlueSeer.dmg` itself via `hdiutil` - so `mvn package -Pjpackage`
 still produces one installer artifact directly, same as windows/linux.
 
-By default the build points jlink at whatever JDK is running Maven. To bundle
-<a href="https://github.com/JetBrains/JetBrainsRuntime">JetBrains Runtime</a> instead
-(recommended for better Swing rendering — see "Technology" above), download a JBR
-release, extract it, and point at it:
-```
-mvn package -Pjpackage -Djbr.home=/path/to/extracted/jbr
-```
+The build bundles <a href="https://github.com/JetBrains/JetBrainsRuntime">JetBrains
+Runtime</a> automatically (recommended for better Swing rendering — see "Technology"
+above): the first `-Pjpackage` build downloads the pinned JBR release for your OS/arch
+into `.jbr-cache/` and reuses it on later builds. Override with
+`-Djbr.home=/path/to/some/other/jbr` to bundle a different, manually-managed runtime
+instead — this skips the automatic download entirely. The pinned version lives in
+`pom.xml`'s `jbr.version`/`jbr.build` properties; bump both together to pick up a newer
+JBR release (matching `maven.compiler.release`, since a JBR built on an older JDK can't
+load this project's own class files).
+
 The installer type/icon are picked automatically based on the OS running the build
 (see the `windows` / `linux-x86_64` / `mac-aarch64` / `mac-x86_64` profiles in
 `pom.xml`); override `-Dinstaller.type=...` to build a different package type (e.g.

@@ -8,6 +8,7 @@ jre11
 jre16
 jre17
 jre26
+.jbr-cache
 test
 nbproject/private/
 .nb-gradle/
