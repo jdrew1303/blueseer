@@ -625,6 +625,95 @@ public class MassLoad extends javax.swing.JPanel {
              return m;
     }
 
+    // Nutrient Master stuff - bulk CSV import for EU FIC nutrition-declaration
+    // values (com.blueseer.ing.nutData/NutritionLabelEngine). Manual entry only
+    // (client decision - no external/public dataset seeding): this is purely a
+    // bulk-typing convenience for figures already gathered from supplier
+    // datasheets, following the exact same shape as Ingredient Master above.
+    public ArrayList<String> defineNutrientMaster() {
+        ArrayList<String> list = new ArrayList<String>();
+        list.add("it_item,s,36,mandatory,validated");
+        list.add("nutrient_code,s,30,mandatory,validated");
+        list.add("value_per_100g,d,12,mandatory,unvalidated");
+        list.add("data_source,s,20,optional,unvalidated (SUPPLIER_SPEC/LAB_ANALYSIS/CALCULATED/DATABASE_REF; blank defaults to SUPPLIER_SPEC)");
+        list.add("notes,s,300,optional,unvalidated");
+        return list;
+    }
+
+    public boolean checkNutrientMaster(String[] rs, int i, ArrayList<String> list) {
+        boolean proceed = true;
+        if (rs.length != list.size()) {
+                   tacomments.append("line " + i + " does not have correct number of fields. " + String.valueOf(rs.length) + "\n" );
+                   proceed = false;
+        }
+
+        if (rs.length == list.size()) {
+            String[] ld = null;
+            int j = 0;
+            for (String rec : list) {
+            ld = rec.split(",", -1);
+                if (rs[j].length() > Integer.valueOf(ld[2])) {
+                    tacomments.append("line:field " + i + ":" + j + " " + String.valueOf(rs[j]) + " field length too long" + "\n" );
+                       proceed = false;
+                }
+                if (ld[0].compareTo("it_item") == 0 && ! OVData.isValidItem(rs[j])) {
+                    tacomments.append("line:field " + i + ":" + j + " " + String.valueOf(rs[j]) + " must be a valid, existing item" + "\n" );
+                       proceed = false;
+                }
+                if (ld[0].compareTo("nutrient_code") == 0) {
+                    if (! com.blueseer.ing.nutData.isValidNutrientCode(rs[j].trim().toUpperCase())) {
+                        tacomments.append("line:field " + i + ":" + j + " " + String.valueOf(rs[j]) + " is not a recognized nutrient code" + "\n" );
+                        proceed = false;
+                    } else if (com.blueseer.ing.NutritionLabelEngine.DERIVED_CODES.contains(rs[j].trim().toUpperCase())) {
+                        tacomments.append("line:field " + i + ":" + j + " " + String.valueOf(rs[j]) + " is always calculated (never entered directly) - see SALT/ENERGY in NutritionLabelEngine.DERIVED_CODES" + "\n" );
+                        proceed = false;
+                    }
+                }
+                if (ld[0].compareTo("value_per_100g") == 0 && ! rs[j].isBlank() && ! BlueSeerUtils.isParsableToDouble(rs[j])) {
+                    tacomments.append("line:field " + i + ":" + j + " " + String.valueOf(rs[j]) + " must be numeric" + "\n" );
+                       proceed = false;
+                }
+                j++;
+            }
+        }
+        return proceed;
+    }
+
+    public String[] processNutrientMaster (File myfile) throws FileNotFoundException, IOException {
+        String[] m = new String[2];
+
+            boolean proceed = true;
+            boolean temp = true;
+            ArrayList<String> checklist = defineNutrientMaster();
+            ArrayList<String> list = new ArrayList<String>();
+            BufferedReader fsr = new BufferedReader(new FileReader(myfile, StandardCharsets.UTF_8));
+            String line = "";
+            int i = 0;
+            while ((line = fsr.readLine()) != null) {
+                if (cbignoreheader.isSelected() && i == 0) {
+                    i++;
+                    continue;
+                }
+                list.add(line);
+               String[] recs = line.split(tbdelimiter.getText().trim(), -1);
+               temp = checkNutrientMaster(recs, i, checklist);
+                   if (! temp) {
+                       proceed = false;
+                       m = new String[] {BlueSeerUtils.ErrorBit, getMessageTag(1150)};
+                   }
+               i++;
+            }
+            fsr.close();
+             if (proceed) {
+                 if (cbignoreheader.isSelected()) {
+                    i--; // reduce line count by 1 if ignore header
+                   }
+                   ArrayList<String> newlist = cleanList(list, checklist, tbdelimiter.getText().trim());
+                   m = com.blueseer.ing.nutData.addNutrientMasterMass(newlist, tbdelimiter.getText().trim());
+             }
+             return m;
+    }
+
 
        // GL Account Balances stuff
     public ArrayList<String> defineGLAcctBalances() {
@@ -2943,6 +3032,12 @@ public class MassLoad extends javax.swing.JPanel {
                        proceed = false;
                    }
                }
+               if (ddtable.getSelectedItem().toString().compareTo("Nutrient Master") == 0) {
+                   temp = checkNutrientMaster(recs, i, defineNutrientMaster());
+                   if (! temp) {
+                       proceed = false;
+                   }
+               }
                if (ddtable.getSelectedItem().toString().compareTo("GL Account Balances") == 0) {
                    temp = checkGLAcctBalances(recs, i);
                    if (! temp) {
@@ -3021,6 +3116,9 @@ public class MassLoad extends javax.swing.JPanel {
                }
                if (x.compareTo("Ingredient Master") == 0) {
                  m = processIngredientMaster(myfile);
+               }
+               if (x.compareTo("Nutrient Master") == 0) {
+                 m = processNutrientMaster(myfile);
                }
                if (x.compareTo("GL Account Balances") == 0) {
                  m = processGLAcctBalances(myfile);
@@ -3148,6 +3246,9 @@ public class MassLoad extends javax.swing.JPanel {
          }
          if (key.compareTo("Ingredient Master") == 0) {
              list = defineIngredientMaster();
+         }
+         if (key.compareTo("Nutrient Master") == 0) {
+             list = defineNutrientMaster();
          }
          if (key.compareTo("EDI Partners") == 0) { 
              list = defineEDIPartners();
@@ -3328,7 +3429,7 @@ public class MassLoad extends javax.swing.JPanel {
         jLabel1.setText("Master Table:");
         jLabel1.setName("lblid"); // NOI18N
 
-        ddtable.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item Master", "BOM Master", "Ingredient Master", "Customer Master", "Customer ShipTo Master", "Customer Xref", "Customer Price List", "Vendor Master", "Vendor Xref", "Vendor Price List", "Inventory Adjustment", "GL Account Balances", "Generic Code", "EDI Partners", "EDI Partner Transactions", "EDI Document Structures", "EDI Xref", "Carrier Master", "Routing Master", "WorkCenter Master", "Order - Shopify", "Fulfillment - Shopify", "SQL Code" }));
+        ddtable.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item Master", "BOM Master", "Ingredient Master", "Nutrient Master", "Customer Master", "Customer ShipTo Master", "Customer Xref", "Customer Price List", "Vendor Master", "Vendor Xref", "Vendor Price List", "Inventory Adjustment", "GL Account Balances", "Generic Code", "EDI Partners", "EDI Partner Transactions", "EDI Document Structures", "EDI Xref", "Carrier Master", "Routing Master", "WorkCenter Master", "Order - Shopify", "Fulfillment - Shopify", "SQL Code" }));
         ddtable.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 ddtableActionPerformed(evt);

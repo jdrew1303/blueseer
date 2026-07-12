@@ -21007,7 +21007,21 @@ return mystring;
     }    
         
     public static void printLabelItem(String item, String printer, String labelfile) throws IOException, PrintException {
-        printLabelItem(item, printer, labelfile, null, "", "", "", "", "");
+        printLabelItem(item, printer, labelfile, null, "", "", "", "", "", null, "", "");
+    }
+
+    /**
+     * Same as {@link #buildLabelZpl(String, String, com.blueseer.ing.IngredientLabelEngine.IngredientLabelResult,
+     * String, String, String, String, String, com.blueseer.ing.NutritionLabelEngine.NutritionLabelResult, String, String)}
+     * without the nutrition-declaration/storage/usage tokens, for older call
+     * sites that don't have them - see that overload for the actual work.
+     */
+    public static String buildLabelZpl(String item, String labelfile,
+            com.blueseer.ing.IngredientLabelEngine.IngredientLabelResult ingLabel,
+            String allergenWarnings, String lotNbr, String bestBefore, String itemDesc,
+            String netWeight) throws IOException {
+        return buildLabelZpl(item, labelfile, ingLabel, allergenWarnings, lotNbr, bestBefore, itemDesc, netWeight,
+                null, "", "");
     }
 
     /**
@@ -21015,11 +21029,20 @@ return mystring;
      * final ZPL text without sending it anywhere - shared by printLabelItem
      * (which sends this over the printer socket) and the Preview Label
      * button (which renders it to a PDF instead via com.blueseer.ing.LabelPreview).
+     * $NUTRITIONPANEL follows the exact same "must sit inside a normal
+     * ^FO/^A0N/^FB block" convention as $INGREDIENTLIST (see
+     * spliceIngredientListZpl) - it just doesn't need bold-run handling, so
+     * it's considerably simpler. $STORAGE/$USAGE (FIC Article 9(1)(g)/(j))
+     * are plain single-field substitutions like $LOTNBR/$BESTBEFORE, since
+     * they carry no special formatting requirement of their own - a template
+     * wanting them to word-wrap just needs its own ^FB on that field, same
+     * as any other plain text field.
      */
     public static String buildLabelZpl(String item, String labelfile,
             com.blueseer.ing.IngredientLabelEngine.IngredientLabelResult ingLabel,
             String allergenWarnings, String lotNbr, String bestBefore, String itemDesc,
-            String netWeight) throws IOException {
+            String netWeight, com.blueseer.ing.NutritionLabelEngine.NutritionLabelResult nutLabel,
+            String storageInstr, String usageInstr) throws IOException {
         Path template = checkForCustomPath(getSystemLabelDirectory(), labelfile);
 
         BufferedReader fsr = new BufferedReader(new FileReader(template.toFile(), StandardCharsets.UTF_8));
@@ -21033,11 +21056,14 @@ return mystring;
 
         concatline = concatline.replace("$ITEMNBR", item);
         concatline = spliceIngredientListZpl(concatline, ingLabel, item, netWeight);
+        concatline = spliceNutritionPanelZpl(concatline, nutLabel);
         concatline = concatline.replace("$ALLERGENWARNINGS", allergenWarnings);
         concatline = concatline.replace("$LOTNBR", lotNbr);
         concatline = concatline.replace("$BESTBEFORE", bestBefore);
         concatline = concatline.replace("$ITEMDESC", itemDesc);
         concatline = concatline.replace("$NETWEIGHT", netWeight);
+        concatline = concatline.replace("$STORAGE", storageInstr == null ? "" : storageInstr);
+        concatline = concatline.replace("$USAGE", usageInstr == null ? "" : usageInstr);
         return concatline;
     }
 
@@ -21053,6 +21079,20 @@ return mystring;
             com.blueseer.ing.IngredientLabelEngine.IngredientLabelResult ingLabel,
             String allergenWarnings, String lotNbr, String bestBefore, String itemDesc,
             String netWeight) throws IOException, PrintException {
+        printLabelItem(item, printer, labelfile, ingLabel, allergenWarnings, lotNbr, bestBefore, itemDesc,
+                netWeight, null, "", "");
+    }
+
+    /**
+     * Same as the six-arg-result overload above, plus the nutrition-panel/
+     * storage/usage tokens (see {@link #buildLabelZpl} for the full token
+     * list this adds).
+     */
+    public static void printLabelItem(String item, String printer, String labelfile,
+            com.blueseer.ing.IngredientLabelEngine.IngredientLabelResult ingLabel,
+            String allergenWarnings, String lotNbr, String bestBefore, String itemDesc,
+            String netWeight, com.blueseer.ing.NutritionLabelEngine.NutritionLabelResult nutLabel,
+            String storageInstr, String usageInstr) throws IOException, PrintException {
           String this_printer = "";
           try {
 
@@ -21073,7 +21113,7 @@ return mystring;
 
 
         String concatline = buildLabelZpl(item, labelfile, ingLabel, allergenWarnings, lotNbr,
-                bestBefore, itemDesc, netWeight);
+                bestBefore, itemDesc, netWeight, nutLabel, storageInstr, usageInstr);
 
          if (prt[2].equals("DirectToIP")) {
             Socket soc = null;
@@ -21159,6 +21199,45 @@ MainFrame.bslog(e);
             lineSpacing = Integer.parseInt(fbM.group(3));
         }
         String zplBlock = ingLabel.toZplLabelBody(x, y, width, fontHeight, lineSpacing, item, netWeight);
+        return template.substring(0, blockStart) + zplBlock + template.substring(fsIdx + tokenField.length());
+    }
+
+    /**
+     * Same convention as {@link #spliceIngredientListZpl} - $NUTRITIONPANEL
+     * must sit inside a normal ^FO/^A0N/^FB block, whose x/y/font height are
+     * read out of that block so the calculated nutrition panel's own
+     * multi-line layout (one field per nutrient row, see
+     * NutritionLabelEngine.NutritionLabelResult#toZplLabelBody) starts in the
+     * right place. No bold-run handling is needed here (unlike the
+     * ingredient list), so this doesn't need the ^FB width - each field is
+     * simply placed one line below the last, at a fixed 260-dot second
+     * column for the value.
+     */
+    private static String spliceNutritionPanelZpl(String template,
+            com.blueseer.ing.NutritionLabelEngine.NutritionLabelResult nutLabel) {
+        String tokenField = "^FD$NUTRITIONPANEL^FS";
+        int fsIdx = template.indexOf(tokenField);
+        if (fsIdx < 0) {
+            return template;
+        }
+        if (nutLabel == null) {
+            return template.replace(tokenField, "");
+        }
+        int blockStart = template.lastIndexOf("^FO", fsIdx);
+        int prevFieldEnd = template.lastIndexOf("^FS", fsIdx);
+        if (blockStart < 0 || blockStart < prevFieldEnd) {
+            return template.replace("$NUTRITIONPANEL", nutLabel.toPlainText());
+        }
+        String blockPrefix = template.substring(blockStart, fsIdx);
+        java.util.regex.Matcher foM = java.util.regex.Pattern.compile("\\^FO(\\d+),(\\d+)").matcher(blockPrefix);
+        java.util.regex.Matcher fontM = java.util.regex.Pattern.compile("\\^A0N,(\\d+),(\\d+)").matcher(blockPrefix);
+        if (!foM.find() || !fontM.find()) {
+            return template.replace("$NUTRITIONPANEL", nutLabel.toPlainText());
+        }
+        int x = Integer.parseInt(foM.group(1));
+        int y = Integer.parseInt(foM.group(2));
+        int fontHeight = Integer.parseInt(fontM.group(1));
+        String zplBlock = nutLabel.toZplLabelBody(x, y, fontHeight, 6);
         return template.substring(0, blockStart) + zplBlock + template.substring(fsIdx + tokenField.length());
     }
 

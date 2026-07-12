@@ -431,7 +431,8 @@ public class IngredientLabelEngine {
         }
     }
 
-    private record BomLine(String child, String type, double qtyPer) {
+    /** Package-visible (not private) so {@link NutritionLabelEngine} can reuse the same BOM walk. */
+    record BomLine(String child, String type, double qtyPer) {
     }
 
     private static final double COMPOUND_INGREDIENT_THRESHOLD_PCT = 2.0;
@@ -554,7 +555,9 @@ public class IngredientLabelEngine {
         return warnings;
     }
 
-    private void flattenRecursive(Connection con, String item, double qtyPerUnit, Map<String, Double> flatQty,
+    /** Package-visible (not private) so {@link NutritionLabelEngine} can reuse the same BOM walk
+     *  for its own per-nutrient rollup instead of duplicating the recursion. */
+    void flattenRecursive(Connection con, String item, double qtyPerUnit, Map<String, Double> flatQty,
             Map<String, String> reconMap) throws SQLException {
         for (BomLine line : getBomLines(con, item)) {
             double childQty = qtyPerUnit * line.qtyPer();
@@ -610,7 +613,9 @@ public class IngredientLabelEngine {
         return 1.0;
     }
 
-    private double getFinishedNetWeightG(Connection con, String item) throws SQLException {
+    /** Package-visible (not private) so {@link NutritionLabelEngine} can reuse the same
+     *  finished-weight lookup for its own per-100g normalization. */
+    double getFinishedNetWeightG(Connection con, String item) throws SQLException {
         try (PreparedStatement ps = con.prepareStatement("select it_net_wt from item_mstr where it_item = ?;")) {
             ps.setString(1, item);
             try (ResultSet res = ps.executeQuery()) {
