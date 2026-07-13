@@ -94,9 +94,17 @@ public class NutritionLabelEngine {
     /** Never a valid ing_nutrient data-entry target - both are always computed by this engine. */
     public static final Set<String> DERIVED_CODES = Set.of("SALT", "ENERGY");
 
-    /** One declared-or-derived nutrient's row in the panel, in Annex XV order. */
+    /**
+     * One declared-or-derived nutrient's row in the panel, in Annex XV order.
+     * The four energy-only fields are non-null solely on the ENERGY row - kJ
+     * and kcal need their own numbers (not just a pre-formatted display
+     * string) so the ZPL table can print them as separate rows rather than
+     * the combined "1801 kJ / 428 kcal" text {@link #per100Display} carries
+     * for the HTML/plain-text renderers.
+     */
     public record NutrientAmount(String code, String displayName, boolean isSubLine, boolean isMandatory,
-            String per100Display, String perPortionDisplay, Integer riPercentPer100, Integer riPercentPerPortion) {
+            String per100Display, String perPortionDisplay, Integer riPercentPer100, Integer riPercentPerPortion,
+            Long kjPer100, Long kcalPer100, Long kjPerPortion, Long kcalPerPortion) {
     }
 
     public record NutritionLabelResult(List<NutrientAmount> nutrients, boolean dataComplete,
@@ -146,43 +154,110 @@ public class NutritionLabelEngine {
             return sb.toString();
         }
 
+        /** One row of the printed nutrition table: a label plus its per-100g value and (if configured) per-portion value, side by side in their own columns. */
+        private record TableRow(String label, boolean indented, String per100Value, String portionValue) {
+        }
+
+        // Sub-line ("of which ...") rows get a real x-offset, not just leading spaces in the
+        // text, so they read as indented under their parent regardless of the printer font's
+        // actual glyph-space width.
+        private static final int SUBLINE_INDENT = 20;
+
         /**
-         * Multi-field ZPL block for the calculated panel, following the same
-         * template convention as {@code spliceIngredientListZpl}/{@code
-         * IngredientLabelEngine.Segment.toZplLabelBody}: one plain (non-bold)
-         * field per nutrient line, tabular where per-portion is present. No
-         * bold/allergen handling is needed here (unlike the ingredient list),
-         * so this is considerably simpler than that method.
+         * Builds the actual ruled ZPL table for the calculated panel: a
+         * label column, a "per 100g" column, and (only when a portion size
+         * is configured) a "per serving" column alongside it - side by side
+         * rather than stacked as separate rows, since a nutrient only ever
+         * needs one row this way. Energy still gets its own kJ row and kcal
+         * row (those are different units, not different serving sizes), but
+         * each of those rows now also carries both columns. Row/column
+         * widths use the same real-font measurement as {@link
+         * IngredientLabelEngine}'s ingredient list ({@link ZplTextUtils}) so
+         * a long label wraps within its own column instead of overrunning
+         * the value column(s).
+         *
+         * Returns the Y just past the table (and the RI disclaimer below
+         * it), so the next label section can start right there - see
+         * {@link ZplTextUtils.Rendered}.
          */
-        public String toZplLabelBody(int x, int y, int fontHeight, int lineSpacing) {
-            StringBuilder zpl = new StringBuilder();
-            int cy = y;
+        public ZplTextUtils.Rendered toZplLabelBody(int x, int y, int width, int fontHeight, int lineSpacing) {
+            boolean hasPortion = portionSizeG != null && portionSizeG > 0;
+
+            List<TableRow> rows = new ArrayList<>();
             for (NutrientAmount n : nutrients) {
-                String label = (n.isSubLine() ? "  of which " + stripOfWhich(n.displayName()) : n.displayName()) + ":";
-                String value = n.per100Display() + (n.riPercentPer100() != null ? " (" + n.riPercentPer100() + "% RI)" : "");
-                if (n.perPortionDisplay() != null) {
-                    value += " / " + n.perPortionDisplay()
-                            + (n.riPercentPerPortion() != null ? " (" + n.riPercentPerPortion() + "% RI)" : "");
+                String label = n.isSubLine() ? "of which " + stripOfWhich(n.displayName()) : n.displayName();
+                if (n.kjPer100() != null) {
+                    // Energy: kJ and kcal are separate units, so they're always their own rows -
+                    // each still carries both the 100g and portion columns like any other row.
+                    rows.add(new TableRow(label + " (kJ)", n.isSubLine(),
+                            n.kjPer100() + " kJ" + riSuffix(n.riPercentPer100()),
+                            hasPortion ? n.kjPerPortion() + " kJ" + riSuffix(n.riPercentPerPortion()) : null));
+                    rows.add(new TableRow(label + " (kcal)", n.isSubLine(),
+                            n.kcalPer100() + " kcal" + riSuffix(n.riPercentPer100()),
+                            hasPortion ? n.kcalPerPortion() + " kcal" + riSuffix(n.riPercentPerPortion()) : null));
+                } else {
+                    rows.add(new TableRow(label, n.isSubLine(),
+                            n.per100Display() + riSuffix(n.riPercentPer100()),
+                            hasPortion ? n.perPortionDisplay() + riSuffix(n.riPercentPerPortion()) : null));
                 }
-                appendZplField(zpl, x, cy, fontHeight, zplEscape(label));
-                appendZplField(zpl, x + 260, cy, fontHeight, zplEscape(value));
-                cy += fontHeight + lineSpacing;
             }
+
+            int labelColWidth = (int) (width * (hasPortion ? 0.44 : 0.60));
+            int valueColsWidth = width - labelColWidth;
+            int per100ColWidth = hasPortion ? valueColsWidth / 2 : valueColsWidth;
+            int per100ColX = x + labelColWidth + 8;
+            int portionColX = per100ColX + per100ColWidth;
+            int portionColWidth = valueColsWidth - per100ColWidth;
+            int rowGap = fontHeight + lineSpacing;
+
+            StringBuilder zpl = new StringBuilder();
+            ZplTextUtils.appendDivider(zpl, x, y, width);
+            int cy = y + 14;
+
+            if (hasPortion) {
+                ZplTextUtils.appendZplField(zpl, per100ColX, cy, fontHeight, "Per 100g", false);
+                ZplTextUtils.appendZplField(zpl, portionColX, cy, fontHeight, "Per serving", false);
+                cy += rowGap;
+                ZplTextUtils.appendDivider(zpl, x, cy, width);
+                cy += 10;
+            }
+            int tableTop = cy;
+
+            for (TableRow row : rows) {
+                int labelX = x + 4 + (row.indented() ? SUBLINE_INDENT : 0);
+                List<String> labelLines = ZplTextUtils.wrapPlain(row.label(), fontHeight, labelColWidth - 8 - (row.indented() ? SUBLINE_INDENT : 0));
+                List<String> per100Lines = ZplTextUtils.wrapPlain(row.per100Value(), fontHeight, per100ColWidth - 8);
+                List<String> portionLines = row.portionValue() != null
+                        ? ZplTextUtils.wrapPlain(row.portionValue(), fontHeight, portionColWidth - 8) : List.of();
+                for (int i = 0; i < labelLines.size(); i++) {
+                    ZplTextUtils.appendZplField(zpl, labelX, cy + i * rowGap, fontHeight, labelLines.get(i), false);
+                }
+                for (int i = 0; i < per100Lines.size(); i++) {
+                    ZplTextUtils.appendZplField(zpl, per100ColX, cy + i * rowGap, fontHeight, per100Lines.get(i), false);
+                }
+                for (int i = 0; i < portionLines.size(); i++) {
+                    ZplTextUtils.appendZplField(zpl, portionColX, cy + i * rowGap, fontHeight, portionLines.get(i), false);
+                }
+                cy += rowGap * Math.max(1, Math.max(labelLines.size(), Math.max(per100Lines.size(), portionLines.size())));
+            }
+            ZplTextUtils.appendVerticalDivider(zpl, x + labelColWidth, tableTop, cy - tableTop);
+            if (hasPortion) {
+                ZplTextUtils.appendVerticalDivider(zpl, portionColX - 8, tableTop, cy - tableTop);
+            }
+            ZplTextUtils.appendDivider(zpl, x, cy, width);
+            cy += 14;
+
             if (showRiPct) {
-                appendZplField(zpl, x, cy, fontHeight, zplEscape(RI_DISCLAIMER));
-                cy += fontHeight + lineSpacing;
+                for (String dl : ZplTextUtils.wrapPlain(RI_DISCLAIMER, fontHeight, width)) {
+                    ZplTextUtils.appendZplField(zpl, x, cy, fontHeight, dl, false);
+                    cy += rowGap;
+                }
             }
-            return zpl.toString();
+            return new ZplTextUtils.Rendered(zpl.toString(), cy);
         }
 
-        private static void appendZplField(StringBuilder zpl, int x, int y, int fontHeight, String text) {
-            zpl.append("^FO").append(x).append(",").append(y)
-                    .append("^A0N,").append(fontHeight).append(",").append(fontHeight)
-                    .append("^FD").append(text).append("^FS");
-        }
-
-        private static String zplEscape(String s) {
-            return s.replace("^", "").replace("~", "");
+        private static String riSuffix(Integer riPercent) {
+            return riPercent != null ? " (" + riPercent + "% RI)" : "";
         }
 
         private static String stripOfWhich(String displayName) {
@@ -311,11 +386,19 @@ public class NutritionLabelEngine {
             String perPortionDisplay = null;
             Integer riPer100 = null;
             Integer riPerPortion = null;
+            Long kjPer100 = null;
+            Long kcalPer100 = null;
+            Long kjPerPortion = null;
+            Long kcalPerPortion = null;
 
             if (nm.nutrient_code().equals("ENERGY")) {
                 per100Display = formatEnergy(energyKJPer100, energyKcalPer100);
+                kjPer100 = Math.round(energyKJPer100);
+                kcalPer100 = Math.round(energyKcalPer100);
                 if (hasPortion) {
                     perPortionDisplay = formatEnergy(energyKJPer100 * portionFactor, energyKcalPer100 * portionFactor);
+                    kjPerPortion = Math.round(energyKJPer100 * portionFactor);
+                    kcalPerPortion = Math.round(energyKcalPer100 * portionFactor);
                 }
                 if (cfg.nut_show_ri_pct()) {
                     riPer100 = riPercent(energyKJPer100, RI_ENERGY_KJ);
@@ -339,7 +422,8 @@ public class NutritionLabelEngine {
 
             boolean isSubLine = nm.display_name().startsWith("of which ");
             nutrients.add(new NutrientAmount(nm.nutrient_code(), nm.display_name(), isSubLine, nm.is_mandatory(),
-                    per100Display, perPortionDisplay, riPer100, riPerPortion));
+                    per100Display, perPortionDisplay, riPer100, riPerPortion,
+                    kjPer100, kcalPer100, kjPerPortion, kcalPerPortion));
         }
 
         return new NutritionLabelResult(nutrients, dataComplete, incompleteIngredients, internalNotes,
