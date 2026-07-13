@@ -2867,7 +2867,7 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
     // Lives in jPanel4 next to the other item-level flags (MRP/Schedule/Phantom/
     // Planned Orders) - see jPanel4Layout's horizontal/vertical groups above,
     // added to alongside those rather than as a bolted-on strip.
-    private final javax.swing.JCheckBox cbTrackFoodIngredient = new javax.swing.JCheckBox("Track as Food Ingredient");
+    private final javax.swing.JCheckBox cbTrackFoodIngredient = new javax.swing.JCheckBox("Food Item");
 
     private void updateFoodTabsEnabled() {
         boolean tracked = cbTrackFoodIngredient.isSelected();
