@@ -500,6 +500,7 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
        setPanelComponentState(this, true);
         setComponentDefaultValues();
         ingredientPanel.clear();
+        nutritionPanel.clear();
         BlueSeerUtils.message(new String[]{"0",BlueSeerUtils.addRecordInit});
         btupdate.setEnabled(false);
         btdelete.setEnabled(false);
@@ -620,6 +621,7 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
        jTabbedPane1.add(getClassLabelTag("images", this.getClass().getSimpleName()), ImagePanel);
        jTabbedPane1.add(getClassLabelTag("attachments", this.getClass().getSimpleName()), panelAttachment);
        jTabbedPane1.add(getClassLabelTag("ingredientdata", this.getClass().getSimpleName()), ingredientPanel);
+       jTabbedPane1.add(getClassLabelTag("nutritiondata", this.getClass().getSimpleName()), nutritionPanel);
        populateLabelDropdown();
         setPanelComponentState(this, false);
         btnew.setEnabled(true);
@@ -637,6 +639,7 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
             tbkey.setEditable(true);
             tbkey.requestFocus();
             ingredientPanel.clear();
+            nutritionPanel.clear();
         }
 
    }
@@ -679,8 +682,9 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
           OVData.addItemCostRec(tbkey.getText(), ddsite.getSelectedItem().toString(), "standard", mtlcost, ovhcost, outcost, (mtlcost + ovhcost + outcost));
           OVData.addItemCostRec(tbkey.getText(), ddsite.getSelectedItem().toString(), "current", mtlcost, ovhcost, outcost, (mtlcost + ovhcost + outcost));
           ingredientPanel.saveData(tbkey.getText());
+          nutritionPanel.saveData(tbkey.getText());
           return m;
-       
+
      }
    
     public String[] updateRecord(String[] x) {
@@ -712,6 +716,7 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
         String[] m = updateItemMstr(createRecord());
         rebaseCurrentCost(tbkey.getText(), mtlcost, ovhcost, outcost);
         ingredientPanel.saveData(tbkey.getText());
+        nutritionPanel.saveData(tbkey.getText());
         return m;
     }
     
@@ -731,6 +736,7 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
         x = z;
         getAttachments(key[0]);
         ingredientPanel.loadData(key[0]);
+        nutritionPanel.loadData(key[0]);
        return x.m();
     }
     
@@ -2834,10 +2840,13 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
     }//GEN-LAST:event_tableattachmentMouseClicked
 
 
-    // EU/Irish FIC ingredient regulatory data tab - hand-written, kept out of
-    // the generated initComponents()/GEN-BEGIN block below on purpose so it
-    // isn't at risk if this form is ever regenerated.
+    // EU/Irish FIC ingredient regulatory data tabs - hand-written, kept out of
+    // the generated initComponents()/GEN-BEGIN block below on purpose so they
+    // aren't at risk if this form is ever regenerated. Nutrition is a separate
+    // sibling tab/panel (not a section within ingredientPanel) since ing_nutrient/
+    // item_nut_cfg are their own tables with their own independent save.
     private final com.blueseer.ing.IngredientPanel ingredientPanel = new com.blueseer.ing.IngredientPanel();
+    private final com.blueseer.ing.NutritionPanel nutritionPanel = new com.blueseer.ing.NutritionPanel();
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel CostBOMPanel;

@@ -103,7 +103,7 @@ CREATE TABLE IF NOT EXISTS `item_nut_cfg` (
   `nut_portions_per_pack` int(5) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-select '*** ALTER TABLE SECTION (single-shot - not safely re-runnable, matching scripts/sqliteupgrade.txt's convention for plain column adds) ***';
+select '*** ALTER TABLE SECTION (single-shot - not safely re-runnable, matching scripts/sqliteupgrade.txt convention for plain column adds) ***';
 select '';
 
 /* storage/usage instructions (FIC Article 9(1)(g)/(j)) - mandatory label
