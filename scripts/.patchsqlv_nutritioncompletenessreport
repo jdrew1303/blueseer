@@ -1,0 +1,35 @@
+/* Registers the nutrition-completeness catalog report (com.blueseer.ing.
+   NutritionCompletenessPanel, see the nutrition-declaration epic) as a real
+   menu item, following the exact same menu_mstr/menu_tree/perm_mstr shape
+   every other menu-driven screen already uses (copied from the existing
+   ItemBrowse row) - not a new mechanism, just data.
+
+   Placed under the "Quality" top-level menu, alongside QPR Maintenance/
+   Browse, since a nutrition-declaration completeness check is a compliance/
+   quality-assurance report rather than an inventory-management one.
+
+   Plain additive inserts, each guarded by NOT EXISTS, safe to re-run and
+   safe regardless of where it lands in the client's actual .patchsqlvNN
+   sequence - same convention as .patchsqlv_ingredientlabeling and
+   .patchsqlv_nutritionlabeling.
+
+   NOTE: perm_mstr is a flat (perm_user, perm_menu) grant table, not a
+   role table - the insert below grants every user that already exists at
+   patch-install time. Any user created afterwards needs the same grant
+   added the normal way (however new users are otherwise granted access to
+   existing menu items in this system) - this patch cannot anticipate
+   future users.
+*/
+
+insert into menu_mstr (menu_id, menu_desc, menu_panel, menu_type, menu_navcode)
+select 'NutritionCompletenessRpt', 'Nutrition Completeness Report',
+       'com.blueseer.ing.NutritionCompletenessPanel', 'JMenuItem', 'nutcomp'
+where not exists (select 1 from menu_mstr where menu_id = 'NutritionCompletenessRpt');
+
+insert into menu_tree (mt_par, mt_child, mt_index, mt_type, mt_label, mt_icon, mt_initvar, mt_func, mt_visible, mt_enable)
+select 'Quality', 'NutritionCompletenessRpt', 3, 'JMenuItem', 'Nutrition Completeness Report', '', '1', '', 1, 1
+where not exists (select 1 from menu_tree where mt_par = 'Quality' and mt_child = 'NutritionCompletenessRpt');
+
+insert into perm_mstr (perm_user, perm_menu, perm_readonly)
+select user_id, 'NutritionCompletenessRpt', 0 from user_mstr
+where not exists (select 1 from perm_mstr where perm_user = user_mstr.user_id and perm_menu = 'NutritionCompletenessRpt');
