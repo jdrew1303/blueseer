@@ -501,6 +501,8 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
         setComponentDefaultValues();
         ingredientPanel.clear();
         nutritionPanel.clear();
+        cbTrackFoodIngredient.setSelected(false);
+        updateFoodTabsEnabled();
         BlueSeerUtils.message(new String[]{"0",BlueSeerUtils.addRecordInit});
         btupdate.setEnabled(false);
         btdelete.setEnabled(false);
@@ -616,12 +618,13 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
     
     public void initvars(String[] arg) {
        jTabbedPane1.removeAll();
-       jTabbedPane1.add(getClassLabelTag("main", this.getClass().getSimpleName()), MainPanel);
+       jTabbedPane1.add(getClassLabelTag("main", this.getClass().getSimpleName()), getMainTabWrapper());
        jTabbedPane1.add(getClassLabelTag("costbom", this.getClass().getSimpleName()), CostBOMPanel);
        jTabbedPane1.add(getClassLabelTag("images", this.getClass().getSimpleName()), ImagePanel);
        jTabbedPane1.add(getClassLabelTag("attachments", this.getClass().getSimpleName()), panelAttachment);
        jTabbedPane1.add(getClassLabelTag("ingredientdata", this.getClass().getSimpleName()), ingredientPanel);
        jTabbedPane1.add(getClassLabelTag("nutritiondata", this.getClass().getSimpleName()), nutritionPanel);
+       updateFoodTabsEnabled();
        populateLabelDropdown();
         setPanelComponentState(this, false);
         btnew.setEnabled(true);
@@ -640,6 +643,8 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
             tbkey.requestFocus();
             ingredientPanel.clear();
             nutritionPanel.clear();
+            cbTrackFoodIngredient.setSelected(false);
+            updateFoodTabsEnabled();
         }
 
    }
@@ -681,6 +686,7 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
           // now add item cost record for later use
           OVData.addItemCostRec(tbkey.getText(), ddsite.getSelectedItem().toString(), "standard", mtlcost, ovhcost, outcost, (mtlcost + ovhcost + outcost));
           OVData.addItemCostRec(tbkey.getText(), ddsite.getSelectedItem().toString(), "current", mtlcost, ovhcost, outcost, (mtlcost + ovhcost + outcost));
+          ingredientPanel.setTrackedAsFood(cbTrackFoodIngredient.isSelected());
           ingredientPanel.saveData(tbkey.getText());
           nutritionPanel.saveData(tbkey.getText());
           return m;
@@ -715,6 +721,7 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
         
         String[] m = updateItemMstr(createRecord());
         rebaseCurrentCost(tbkey.getText(), mtlcost, ovhcost, outcost);
+        ingredientPanel.setTrackedAsFood(cbTrackFoodIngredient.isSelected());
         ingredientPanel.saveData(tbkey.getText());
         nutritionPanel.saveData(tbkey.getText());
         return m;
@@ -737,6 +744,8 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
         getAttachments(key[0]);
         ingredientPanel.loadData(key[0]);
         nutritionPanel.loadData(key[0]);
+        cbTrackFoodIngredient.setSelected(ingredientPanel.isTrackedAsFood());
+        updateFoodTabsEnabled();
        return x.m();
     }
     
@@ -2847,6 +2856,38 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
     // item_nut_cfg are their own tables with their own independent save.
     private final com.blueseer.ing.IngredientPanel ingredientPanel = new com.blueseer.ing.IngredientPanel();
     private final com.blueseer.ing.NutritionPanel nutritionPanel = new com.blueseer.ing.NutritionPanel();
+
+    // Not every BlueSeer item is food (packaging, cleaning supplies, etc.), so the
+    // Ingredient Data/Nutrition Data tabs are opt-in per item via this checkbox
+    // rather than always shown - keeps the ERP generally useful outside food.
+    // Wraps the generated MainPanel (NORTH strip + generated panel unchanged at
+    // CENTER) instead of editing MainPanelLayout's GroupLayout blocks directly.
+    private final javax.swing.JCheckBox cbTrackFoodIngredient = new javax.swing.JCheckBox("Track as Food Ingredient");
+    private javax.swing.JPanel mainTabWrapper;
+
+    private javax.swing.JPanel getMainTabWrapper() {
+        if (mainTabWrapper == null) {
+            mainTabWrapper = new javax.swing.JPanel(new java.awt.BorderLayout());
+            javax.swing.JPanel strip = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
+            strip.add(cbTrackFoodIngredient);
+            mainTabWrapper.add(strip, java.awt.BorderLayout.NORTH);
+            mainTabWrapper.add(MainPanel, java.awt.BorderLayout.CENTER);
+            cbTrackFoodIngredient.addActionListener(e -> updateFoodTabsEnabled());
+        }
+        return mainTabWrapper;
+    }
+
+    private void updateFoodTabsEnabled() {
+        boolean tracked = cbTrackFoodIngredient.isSelected();
+        int ingIdx = jTabbedPane1.indexOfComponent(ingredientPanel);
+        int nutIdx = jTabbedPane1.indexOfComponent(nutritionPanel);
+        if (ingIdx >= 0) {
+            jTabbedPane1.setEnabledAt(ingIdx, tracked);
+        }
+        if (nutIdx >= 0) {
+            jTabbedPane1.setEnabledAt(nutIdx, tracked);
+        }
+    }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel CostBOMPanel;
