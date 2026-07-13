@@ -67,7 +67,7 @@ public class IngredientPanel extends JPanel {
     // Food vs. packaging/non-food raw material (ing_mstr.ing_material_type) - drives whether
     // this item is even eligible to appear in an ingredient list/nutrition rollup at all (see
     // IngredientLabelEngine.isFoodMaterial). No control lives on this panel for it - ItemMaint
-    // owns a single "Track as Food Ingredient" checkbox on its Main tab that shows/hides this
+    // owns a single "Food Item" checkbox on its Main tab that shows/hides this
     // whole tab (and Nutrition Data) rather than disabling sections within an always-visible
     // tab, so a non-food ERP catalog isn't cluttered with food-specific tabs by default. ItemMaint
     // calls setTrackedAsFood()/isTrackedAsFood() around loadData()/saveData() to keep this field
