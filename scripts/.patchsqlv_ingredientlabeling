@@ -92,7 +92,7 @@ CREATE TABLE IF NOT EXISTS `ing_recon` (
   PRIMARY KEY (`it_item`, `recon_item`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-select '*** ALTER TABLE SECTION (single-shot - not safely re-runnable, matching scripts/sqliteupgrade.txt's convention for plain column adds) ***';
+select '*** ALTER TABLE SECTION (single-shot - not safely re-runnable, matching scripts/sqliteupgrade.txt convention for plain column adds) ***';
 select '';
 
 /* it_moistloss: this FINISHED item's production process (cooking/baking/

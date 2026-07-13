@@ -222,11 +222,12 @@ public class NutritionLabelEngine {
         }
 
         // Required *input* codes to complete the mandatory declaration (Article 30(1)):
-        // every mandatory nut_mstr row except SALT (derived), plus SODIUM (the actual
-        // input SALT is derived from - see class javadoc).
+        // every mandatory nut_mstr row except the derived ones (SALT/ENERGY - neither
+        // can ever be entered directly), plus SODIUM (the actual input SALT is derived
+        // from - see class javadoc).
         Set<String> requiredInputCodes = new LinkedHashSet<>();
         for (nutData.nut_mstr nm : nutMstrList) {
-            if (nm.is_mandatory() && !nm.nutrient_code().equals("SALT")) {
+            if (nm.is_mandatory() && !DERIVED_CODES.contains(nm.nutrient_code())) {
                 requiredInputCodes.add(nm.nutrient_code());
             }
         }
