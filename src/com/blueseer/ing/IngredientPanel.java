@@ -66,12 +66,13 @@ public class IngredientPanel extends JPanel {
 
     // Food vs. packaging/non-food raw material (ing_mstr.ing_material_type) - drives whether
     // this item is even eligible to appear in an ingredient list/nutrition rollup at all (see
-    // IngredientLabelEngine.isFoodMaterial), not just a UI grouping. The allergen/additive/
-    // compound-ingredient sections below are disabled (not cleared) when set to Packaging,
-    // since none of them are meaningful for a raw material that will never be a food ingredient.
-    private static final String FOOD_LABEL = "Food Ingredient";
-    private static final String PACKAGING_LABEL = "Packaging / Non-Food";
-    private final JComboBox<String> ddMaterialType = new JComboBox<>(new String[]{FOOD_LABEL, PACKAGING_LABEL});
+    // IngredientLabelEngine.isFoodMaterial). No control lives on this panel for it - ItemMaint
+    // owns a single "Track as Food Ingredient" checkbox on its Main tab that shows/hides this
+    // whole tab (and Nutrition Data) rather than disabling sections within an always-visible
+    // tab, so a non-food ERP catalog isn't cluttered with food-specific tabs by default. ItemMaint
+    // calls setTrackedAsFood()/isTrackedAsFood() around loadData()/saveData() to keep this field
+    // in sync with its own checkbox without a second writer touching ing_mstr's row.
+    private String materialType = ingData.ing_mstr.FOOD;
 
     private final javax.swing.JTextField tbLegalName = new javax.swing.JTextField();
     private final javax.swing.JTextField tbCategory = new javax.swing.JTextField();
@@ -132,16 +133,6 @@ public class IngredientPanel extends JPanel {
         JPanel content = new JPanel(new MigLayout("insets 10", "[]5[grow,fill]"));
         add(new JScrollPane(content), BorderLayout.CENTER);
 
-        content.add(labelWithHelp("Material type",
-                "Most raw materials used in a recipe are food ingredients, but a BOM can also "
-                + "include non-food components like packaging, labels, or wrapping - those should "
-                + "never appear in a printed ingredient list or count toward a nutrition panel. Set "
-                + "this to <b>Packaging / Non-Food</b> for those; everything below (allergens, "
-                + "additive, compound-ingredient) becomes irrelevant and is disabled, and this item "
-                + "is skipped entirely wherever it's used in another item's recipe."));
-        content.add(ddMaterialType, "wrap");
-        ddMaterialType.addActionListener(e -> updateMaterialTypeEnabled());
-
         content.add(new JLabel("Legal ingredient name"));
         content.add(tbLegalName, "wrap");
 
@@ -164,7 +155,10 @@ public class IngredientPanel extends JPanel {
         content.add(tbENumber, "wrap");
         tbCategory.setEnabled(false);
         tbENumber.setEnabled(false);
-        cbIsAdditive.addActionListener(e -> updateMaterialTypeEnabled());
+        cbIsAdditive.addActionListener(e -> {
+            tbCategory.setEnabled(cbIsAdditive.isSelected());
+            tbENumber.setEnabled(cbIsAdditive.isSelected());
+        });
 
         for (ingData.ing_allergen_ref ref : ingData.getAllergenRef()) {
             JCheckBox cb = new JCheckBox(shortAllergenLabel(ref.allergen_code(), ref.allergen_desc()));
@@ -201,7 +195,7 @@ public class IngredientPanel extends JPanel {
         subPanel.setVisible(false);
         content.add(wrapTitled("Supplier-declared sub-ingredients", subPanel), "span 2, grow, wrap");
 
-        cbIsCompound.addActionListener(e -> updateMaterialTypeEnabled());
+        cbIsCompound.addActionListener(e -> subPanel.setVisible(cbIsCompound.isSelected()));
 
         content.add(cbMoistLoss, "wrap");
         cbMoistLoss.setToolTipText(helpHtml(
@@ -265,27 +259,17 @@ public class IngredientPanel extends JPanel {
 
         content.add(new JLabel("Notes"));
         content.add(new JScrollPane(taNotes), "span 2, grow, wrap");
-
-        updateMaterialTypeEnabled();
     }
 
-    /**
-     * Disables (not clears) the allergen/additive/compound-ingredient sections when this
-     * item is flagged Packaging / Non-Food - none of them are meaningful for a raw material
-     * that will never be a food ingredient. Existing values are left alone rather than wiped,
-     * since toggling the dropdown back and forth shouldn't destroy data the user already
-     * entered before switching material type.
-     */
-    private void updateMaterialTypeEnabled() {
-        boolean isFood = FOOD_LABEL.equals(ddMaterialType.getSelectedItem());
-        cbIsAdditive.setEnabled(isFood);
-        tbCategory.setEnabled(isFood && cbIsAdditive.isSelected());
-        tbENumber.setEnabled(isFood && cbIsAdditive.isSelected());
-        for (JCheckBox cb : allergenBoxes.values()) {
-            cb.setEnabled(isFood);
-        }
-        cbIsCompound.setEnabled(isFood);
-        subPanel.setVisible(isFood && cbIsCompound.isSelected());
+    /** True unless ItemMaint has flagged this item as Packaging/Non-Food via {@link #setTrackedAsFood}. */
+    public boolean isTrackedAsFood() {
+        return ingData.ing_mstr.FOOD.equals(materialType);
+    }
+
+    /** Called by ItemMaint right before {@link #saveData} so its own Main-tab checkbox is what
+     *  actually ends up in ing_mstr - this panel has no control of its own for the field anymore. */
+    public void setTrackedAsFood(boolean tracked) {
+        materialType = tracked ? ingData.ing_mstr.FOOD : ingData.ing_mstr.PACKAGING;
     }
 
     /** A field label followed by a small help icon carrying the long-form explanation as a tooltip. */
@@ -344,7 +328,7 @@ public class IngredientPanel extends JPanel {
     }
 
     public void clear() {
-        ddMaterialType.setSelectedItem(FOOD_LABEL);
+        materialType = ingData.ing_mstr.FOOD;
         tbLegalName.setText("");
         tbCategory.setText("");
         tbENumber.setText("");
@@ -361,7 +345,6 @@ public class IngredientPanel extends JPanel {
         bomPanel.setVisible(false);
         taStorageInstr.setText("");
         taUsageInstr.setText("");
-        updateMaterialTypeEnabled();
     }
 
     public void loadData(String item) {
@@ -371,18 +354,20 @@ public class IngredientPanel extends JPanel {
         }
         ingData.ing_mstr rec = ingData.getIngMstr(item);
         if (rec.m() != null && rec.m().length > 0 && rec.m()[0].equals(com.blueseer.utl.BlueSeerUtils.SuccessBit)) {
-            ddMaterialType.setSelectedItem(ingData.ing_mstr.PACKAGING.equalsIgnoreCase(rec.ing_material_type())
-                    ? PACKAGING_LABEL : FOOD_LABEL);
+            materialType = ingData.ing_mstr.PACKAGING.equalsIgnoreCase(rec.ing_material_type())
+                    ? ingData.ing_mstr.PACKAGING : ingData.ing_mstr.FOOD;
             tbLegalName.setText(rec.ing_legalname());
             tbCategory.setText(rec.ing_category());
             tbENumber.setText(rec.ing_enumber());
             tbWtPerUom.setText(String.valueOf(rec.ing_wt_per_uom_g() <= 0 ? 1.0 : rec.ing_wt_per_uom_g()));
             cbIsAdditive.setSelected(!rec.ing_category().isBlank() || !rec.ing_enumber().isBlank());
+            tbCategory.setEnabled(cbIsAdditive.isSelected());
+            tbENumber.setEnabled(cbIsAdditive.isSelected());
             cbIsCompound.setSelected("1".equals(rec.ing_iscompound()));
+            subPanel.setVisible(cbIsCompound.isSelected());
             taNotes.setText(rec.ing_notes());
             taStorageInstr.setText(rec.ing_storage_instr());
             taUsageInstr.setText(rec.ing_usage_instr());
-            updateMaterialTypeEnabled();
         }
         for (String code : ingData.getAllergenCodes(item)) {
             JCheckBox cb = allergenBoxes.get(code);
@@ -419,8 +404,6 @@ public class IngredientPanel extends JPanel {
         } catch (NumberFormatException nfe) {
             wtPerUom = 1.0;
         }
-        String materialType = PACKAGING_LABEL.equals(ddMaterialType.getSelectedItem())
-                ? ingData.ing_mstr.PACKAGING : ingData.ing_mstr.FOOD;
         ingData.ing_mstr rec = new ingData.ing_mstr(null, item, tbLegalName.getText(), category,
                 enumber, cbIsCompound.isSelected() ? "1" : "0", "1", taNotes.getText(), wtPerUom <= 0 ? 1.0 : wtPerUom,
                 taStorageInstr.getText(), taUsageInstr.getText(), materialType);
