@@ -59,9 +59,18 @@ public class ingData {
 
     public record ing_mstr(String[] m, String it_item, String ing_legalname, String ing_category,
         String ing_enumber, String ing_iscompound, String ing_active, String ing_notes, double ing_wt_per_uom_g,
-        String ing_storage_instr, String ing_usage_instr) {
+        String ing_storage_instr, String ing_usage_instr, String ing_material_type) {
+        // Distinguishes an actual food ingredient from a raw material that is never food -
+        // packaging, labels, cleaning supplies, etc. Free text (not a DB-enforced enum) so a
+        // client can add more categories later without a schema change, same convention as
+        // nutData.item_nut_cfg's placement values - but IngredientLabelEngine.flattenRecursive
+        // only ever tests for FOOD, so any other value (not just PACKAGING) is excluded from
+        // ingredient lists and nutrition rollups the same way.
+        public static final String FOOD = "FOOD";
+        public static final String PACKAGING = "PACKAGING";
+
         public ing_mstr(String[] m) {
-            this(m, "", "", "", "", "", "1", "", 1.0, "", "");
+            this(m, "", "", "", "", "", "1", "", 1.0, "", "", FOOD);
         }
     }
 
@@ -118,15 +127,19 @@ public class ingData {
         return m;
     }
 
+    private static String normalizeMaterialType(String materialType) {
+        return materialType == null || materialType.isBlank() ? ing_mstr.FOOD : materialType;
+    }
+
     private static int _addUpdateIngMstr(ing_mstr x, Connection con) throws SQLException {
         int rows;
         String sqlSelect = "select * from ing_mstr where it_item = ?;";
         String sqlInsert = "insert into ing_mstr (it_item, ing_legalname, ing_category, ing_enumber, "
-                + "ing_iscompound, ing_active, ing_notes, ing_wt_per_uom_g, ing_storage_instr, ing_usage_instr) "
-                + "values (?,?,?,?,?,?,?,?,?,?);";
+                + "ing_iscompound, ing_active, ing_notes, ing_wt_per_uom_g, ing_storage_instr, ing_usage_instr, "
+                + "ing_material_type) values (?,?,?,?,?,?,?,?,?,?,?);";
         String sqlUpdate = "update ing_mstr set ing_legalname = ?, ing_category = ?, ing_enumber = ?, "
                 + "ing_iscompound = ?, ing_active = ?, ing_notes = ?, ing_wt_per_uom_g = ?, "
-                + "ing_storage_instr = ?, ing_usage_instr = ? where it_item = ?;";
+                + "ing_storage_instr = ?, ing_usage_instr = ?, ing_material_type = ? where it_item = ?;";
         try (PreparedStatement ps = con.prepareStatement(sqlSelect)) {
             ps.setString(1, x.it_item());
             try (ResultSet res = ps.executeQuery()) {
@@ -142,6 +155,7 @@ public class ingData {
                         psi.setDouble(8, x.ing_wt_per_uom_g() <= 0 ? 1.0 : x.ing_wt_per_uom_g());
                         psi.setString(9, x.ing_storage_instr());
                         psi.setString(10, x.ing_usage_instr());
+                        psi.setString(11, normalizeMaterialType(x.ing_material_type()));
                         rows = psi.executeUpdate();
                     }
                 } else {
@@ -155,7 +169,8 @@ public class ingData {
                         psu.setDouble(7, x.ing_wt_per_uom_g() <= 0 ? 1.0 : x.ing_wt_per_uom_g());
                         psu.setString(8, x.ing_storage_instr());
                         psu.setString(9, x.ing_usage_instr());
-                        psu.setString(10, x.it_item());
+                        psu.setString(10, normalizeMaterialType(x.ing_material_type()));
+                        psu.setString(11, x.it_item());
                         rows = psu.executeUpdate();
                     }
                 }
@@ -196,7 +211,8 @@ public class ingData {
                             res.getString("ing_category"), res.getString("ing_enumber"),
                             res.getString("ing_iscompound"), res.getString("ing_active"),
                             res.getString("ing_notes"), res.getDouble("ing_wt_per_uom_g"),
-                            res.getString("ing_storage_instr"), res.getString("ing_usage_instr"));
+                            res.getString("ing_storage_instr"), res.getString("ing_usage_instr"),
+                            normalizeMaterialType(res.getString("ing_material_type")));
                 }
             }
         } catch (SQLException s) {
@@ -210,8 +226,9 @@ public class ingData {
     /**
      * Bulk CSV import (see MassLoad.processIngredientMaster). Each line is
      * it_item, ing_legalname, ing_category, ing_enumber, ing_iscompound,
-     * allergen_codes (pipe-delimited), ing_wt_per_uom_g - already validated
-     * by MassLoad.checkIngredientMaster before this is called.
+     * allergen_codes (pipe-delimited), ing_wt_per_uom_g, ing_material_type
+     * (optional - blank/absent defaults to FOOD) - already validated by
+     * MassLoad.checkIngredientMaster before this is called.
      */
     public static String[] addIngredientMasterMass(ArrayList<String> lines, String delim) {
         String[] m = new String[]{BlueSeerUtils.SuccessBit, ""};
@@ -228,8 +245,9 @@ public class ingData {
                         wtPerUom = 1.0;
                     }
                 }
+                String materialType = ld.length > 7 ? normalizeMaterialType(ld[7]) : ing_mstr.FOOD;
                 ing_mstr x = new ing_mstr(null, ld[0], ld[1], ld[2], ld[3], ld[4].isBlank() ? "0" : ld[4], "1", "",
-                        wtPerUom <= 0 ? 1.0 : wtPerUom, "", "");
+                        wtPerUom <= 0 ? 1.0 : wtPerUom, "", "", materialType);
                 _addUpdateIngMstr(x, con);
                 ArrayList<String> codes = new ArrayList<>();
                 if (ld.length > 5 && !ld[5].isBlank()) {

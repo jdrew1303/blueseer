@@ -549,6 +549,7 @@ public class MassLoad extends javax.swing.JPanel {
         list.add("ing_iscompound,b,1,optional,validated (1 or 0)");
         list.add("allergen_codes,s,200,optional,validated (pipe-delimited, e.g. GLUTEN|MILK)");
         list.add("ing_wt_per_uom_g,d,12,optional,unvalidated (grams per 1 unit of this item's UOM; blank/0 defaults to 1)");
+        list.add("ing_material_type,s,20,optional,validated (FOOD or PACKAGING; blank defaults to FOOD)");
         return list;
     }
 
@@ -583,6 +584,12 @@ public class MassLoad extends javax.swing.JPanel {
                             proceed = false;
                         }
                     }
+                }
+                if (ld[0].compareTo("ing_material_type") == 0 && ! rs[j].isBlank()
+                        && ! rs[j].equalsIgnoreCase(com.blueseer.ing.ingData.ing_mstr.FOOD)
+                        && ! rs[j].equalsIgnoreCase(com.blueseer.ing.ingData.ing_mstr.PACKAGING)) {
+                    tacomments.append("line:field " + i + ":" + j + " " + String.valueOf(rs[j]) + " must be FOOD or PACKAGING" + "\n" );
+                       proceed = false;
                 }
                 j++;
             }

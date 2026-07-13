@@ -506,20 +506,47 @@ public class IngredientLabelEngine {
         return warnings;
     }
 
-    /** Package-visible (not private) so {@link NutritionLabelEngine} can reuse the same BOM walk
-     *  for its own per-nutrient rollup instead of duplicating the recursion. */
+    /**
+     * Package-visible (not private) so {@link NutritionLabelEngine} can
+     * reuse the same BOM walk for its own per-nutrient rollup instead of
+     * duplicating the recursion.
+     *
+     * A leaf flagged as anything other than {@code ing_mstr.FOOD} (e.g.
+     * packaging) is skipped entirely - never added to the flattened map -
+     * so it can never appear in a printed ingredient list or contribute to
+     * a nutrition rollup. This is the single shared choke point both
+     * engines flatten through, so the exclusion only needs to live here
+     * once.
+     */
     void flattenRecursive(Connection con, String item, double qtyPerUnit, Map<String, Double> flatQty,
             Map<String, String> reconMap) throws SQLException {
         for (BomLine line : getBomLines(con, item)) {
             double childQty = qtyPerUnit * line.qtyPer();
             if (line.type().equalsIgnoreCase("M")) {
                 flattenRecursive(con, line.child(), childQty, flatQty, reconMap);
-            } else {
+            } else if (isFoodMaterial(con, line.child())) {
                 double gramsPerUom = getWtPerUomG(con, line.child());
                 String key = reconMap.getOrDefault(line.child(), line.child());
                 flatQty.merge(key, childQty * gramsPerUom, Double::sum);
             }
         }
+    }
+
+    /** True unless this item's ing_mstr row explicitly flags it as something other than FOOD
+     *  (e.g. packaging) - true (not false) when there's no ing_mstr row at all, so an item that
+     *  was never opened on the Ingredient Data tab still behaves as a normal food ingredient,
+     *  matching every other ing_mstr-backed default in this engine. */
+    private boolean isFoodMaterial(Connection con, String item) throws SQLException {
+        try (PreparedStatement ps = con.prepareStatement("select ing_material_type from ing_mstr where it_item = ?;")) {
+            ps.setString(1, item);
+            try (ResultSet res = ps.executeQuery()) {
+                if (res.next()) {
+                    String materialType = res.getString("ing_material_type");
+                    return materialType == null || materialType.isBlank() || ingData.ing_mstr.FOOD.equalsIgnoreCase(materialType);
+                }
+            }
+        }
+        return true;
     }
 
     /** One row of {@link #getBomIngredients} - a raw, unfolded leaf ingredient item code and its description. */
