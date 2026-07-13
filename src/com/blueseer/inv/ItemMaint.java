@@ -166,6 +166,7 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
     public ItemMaint() {
         initComponents();
         setLanguageTags(this);
+        cbTrackFoodIngredient.addActionListener(e -> updateFoodTabsEnabled());
     }
 
     // interface functions implemented
@@ -618,7 +619,7 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
     
     public void initvars(String[] arg) {
        jTabbedPane1.removeAll();
-       jTabbedPane1.add(getClassLabelTag("main", this.getClass().getSimpleName()), getMainTabWrapper());
+       jTabbedPane1.add(getClassLabelTag("main", this.getClass().getSimpleName()), MainPanel);
        jTabbedPane1.add(getClassLabelTag("costbom", this.getClass().getSimpleName()), CostBOMPanel);
        jTabbedPane1.add(getClassLabelTag("images", this.getClass().getSimpleName()), ImagePanel);
        jTabbedPane1.add(getClassLabelTag("attachments", this.getClass().getSimpleName()), panelAttachment);
@@ -1640,7 +1641,8 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
                         .addGap(53, 53, 53)
                         .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(cbmrp)
-                            .addComponent(cbschedule))
+                            .addComponent(cbschedule)
+                            .addComponent(cbTrackFoodIngredient))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(cbphantom)
@@ -1750,6 +1752,8 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
                         .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(cbschedule)
                             .addComponent(cbphantom))
+                        .addGap(3, 3, 3)
+                        .addComponent(cbTrackFoodIngredient)
                         .addGap(0, 0, Short.MAX_VALUE))))
         );
 
@@ -2860,22 +2864,10 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
     // Not every BlueSeer item is food (packaging, cleaning supplies, etc.), so the
     // Ingredient Data/Nutrition Data tabs are opt-in per item via this checkbox
     // rather than always shown - keeps the ERP generally useful outside food.
-    // Wraps the generated MainPanel (NORTH strip + generated panel unchanged at
-    // CENTER) instead of editing MainPanelLayout's GroupLayout blocks directly.
+    // Lives in jPanel4 next to the other item-level flags (MRP/Schedule/Phantom/
+    // Planned Orders) - see jPanel4Layout's horizontal/vertical groups above,
+    // added to alongside those rather than as a bolted-on strip.
     private final javax.swing.JCheckBox cbTrackFoodIngredient = new javax.swing.JCheckBox("Track as Food Ingredient");
-    private javax.swing.JPanel mainTabWrapper;
-
-    private javax.swing.JPanel getMainTabWrapper() {
-        if (mainTabWrapper == null) {
-            mainTabWrapper = new javax.swing.JPanel(new java.awt.BorderLayout());
-            javax.swing.JPanel strip = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
-            strip.add(cbTrackFoodIngredient);
-            mainTabWrapper.add(strip, java.awt.BorderLayout.NORTH);
-            mainTabWrapper.add(MainPanel, java.awt.BorderLayout.CENTER);
-            cbTrackFoodIngredient.addActionListener(e -> updateFoodTabsEnabled());
-        }
-        return mainTabWrapper;
-    }
 
     private void updateFoodTabsEnabled() {
         boolean tracked = cbTrackFoodIngredient.isSelected();
