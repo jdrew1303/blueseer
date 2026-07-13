@@ -295,6 +295,11 @@ public class NutritionLabelEngine {
                     + " - nutrition values cannot be expressed per 100g, so no panel can be calculated.");
             return new NutritionLabelResult(List.of(), false, List.of(), internalNotes, null, "", null, false);
         }
+        if (flatQty.isEmpty()) {
+            internalNotes.add(finishedItem + " has no BOM lines - there is nothing to calculate a nutrition "
+                    + "panel from, so this is flagged incomplete rather than a misleadingly \"complete\" all-zero panel.");
+            return new NutritionLabelResult(List.of(), false, List.of(), internalNotes, null, "", null, false);
+        }
 
         // Required *input* codes to complete the mandatory declaration (Article 30(1)):
         // every mandatory nut_mstr row except the derived ones (SALT/ENERGY - neither
