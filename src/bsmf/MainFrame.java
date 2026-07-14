@@ -900,13 +900,36 @@ extends JFrame {
             if (logo != null && !logo.isBlank() && !logo.equalsIgnoreCase("bs.png")) {
                 File f = new File(BlueSeerUtils.cleanDirString(OVData.getSystemImageDirectory()) + logo);
                 if (f.isFile() && f.canRead()) {
-                    return new ImageIcon(f.getAbsolutePath()).getImage();
+                    return scaleToFit(new ImageIcon(f.getAbsolutePath()).getImage(), BRAND_LOGO_MAX_DIMENSION);
                 }
             }
         } catch (Exception ex) {
             bslog(ex);
         }
         return null;
+    }
+
+    // The bundled gear/BlueSeer image this replaces is 442x442 - BackGroundPanel
+    // draws whatever it's given at native pixel size, so match that footprint.
+    private static final int BRAND_LOGO_MAX_DIMENSION = 442;
+
+    /**
+     * A site's own logo can be any resolution (a print-quality marketing
+     * file, easily thousands of pixels wide) - drawn at native size that
+     * would fill the whole window instead of sitting sized like the
+     * original. Scales down proportionally only if it's actually larger
+     * than maxDimension in either direction; never scales up.
+     */
+    private Image scaleToFit(Image image, int maxDimension) {
+        int w = image.getWidth(null);
+        int h = image.getHeight(null);
+        if (w <= 0 || h <= 0 || (w <= maxDimension && h <= maxDimension)) {
+            return image;
+        }
+        double scale = (double) maxDimension / Math.max(w, h);
+        int newW = (int) Math.round(w * scale);
+        int newH = (int) Math.round(h * scale);
+        return image.getScaledInstance(newW, newH, Image.SCALE_SMOOTH);
     }
 
     public static boolean loadPanel(String menu, Object myobject) {
