@@ -229,6 +229,7 @@ extends JFrame {
     public static JTextField navcode;
     public static JFrame mydialog;
     Image myimage = null;
+    Image brandLogoImage = null;
     public static Color backgroundcolor;
     public static Color nonEditableColor;
     public static Color invalidColor;
@@ -874,12 +875,38 @@ extends JFrame {
     }
 
     public void spinGear(int n) {
-        ImageIcon myicon = new ImageIcon(this.getClass().getResource("/images/bs.gif"));
-        this.myimage = myicon.getImage();
+        this.brandLogoImage = resolveSiteBrandLogo();
+        ImageIcon myicon = this.brandLogoImage == null
+                ? new ImageIcon(this.getClass().getResource("/images/bs.gif")) : null;
+        this.myimage = this.brandLogoImage != null ? this.brandLogoImage : myicon.getImage();
         backgroundpanel.setImage(this.myimage);
         createSpinTask task = new createSpinTask(n);
         spin = true;
         task.execute();
+    }
+
+    /**
+     * Once a site has its own logo configured (Site Maintenance - the same
+     * image used on invoices, shippers, etc.), use it for the login/loading
+     * screen too instead of the stock BlueSeer gear - installs that haven't
+     * set one up yet (still on the seeded default "bs.png") keep the
+     * original animated gear unchanged. Runs a couple of small local
+     * queries, so callers on the EDT should keep this off any hot path.
+     */
+    private Image resolveSiteBrandLogo() {
+        try {
+            String site = OVData.getDefaultSite();
+            String logo = OVData.getSiteLogo(site);
+            if (logo != null && !logo.isBlank() && !logo.equalsIgnoreCase("bs.png")) {
+                File f = new File(BlueSeerUtils.cleanDirString(OVData.getSystemImageDirectory()) + logo);
+                if (f.isFile() && f.canRead()) {
+                    return new ImageIcon(f.getAbsolutePath()).getImage();
+                }
+            }
+        } catch (Exception ex) {
+            bslog(ex);
+        }
+        return null;
     }
 
     public static boolean loadPanel(String menu, Object myobject) {
@@ -2496,6 +2523,10 @@ extends JFrame {
                     backgroundpanel.setBackground(backgroundcolor);
                     backgroundpanel.setImage(MainFrame.this.myimage);
                     fis.close();
+                } else if (MainFrame.this.brandLogoImage != null) {
+                    MainFrame.this.myimage = MainFrame.this.brandLogoImage;
+                    backgroundpanel.setBackground(backgroundcolor);
+                    backgroundpanel.setImage(MainFrame.this.myimage);
                 } else {
                     ImageIcon myicon = new ImageIcon(this.getClass().getResource("/images/bs.png"));
                     MainFrame.this.myimage = myicon.getImage();
