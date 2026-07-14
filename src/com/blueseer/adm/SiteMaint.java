@@ -69,7 +69,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JViewport;
-import javax.swing.SwingWorker;
+import javax.swing.SwingWorker;
 import org.kordamp.ikonli.swing.FontIcon;
 import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
 
@@ -677,7 +677,7 @@ public class SiteMaint extends javax.swing.JPanel implements IBlueSeerCtl {
     } 
     
     public boolean ifImageExists(String filename) {
-        File file = new File("images/" + filename);
+        File file = new File(BlueSeerUtils.cleanDirString(OVData.getSystemImageDirectory()) + filename);
         return file.exists();
     }
 
