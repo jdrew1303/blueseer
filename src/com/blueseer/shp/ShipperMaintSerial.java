@@ -93,7 +93,7 @@ import javax.swing.JTable;
 import javax.swing.JViewport;
 import javax.swing.SwingWorker;
 import javax.swing.event.TableModelEvent;
-import javax.swing.table.DefaultTableModel;
+import javax.swing.table.DefaultTableModel;
 import org.kordamp.ikonli.swing.FontIcon;
 import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
 
@@ -418,7 +418,10 @@ public class ShipperMaintSerial extends javax.swing.JPanel  {
               defaultCurrency = s[1];  
             }
             if (s[0].equals("site")) {
-              defaultSite = s[1];  
+              defaultSite = s[1];
+            }
+            if (s[0].equals("sites")) {
+              ddsite.addItem(s[1]);
             }
             if (s[0].equals("canupdate")) {
               canUpdate = BlueSeerUtils.ConvertStringToBool(s[1]);  
@@ -439,10 +442,12 @@ public class ShipperMaintSerial extends javax.swing.JPanel  {
               dditem.addItem(s[1]); 
             }
         }
-        
+
+        ddsite.setSelectedItem(defaultSite);
+
         dditem.insertItemAt("", 0);
         dditem.setSelectedIndex(0);
-        
+
        ddcust.insertItemAt("", 0);
         ddcust.setSelectedIndex(0);
         ddship.removeAllItems();
