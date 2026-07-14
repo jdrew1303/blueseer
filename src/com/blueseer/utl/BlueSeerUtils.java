@@ -2434,11 +2434,11 @@ public class BlueSeerUtils {
               
     }
     
-     public static String cleanDirString(String dir) {    
+     public static String cleanDirString(String dir) {
       if (dir.isBlank()) {
           return "";
       }
-      return (! dir.endsWith("/") || ! dir.endsWith("\\")) ? dir + "/" : dir ;
+      return (dir.endsWith("/") || dir.endsWith("\\")) ? dir : dir + "/" ;
     }
    
      public static String padString(String s, String c, int count) {
