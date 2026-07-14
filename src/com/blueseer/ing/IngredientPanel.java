@@ -64,6 +64,16 @@ import java.util.Map;
  */
 public class IngredientPanel extends JPanel {
 
+    // Food vs. packaging/non-food raw material (ing_mstr.ing_material_type) - drives whether
+    // this item is even eligible to appear in an ingredient list/nutrition rollup at all (see
+    // IngredientLabelEngine.isFoodMaterial). No control lives on this panel for it - ItemMaint
+    // owns a single "Food Item" checkbox on its Main tab that shows/hides this
+    // whole tab (and Nutrition Data) rather than disabling sections within an always-visible
+    // tab, so a non-food ERP catalog isn't cluttered with food-specific tabs by default. ItemMaint
+    // calls setTrackedAsFood()/isTrackedAsFood() around loadData()/saveData() to keep this field
+    // in sync with its own checkbox without a second writer touching ing_mstr's row.
+    private String materialType = ingData.ing_mstr.FOOD;
+
     private final javax.swing.JTextField tbLegalName = new javax.swing.JTextField();
     private final javax.swing.JTextField tbCategory = new javax.swing.JTextField();
     private final javax.swing.JTextField tbENumber = new javax.swing.JTextField();
@@ -87,6 +97,15 @@ public class IngredientPanel extends JPanel {
 
     private final JCheckBox cbMoistLoss = new JCheckBox("This item's production process loses moisture");
 
+    // Storage/usage instructions (FIC Article 9(1)(g)/(j)) - mandatory particulars
+    // in their own right, not specific to nutrition, but living in this same tab
+    // since it's already this item's "regulatory label data" home (same ing_mstr
+    // row as legal name/category/etc, so it stays here rather than on the
+    // Nutrition Data tab - splitting it there would race NutritionPanel's own
+    // save over shared ing_mstr columns).
+    private final javax.swing.JTextArea taStorageInstr = new javax.swing.JTextArea(2, 20);
+    private final javax.swing.JTextArea taUsageInstr = new javax.swing.JTextArea(2, 20);
+
     // BOM-driven QUID + reconstitution table: rows are THIS item's own
     // flattened ingredients (see IngredientLabelEngine.getBomIngredients),
     // never free-typed, so what can be flagged always matches the recipe.
@@ -107,8 +126,12 @@ public class IngredientPanel extends JPanel {
     private final JPanel bomPanel = new JPanel(new BorderLayout(0, 5));
 
     public IngredientPanel() {
-        setLayout(new MigLayout("fill, insets 10", "[]5[grow,fill]", "[]5[]5[]10[]10[]10[]10[grow,fill]"));
-        JPanel content = this;
+        // A plain content panel inside a JScrollPane, not this outer JPanel directly -
+        // this tab grew substantially with the nutrition declaration + storage/usage
+        // sections below, well past what fits in the tab area unscrolled.
+        setLayout(new BorderLayout());
+        JPanel content = new JPanel(new MigLayout("insets 10", "[]5[grow,fill]"));
+        add(new JScrollPane(content), BorderLayout.CENTER);
 
         content.add(new JLabel("Legal ingredient name"));
         content.add(tbLegalName, "wrap");
@@ -221,8 +244,32 @@ public class IngredientPanel extends JPanel {
         bomWrapper.add(bomPanel, BorderLayout.CENTER);
         content.add(bomWrapper, "span 2, grow, wrap");
 
+        // ------------------------------------------------------------
+        // Storage/usage instructions (FIC Article 9(1)(g)/(j)) - mandatory
+        // particulars in their own right, applied to every label via the
+        // $STORAGE/$USAGE tokens, independent of the nutrition panel (Nutrition
+        // Data tab, see NutritionPanel).
+        // ------------------------------------------------------------
+        JPanel storageUsagePanel = new JPanel(new MigLayout("insets 0", "[]5[grow,fill]", "[]"));
+        storageUsagePanel.add(new JLabel("Storage conditions"));
+        storageUsagePanel.add(new JScrollPane(taStorageInstr), "grow, wrap");
+        storageUsagePanel.add(new JLabel("Usage instructions"));
+        storageUsagePanel.add(new JScrollPane(taUsageInstr), "grow, wrap");
+        content.add(wrapTitled("Storage & Usage Instructions", storageUsagePanel), "span 2, grow, wrap");
+
         content.add(new JLabel("Notes"));
-        content.add(new JScrollPane(taNotes), "span 2, grow");
+        content.add(new JScrollPane(taNotes), "span 2, grow, wrap");
+    }
+
+    /** True unless ItemMaint has flagged this item as Packaging/Non-Food via {@link #setTrackedAsFood}. */
+    public boolean isTrackedAsFood() {
+        return ingData.ing_mstr.FOOD.equals(materialType);
+    }
+
+    /** Called by ItemMaint right before {@link #saveData} so its own Main-tab checkbox is what
+     *  actually ends up in ing_mstr - this panel has no control of its own for the field anymore. */
+    public void setTrackedAsFood(boolean tracked) {
+        materialType = tracked ? ingData.ing_mstr.FOOD : ingData.ing_mstr.PACKAGING;
     }
 
     /** A field label followed by a small help icon carrying the long-form explanation as a tooltip. */
@@ -281,15 +328,13 @@ public class IngredientPanel extends JPanel {
     }
 
     public void clear() {
+        materialType = ingData.ing_mstr.FOOD;
         tbLegalName.setText("");
         tbCategory.setText("");
         tbENumber.setText("");
         tbWtPerUom.setText("1");
         cbIsAdditive.setSelected(false);
-        tbCategory.setEnabled(false);
-        tbENumber.setEnabled(false);
         cbIsCompound.setSelected(false);
-        subPanel.setVisible(false);
         cbMoistLoss.setSelected(false);
         taNotes.setText("");
         for (JCheckBox cb : allergenBoxes.values()) {
@@ -298,6 +343,8 @@ public class IngredientPanel extends JPanel {
         subModel.setRowCount(0);
         bomModel.setRowCount(0);
         bomPanel.setVisible(false);
+        taStorageInstr.setText("");
+        taUsageInstr.setText("");
     }
 
     public void loadData(String item) {
@@ -307,17 +354,20 @@ public class IngredientPanel extends JPanel {
         }
         ingData.ing_mstr rec = ingData.getIngMstr(item);
         if (rec.m() != null && rec.m().length > 0 && rec.m()[0].equals(com.blueseer.utl.BlueSeerUtils.SuccessBit)) {
+            materialType = ingData.ing_mstr.PACKAGING.equalsIgnoreCase(rec.ing_material_type())
+                    ? ingData.ing_mstr.PACKAGING : ingData.ing_mstr.FOOD;
             tbLegalName.setText(rec.ing_legalname());
             tbCategory.setText(rec.ing_category());
             tbENumber.setText(rec.ing_enumber());
             tbWtPerUom.setText(String.valueOf(rec.ing_wt_per_uom_g() <= 0 ? 1.0 : rec.ing_wt_per_uom_g()));
-            boolean isAdditive = !rec.ing_category().isBlank() || !rec.ing_enumber().isBlank();
-            cbIsAdditive.setSelected(isAdditive);
-            tbCategory.setEnabled(isAdditive);
-            tbENumber.setEnabled(isAdditive);
+            cbIsAdditive.setSelected(!rec.ing_category().isBlank() || !rec.ing_enumber().isBlank());
+            tbCategory.setEnabled(cbIsAdditive.isSelected());
+            tbENumber.setEnabled(cbIsAdditive.isSelected());
             cbIsCompound.setSelected("1".equals(rec.ing_iscompound()));
             subPanel.setVisible(cbIsCompound.isSelected());
             taNotes.setText(rec.ing_notes());
+            taStorageInstr.setText(rec.ing_storage_instr());
+            taUsageInstr.setText(rec.ing_usage_instr());
         }
         for (String code : ingData.getAllergenCodes(item)) {
             JCheckBox cb = allergenBoxes.get(code);
@@ -355,7 +405,8 @@ public class IngredientPanel extends JPanel {
             wtPerUom = 1.0;
         }
         ingData.ing_mstr rec = new ingData.ing_mstr(null, item, tbLegalName.getText(), category,
-                enumber, cbIsCompound.isSelected() ? "1" : "0", "1", taNotes.getText(), wtPerUom <= 0 ? 1.0 : wtPerUom);
+                enumber, cbIsCompound.isSelected() ? "1" : "0", "1", taNotes.getText(), wtPerUom <= 0 ? 1.0 : wtPerUom,
+                taStorageInstr.getText(), taUsageInstr.getText(), materialType);
         ingData.addUpdateIngMstr(rec);
 
         ArrayList<String> codes = new ArrayList<>();

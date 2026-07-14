@@ -166,6 +166,7 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
     public ItemMaint() {
         initComponents();
         setLanguageTags(this);
+        cbTrackFoodIngredient.addActionListener(e -> updateFoodTabsEnabled());
     }
 
     // interface functions implemented
@@ -500,6 +501,9 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
        setPanelComponentState(this, true);
         setComponentDefaultValues();
         ingredientPanel.clear();
+        nutritionPanel.clear();
+        cbTrackFoodIngredient.setSelected(false);
+        updateFoodTabsEnabled();
         BlueSeerUtils.message(new String[]{"0",BlueSeerUtils.addRecordInit});
         btupdate.setEnabled(false);
         btdelete.setEnabled(false);
@@ -620,6 +624,8 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
        jTabbedPane1.add(getClassLabelTag("images", this.getClass().getSimpleName()), ImagePanel);
        jTabbedPane1.add(getClassLabelTag("attachments", this.getClass().getSimpleName()), panelAttachment);
        jTabbedPane1.add(getClassLabelTag("ingredientdata", this.getClass().getSimpleName()), ingredientPanel);
+       jTabbedPane1.add(getClassLabelTag("nutritiondata", this.getClass().getSimpleName()), nutritionPanel);
+       updateFoodTabsEnabled();
        populateLabelDropdown();
         setPanelComponentState(this, false);
         btnew.setEnabled(true);
@@ -637,6 +643,9 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
             tbkey.setEditable(true);
             tbkey.requestFocus();
             ingredientPanel.clear();
+            nutritionPanel.clear();
+            cbTrackFoodIngredient.setSelected(false);
+            updateFoodTabsEnabled();
         }
 
    }
@@ -678,9 +687,11 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
           // now add item cost record for later use
           OVData.addItemCostRec(tbkey.getText(), ddsite.getSelectedItem().toString(), "standard", mtlcost, ovhcost, outcost, (mtlcost + ovhcost + outcost));
           OVData.addItemCostRec(tbkey.getText(), ddsite.getSelectedItem().toString(), "current", mtlcost, ovhcost, outcost, (mtlcost + ovhcost + outcost));
+          ingredientPanel.setTrackedAsFood(cbTrackFoodIngredient.isSelected());
           ingredientPanel.saveData(tbkey.getText());
+          nutritionPanel.saveData(tbkey.getText());
           return m;
-       
+
      }
    
     public String[] updateRecord(String[] x) {
@@ -711,7 +722,9 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
         
         String[] m = updateItemMstr(createRecord());
         rebaseCurrentCost(tbkey.getText(), mtlcost, ovhcost, outcost);
+        ingredientPanel.setTrackedAsFood(cbTrackFoodIngredient.isSelected());
         ingredientPanel.saveData(tbkey.getText());
+        nutritionPanel.saveData(tbkey.getText());
         return m;
     }
     
@@ -731,6 +744,9 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
         x = z;
         getAttachments(key[0]);
         ingredientPanel.loadData(key[0]);
+        nutritionPanel.loadData(key[0]);
+        cbTrackFoodIngredient.setSelected(ingredientPanel.isTrackedAsFood());
+        updateFoodTabsEnabled();
        return x.m();
     }
     
@@ -1625,7 +1641,8 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
                         .addGap(53, 53, 53)
                         .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(cbmrp)
-                            .addComponent(cbschedule))
+                            .addComponent(cbschedule)
+                            .addComponent(cbTrackFoodIngredient))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(cbphantom)
@@ -1735,6 +1752,8 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
                         .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(cbschedule)
                             .addComponent(cbphantom))
+                        .addGap(3, 3, 3)
+                        .addComponent(cbTrackFoodIngredient)
                         .addGap(0, 0, Short.MAX_VALUE))))
         );
 
@@ -2640,10 +2659,18 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
                                 resolveIngredientLabel(lotAndBestBefore);
                         String lotNbr = lotAndBestBefore[0];
                         String bestBefore = lotAndBestBefore[1];
+                        com.blueseer.ing.NutritionLabelEngine.NutritionLabelResult nutLabel =
+                                resolveNutritionLabel();
+                        if (nutLabel != null && !nutLabel.dataComplete()
+                                && !confirmIncompleteNutritionData(nutLabel)) {
+                            return;
+                        }
+                        String[] storageUsage = resolveStorageUsage();
                         if (ingLabel != null) {
                             OVData.printLabelItem(tbkey.getText(), defaultprinter, lz.lblz_file(),
                                     ingLabel, ingLabel.toPlainWarnings(), lotNbr, bestBefore,
-                                    tbdesc.getText(), formatNetWeightForLabel());
+                                    tbdesc.getText(), formatNetWeightForLabel(), nutLabel,
+                                    storageUsage[0], storageUsage[1]);
                         } else {
                             OVData.printLabelItem(tbkey.getText(), defaultprinter, lz.lblz_file());
                         }
@@ -2669,9 +2696,16 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
             com.blueseer.ing.IngredientLabelEngine.IngredientLabelResult ingLabel =
                     resolveIngredientLabel(lotAndBestBefore);
             String allergenWarnings = ingLabel != null ? ingLabel.toPlainWarnings() : "";
+            com.blueseer.ing.NutritionLabelEngine.NutritionLabelResult nutLabel = resolveNutritionLabel();
+            if (nutLabel != null && !nutLabel.dataComplete()) {
+                bsmf.MainFrame.show("Nutrition data is incomplete for this item (missing mandatory values for: "
+                        + String.join(", ", nutLabel.incompleteIngredients())
+                        + ") - the preview below is calculated from partial data.");
+            }
+            String[] storageUsage = resolveStorageUsage();
             String zplText = OVData.buildLabelZpl(tbkey.getText(), lz.lblz_file(), ingLabel,
                     allergenWarnings, lotAndBestBefore[0], lotAndBestBefore[1], tbdesc.getText(),
-                    formatNetWeightForLabel());
+                    formatNetWeightForLabel(), nutLabel, storageUsage[0], storageUsage[1]);
             java.io.File pdf = com.blueseer.ing.LabelPreview.renderToPdf(zplText);
             OVData.openPDF(pdf.getAbsolutePath());
         } catch (Exception ex) {
@@ -2705,6 +2739,60 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
             MainFrame.bslog(ex);
         }
         return ingLabel;
+    }
+
+    /**
+     * Resolves the calculated nutrition-declaration panel for the currently
+     * loaded item, honoring its configured placement (item_nut_cfg) - returns
+     * null when placement is NONE (not shown at all, e.g. an Annex V point 19
+     * exemption) or MAIN_LABEL/SEPARATE_LABEL both return the same calculated
+     * result; which label template actually references $NUTRITIONPANEL (the
+     * main one, or a separate one selected from the label dropdown) is a
+     * template-authoring choice, not something this method needs to decide.
+     */
+    private com.blueseer.ing.NutritionLabelEngine.NutritionLabelResult resolveNutritionLabel() {
+        String item = tbkey.getText();
+        if (item == null || item.isBlank()) {
+            return null;
+        }
+        com.blueseer.ing.nutData.item_nut_cfg cfg = com.blueseer.ing.nutData.getItemNutCfg(item);
+        if (com.blueseer.ing.nutData.item_nut_cfg.NONE.equals(cfg.nut_placement())) {
+            return null;
+        }
+        try {
+            return new com.blueseer.ing.NutritionLabelEngine().generate(item);
+        } catch (Exception ex) {
+            MainFrame.bslog(ex);
+            return null;
+        }
+    }
+
+    /** {storage instructions, usage instructions} (FIC Article 9(1)(g)/(j)) for the currently loaded item. */
+    private String[] resolveStorageUsage() {
+        String item = tbkey.getText();
+        if (item == null || item.isBlank()) {
+            return new String[]{"", ""};
+        }
+        com.blueseer.ing.ingData.ing_mstr rec = com.blueseer.ing.ingData.getIngMstr(item);
+        boolean found = rec.m() != null && rec.m().length > 0 && rec.m()[0].equals(BlueSeerUtils.SuccessBit);
+        return found ? new String[]{rec.ing_storage_instr(), rec.ing_usage_instr()} : new String[]{"", ""};
+    }
+
+    /**
+     * Print Label (unlike Preview Label) sends output straight to a physical
+     * printer, so incomplete nutrition data gets an explicit stop-and-confirm
+     * rather than Preview's softer inline warning - a legally-binding figure
+     * calculated from partial data is the wrong thing to let out the door
+     * silently (see NUTR-13).
+     */
+    private boolean confirmIncompleteNutritionData(com.blueseer.ing.NutritionLabelEngine.NutritionLabelResult nutLabel) {
+        int choice = javax.swing.JOptionPane.showConfirmDialog(this,
+                "Nutrition data is incomplete for this item (missing mandatory values for: "
+                        + String.join(", ", nutLabel.incompleteIngredients())
+                        + ").\nThe calculated panel is based on partial data. Print anyway?",
+                "Incomplete nutrition data", javax.swing.JOptionPane.YES_NO_OPTION,
+                javax.swing.JOptionPane.WARNING_MESSAGE);
+        return choice == javax.swing.JOptionPane.YES_OPTION;
     }
 
     private String formatNetWeightForLabel() {
@@ -2765,10 +2853,33 @@ public class ItemMaint extends javax.swing.JPanel implements IBlueSeerT {
     }//GEN-LAST:event_tableattachmentMouseClicked
 
 
-    // EU/Irish FIC ingredient regulatory data tab - hand-written, kept out of
-    // the generated initComponents()/GEN-BEGIN block below on purpose so it
-    // isn't at risk if this form is ever regenerated.
+    // EU/Irish FIC ingredient regulatory data tabs - hand-written, kept out of
+    // the generated initComponents()/GEN-BEGIN block below on purpose so they
+    // aren't at risk if this form is ever regenerated. Nutrition is a separate
+    // sibling tab/panel (not a section within ingredientPanel) since ing_nutrient/
+    // item_nut_cfg are their own tables with their own independent save.
     private final com.blueseer.ing.IngredientPanel ingredientPanel = new com.blueseer.ing.IngredientPanel();
+    private final com.blueseer.ing.NutritionPanel nutritionPanel = new com.blueseer.ing.NutritionPanel();
+
+    // Not every BlueSeer item is food (packaging, cleaning supplies, etc.), so the
+    // Ingredient Data/Nutrition Data tabs are opt-in per item via this checkbox
+    // rather than always shown - keeps the ERP generally useful outside food.
+    // Lives in jPanel4 next to the other item-level flags (MRP/Schedule/Phantom/
+    // Planned Orders) - see jPanel4Layout's horizontal/vertical groups above,
+    // added to alongside those rather than as a bolted-on strip.
+    private final javax.swing.JCheckBox cbTrackFoodIngredient = new javax.swing.JCheckBox("Food Item");
+
+    private void updateFoodTabsEnabled() {
+        boolean tracked = cbTrackFoodIngredient.isSelected();
+        int ingIdx = jTabbedPane1.indexOfComponent(ingredientPanel);
+        int nutIdx = jTabbedPane1.indexOfComponent(nutritionPanel);
+        if (ingIdx >= 0) {
+            jTabbedPane1.setEnabledAt(ingIdx, tracked);
+        }
+        if (nutIdx >= 0) {
+            jTabbedPane1.setEnabledAt(nutIdx, tracked);
+        }
+    }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel CostBOMPanel;

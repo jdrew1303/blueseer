@@ -230,20 +230,6 @@ public class IngredientLabelEngine {
         private static final char BOLD_START = '';
         private static final char BOLD_END = '';
 
-        // Measures text at a given ZPL font height using a real font's metrics
-        // (java.awt.Font/FontRenderContext work headlessly - no display needed)
-        // rather than a flat per-character ratio, which was producing visibly
-        // overlapping words. This still only approximates whatever font the
-        // physical printer actually has resident, but tracks a real font's
-        // varying glyph widths (a "W" isn't the same width as an "i") instead
-        // of a single guessed average, so it's much closer in practice.
-        private static final java.awt.font.FontRenderContext MEASURE_FRC =
-                new java.awt.font.FontRenderContext(null, true, true);
-
-        private static double measureWidth(String text, int fontHeight) {
-            java.awt.Font font = new java.awt.Font(java.awt.Font.SANS_SERIF, java.awt.Font.PLAIN, fontHeight);
-            return font.getStringBounds(text, MEASURE_FRC).getWidth();
-        }
 
         /**
          * The entire dynamic section of the label below the fixed item-
@@ -260,51 +246,55 @@ public class IngredientLabelEngine {
          * so a short recipe doesn't leave a large dead gap and a long one
          * doesn't run into the row below it (barring a genuinely enormous
          * ingredient list, which would still run past the bottom of the
-         * physical label - the same limit any fixed-size label has).
+         * physical label - the same limit any fixed-size label has). The
+         * returned {@link ZplTextUtils.Rendered#endY} lets whatever section
+         * comes after this one (nutrition panel, storage/usage) start right
+         * there too, chaining the same way internally.
          */
-        public String toZplLabelBody(int x, int y, int width, int fontHeight, int lineSpacing,
+        public ZplTextUtils.Rendered toZplLabelBody(int x, int y, int width, int fontHeight, int lineSpacing,
                 String itemNumber, String netWeight) {
             StringBuilder zpl = new StringBuilder();
             int cy = renderIngredientWords(zpl, x, y, width, fontHeight, lineSpacing, "Ingredients: ");
 
             cy += 16;
             int disclaimerFontH = 20;
-            for (String dl : wrapPlain("Allergens are shown in BOLD within the ingredients list.", disclaimerFontH, width)) {
-                appendZplField(zpl, x, cy, disclaimerFontH, dl, false);
+            for (String dl : ZplTextUtils.wrapPlain("Allergens are shown in BOLD within the ingredients list.", disclaimerFontH, width)) {
+                ZplTextUtils.appendZplField(zpl, x, cy, disclaimerFontH, dl, false);
                 cy += disclaimerFontH + 4;
             }
 
             if (!warnings.isEmpty()) {
                 cy += 10;
-                for (String wl : wrapPlain(toPlainWarnings(), disclaimerFontH, width)) {
-                    appendZplField(zpl, x, cy, disclaimerFontH, wl, false);
+                for (String wl : ZplTextUtils.wrapPlain(toPlainWarnings(), disclaimerFontH, width)) {
+                    ZplTextUtils.appendZplField(zpl, x, cy, disclaimerFontH, wl, false);
                     cy += disclaimerFontH + 4;
                 }
             }
 
             cy += 14;
-            zpl.append("^FO").append(x).append(",").append(cy).append("^GB").append(width).append(",2,2^FS");
+            ZplTextUtils.appendDivider(zpl, x, cy, width);
             cy += 20;
 
             int rowTop = cy;
             int rowFontH = 26;
             int rowHeight = 34;
-            appendZplField(zpl, x, cy, rowFontH, "Net Weight:", false);
-            appendZplField(zpl, x + 160, cy, rowFontH, netWeight, false);
+            ZplTextUtils.appendZplField(zpl, x, cy, rowFontH, "Net Weight:", false);
+            ZplTextUtils.appendZplField(zpl, x + 160, cy, rowFontH, netWeight, false);
             cy += rowHeight;
-            appendZplField(zpl, x, cy, rowFontH, "Best Before:", false);
-            appendZplField(zpl, x + 160, cy, rowFontH, bestBeforeDate, false);
+            ZplTextUtils.appendZplField(zpl, x, cy, rowFontH, "Best Before:", false);
+            ZplTextUtils.appendZplField(zpl, x + 160, cy, rowFontH, bestBeforeDate, false);
             cy += rowHeight;
-            appendZplField(zpl, x, cy, rowFontH, "Batch/Lot No:", false);
-            appendZplField(zpl, x + 160, cy, rowFontH, lotNumber, false);
+            ZplTextUtils.appendZplField(zpl, x, cy, rowFontH, "Batch/Lot No:", false);
+            ZplTextUtils.appendZplField(zpl, x + 160, cy, rowFontH, lotNumber, false);
+            cy += rowHeight;
 
             int barcodeX = x + 460;
             int barcodeHeight = 90;
             zpl.append("^BY2,3,").append(barcodeHeight)
                     .append("^FO").append(barcodeX).append(",").append(rowTop)
-                    .append("^BCN,,Y,N^FD>:").append(zplEscape(itemNumber)).append("^FS");
+                    .append("^BCN,,Y,N^FD>:").append(ZplTextUtils.zplEscape(itemNumber)).append("^FS");
 
-            return zpl.toString();
+            return new ZplTextUtils.Rendered(zpl.toString(), cy);
         }
 
         /**
@@ -320,13 +310,13 @@ public class IngredientLabelEngine {
                 int lineSpacing, String label) {
             StringBuilder marked = new StringBuilder();
             appendSegmentsMarked(marked, segments);
-            double spaceWidth = measureWidth(" ", fontHeight);
+            double spaceWidth = ZplTextUtils.measureWidth(" ", fontHeight);
 
             int cx = x;
             int cy = y;
             if (label != null && !label.isEmpty()) {
-                appendZplField(zpl, x, y, fontHeight, label, false);
-                cx = x + (int) Math.ceil(measureWidth(label, fontHeight));
+                ZplTextUtils.appendZplField(zpl, x, y, fontHeight, label, false);
+                cx = x + (int) Math.ceil(ZplTextUtils.measureWidth(label, fontHeight));
             }
             StringBuilder word = new StringBuilder();
             boolean wordBold = false;
@@ -343,12 +333,12 @@ public class IngredientLabelEngine {
                 }
                 if (c == ' ') {
                     if (word.length() > 0) {
-                        int wordWidth = (int) Math.ceil(measureWidth(word.toString(), fontHeight));
+                        int wordWidth = (int) Math.ceil(ZplTextUtils.measureWidth(word.toString(), fontHeight));
                         if (cx > x && cx + wordWidth > x + width) {
                             cx = x;
                             cy += fontHeight + lineSpacing;
                         }
-                        appendZplField(zpl, cx, cy, fontHeight, word.toString(), wordBold);
+                        ZplTextUtils.appendZplField(zpl, cx, cy, fontHeight, word.toString(), wordBold);
                         cx += wordWidth + (int) Math.ceil(spaceWidth);
                         word.setLength(0);
                         wordBold = false;
@@ -361,45 +351,6 @@ public class IngredientLabelEngine {
                 }
             }
             return cy + fontHeight;
-        }
-
-        /** Simple word-wrap for plain (non-bold) text, using the same real-font measurement as the ingredient list. */
-        private static List<String> wrapPlain(String text, int fontHeight, int width) {
-            List<String> lines = new ArrayList<>();
-            String[] words = text.split(" ");
-            StringBuilder cur = new StringBuilder();
-            for (String w : words) {
-                String candidate = cur.length() == 0 ? w : cur + " " + w;
-                if (measureWidth(candidate, fontHeight) > width && cur.length() > 0) {
-                    lines.add(cur.toString());
-                    cur = new StringBuilder(w);
-                } else {
-                    cur = new StringBuilder(candidate);
-                }
-            }
-            if (cur.length() > 0) {
-                lines.add(cur.toString());
-            }
-            return lines;
-        }
-
-        private static void appendZplField(StringBuilder zpl, int x, int y, int fontHeight, String text, boolean bold) {
-            String escaped = zplEscape(text);
-            zpl.append("^FO").append(x).append(",").append(y)
-                    .append("^A0N,").append(fontHeight).append(",").append(fontHeight)
-                    .append("^FD").append(escaped).append("^FS");
-            if (bold) {
-                // double-strike one dot down-and-right to thicken the strokes
-                zpl.append("^FO").append(x + 1).append(",").append(y + 1)
-                        .append("^A0N,").append(fontHeight).append(",").append(fontHeight)
-                        .append("^FD").append(escaped).append("^FS");
-            }
-        }
-
-        private static String zplEscape(String s) {
-            // ^ and ~ are ZPL command-prefix characters; strip rather than risk
-            // corrupting the command stream if either ever appears in ingredient text.
-            return s.replace("^", "").replace("~", "");
         }
 
         private static void appendSegmentsMarked(StringBuilder sb, List<Segment> segs) {
@@ -431,7 +382,8 @@ public class IngredientLabelEngine {
         }
     }
 
-    private record BomLine(String child, String type, double qtyPer) {
+    /** Package-visible (not private) so {@link NutritionLabelEngine} can reuse the same BOM walk. */
+    record BomLine(String child, String type, double qtyPer) {
     }
 
     private static final double COMPOUND_INGREDIENT_THRESHOLD_PCT = 2.0;
@@ -554,18 +506,47 @@ public class IngredientLabelEngine {
         return warnings;
     }
 
-    private void flattenRecursive(Connection con, String item, double qtyPerUnit, Map<String, Double> flatQty,
+    /**
+     * Package-visible (not private) so {@link NutritionLabelEngine} can
+     * reuse the same BOM walk for its own per-nutrient rollup instead of
+     * duplicating the recursion.
+     *
+     * A leaf flagged as anything other than {@code ing_mstr.FOOD} (e.g.
+     * packaging) is skipped entirely - never added to the flattened map -
+     * so it can never appear in a printed ingredient list or contribute to
+     * a nutrition rollup. This is the single shared choke point both
+     * engines flatten through, so the exclusion only needs to live here
+     * once.
+     */
+    void flattenRecursive(Connection con, String item, double qtyPerUnit, Map<String, Double> flatQty,
             Map<String, String> reconMap) throws SQLException {
         for (BomLine line : getBomLines(con, item)) {
             double childQty = qtyPerUnit * line.qtyPer();
             if (line.type().equalsIgnoreCase("M")) {
                 flattenRecursive(con, line.child(), childQty, flatQty, reconMap);
-            } else {
+            } else if (isFoodMaterial(con, line.child())) {
                 double gramsPerUom = getWtPerUomG(con, line.child());
                 String key = reconMap.getOrDefault(line.child(), line.child());
                 flatQty.merge(key, childQty * gramsPerUom, Double::sum);
             }
         }
+    }
+
+    /** True unless this item's ing_mstr row explicitly flags it as something other than FOOD
+     *  (e.g. packaging) - true (not false) when there's no ing_mstr row at all, so an item that
+     *  was never opened on the Ingredient Data tab still behaves as a normal food ingredient,
+     *  matching every other ing_mstr-backed default in this engine. */
+    private boolean isFoodMaterial(Connection con, String item) throws SQLException {
+        try (PreparedStatement ps = con.prepareStatement("select ing_material_type from ing_mstr where it_item = ?;")) {
+            ps.setString(1, item);
+            try (ResultSet res = ps.executeQuery()) {
+                if (res.next()) {
+                    String materialType = res.getString("ing_material_type");
+                    return materialType == null || materialType.isBlank() || ingData.ing_mstr.FOOD.equalsIgnoreCase(materialType);
+                }
+            }
+        }
+        return true;
     }
 
     /** One row of {@link #getBomIngredients} - a raw, unfolded leaf ingredient item code and its description. */
@@ -610,7 +591,9 @@ public class IngredientLabelEngine {
         return 1.0;
     }
 
-    private double getFinishedNetWeightG(Connection con, String item) throws SQLException {
+    /** Package-visible (not private) so {@link NutritionLabelEngine} can reuse the same
+     *  finished-weight lookup for its own per-100g normalization. */
+    double getFinishedNetWeightG(Connection con, String item) throws SQLException {
         try (PreparedStatement ps = con.prepareStatement("select it_net_wt from item_mstr where it_item = ?;")) {
             ps.setString(1, item);
             try (ResultSet res = ps.executeQuery()) {

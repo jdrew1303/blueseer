@@ -1,0 +1,18 @@
+/* Distinguishes an actual food ingredient from a raw material that is
+   never food - packaging, labels, cleaning supplies, etc. Without this,
+   a packaging component sitting in a finished product's BOM (a box, a
+   wrapper) gets flattened right alongside real food ingredients and
+   shows up in the printed ingredient list and nutrition panel, which is
+   wrong - packaging is never a food ingredient under FIC.
+
+   Free text, not a DB-enforced enum (matching nutData.item_nut_cfg's
+   placement values) - a client can add more categories later (e.g.
+   "CLEANING", "PROCESSING_AID") without a schema change, since
+   IngredientLabelEngine.flattenRecursive only ever tests for FOOD and
+   treats anything else the same way (excluded from ingredient lists and
+   nutrition rollups).
+
+   Single-shot ALTER TABLE (not safely re-runnable), same convention as
+   .patchsqlv_ingredientlabeling's storage/usage-instruction columns.
+*/
+alter table ing_mstr add column ing_material_type varchar(20) NOT NULL DEFAULT 'FOOD';

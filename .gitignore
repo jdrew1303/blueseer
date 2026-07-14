@@ -9,7 +9,7 @@ jre16
 jre17
 jre26
 .jbr-cache
-test
+/test
 nbproject/private/
 .nb-gradle/
 *.zip

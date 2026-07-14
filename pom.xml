@@ -27,6 +27,11 @@
     <installer.appVersion>8.0.0</installer.appVersion>
     <installer.type>APP_IMAGE</installer.type>
     <installer.icon></installer.icon>
+    <!-- OS-specific trailing jpackage CLI flags with no common equivalent
+         (windows: win-dir-chooser/win-menu/win-shortcut; linux:
+         linux-shortcut; mac: none, since mac-aarch64/mac-x86_64 don't use
+         this shared execution at all - see the "jpackage" profile below). -->
+    <installer.extra.flags></installer.extra.flags>
 
     <!-- JetBrains Runtime version to bundle via jlink for the packaged
          installer (see "Building a native installer" in README) - pinned,
@@ -524,7 +529,14 @@
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>4.11</version>
+      <!-- 4.12+ required: the JUnit 5 vintage engine (which the surefire
+           JUnit-platform provider always loads when any junit:junit jar is
+           on the test classpath, whether or not a JUnit 4-style test exists)
+           refuses to run at all under 4.11, failing every test in the
+           project - "Unsupported version of junit:junit: 4.11. Please
+           upgrade to version 4.12 or later." Confirmed by running mvn test
+           for the first time against this project (NUTR-14). -->
+      <version>4.13.2</version>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
@@ -569,114 +581,17 @@
       <swt.version>3.129.0</swt.version>
       <installer.type>msi</installer.type>
       <installer.icon>${project.basedir}/sf/images/bs.ico</installer.icon>
+      <installer.extra.flags>--win-dir-chooser --win-menu --win-shortcut</installer.extra.flags>
       <!-- JBR release asset naming tokens - see jbr.version/jbr.build and
-           the "download-jbr" antrun execution in the "jpackage" profile. -->
+           the "download-jbr"/"jpackage-run" antrun executions in the shared
+           "jpackage" profile (this profile only sets properties they read -
+           see that profile's comment for why the executions live there and
+           not here: only mac-aarch64/mac-x86_64 need their own separate
+           declaration, since only those profiles are ever simultaneously
+           active alongside "jpackage"). -->
       <jbr.os>windows</jbr.os>
       <jbr.arch>x64</jbr.arch>
     </properties>
-    <build>
-      <plugins>
-        <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-antrun-plugin</artifactId>
-          <version>3.1.0</version>
-          <executions>
-            <execution>
-              <!-- Invokes the downloaded JBR's own bin/jpackage directly
-                   with <exec>, rather than using org.panteleyev's
-                   jpackage-maven-plugin: that plugin runs jpackage from
-                   whatever JDK is running Maven itself (java.home), not
-                   from jbr.home. A real build showed jlink then fails with
-                   "cannot find the build signature in the java.base
-                   specified on module path, likely from an earlier build" -
-                   jlink refuses to link jmods from a JDK build other than
-                   the one its own jlink binary belongs to, so the
-                   module-path jmods (from the downloaded JBR) have to be
-                   linked by that SAME JBR's own jpackage/jlink, not the
-                   build's system JDK. Options/order below match the
-                   equivalent org.panteleyev jpackage-maven-plugin
-                   invocation exactly (see the mac-aarch64/mac-x86_64
-                   profiles for the analogous mac exec, and the module list's
-                   own comment there for how it was computed). -->
-              <id>jpackage-run</id>
-              <phase>package</phase>
-              <goals>
-                <goal>run</goal>
-              </goals>
-              <configuration>
-                <target>
-                  <exec executable="${jbr.home}/bin/jpackage" failonerror="true">
-                    <arg value="--name"/>
-                    <arg value="BlueSeer"/>
-                    <arg value="--dest"/>
-                    <arg value="${project.build.directory}/installer"/>
-                    <arg value="--type"/>
-                    <arg value="${installer.type}"/>
-                    <arg value="--app-version"/>
-                    <arg value="${installer.appVersion}"/>
-                    <arg value="--description"/>
-                    <arg value="BlueSeer ERP"/>
-                    <arg value="--input"/>
-                    <arg value="${project.build.directory}/dist"/>
-                    <arg value="--vendor"/>
-                    <arg value="BlueSeer"/>
-                    <arg value="--main-class"/>
-                    <arg value="com.blueseer.utl.mf"/>
-                    <arg value="--main-jar"/>
-                    <arg value="${project.build.finalName}.jar"/>
-                    <arg value="--icon"/>
-                    <arg value="${installer.icon}"/>
-                    <arg value="--module-path"/>
-                    <arg value="${jbr.home}/jmods"/>
-                    <arg value="--add-modules"/>
-                    <arg value="java.base,java.compiler,java.desktop,java.instrument,java.logging,java.management,java.naming,java.rmi,java.security.jgss,java.security.sasl,java.sql,java.sql.rowset,java.xml,jdk.charsets,jdk.crypto.ec,jdk.localedata,jdk.management,jdk.unsupported,jdk.xml.dom"/>
-                    <!-- stripNativeCommands stays off (no strip-native-commands
-                         flag) because com.blueseer.utl.mf shells out to
-                         $JAVA_HOME/bin/java to relaunch itself in the app's own
-                         directory (see relaunchInAppDirectoryIfNeeded in mf.java),
-                         so that binary has to survive jlink. -->
-                    <arg value="--jlink-options"/>
-                    <arg value="--no-header-files --no-man-pages --strip-debug"/>
-                    <arg value="--java-options"/>
-                    <arg value="-Djava.util.logging.config.file=bslogging.properties"/>
-                    <!-- The app reads bs.cfg, data/, jasper/, etc. as relative
-                         paths from its working directory, so ship them
-                         alongside the jars inside the installed app image (not
-                         just on the classpath). Fine on windows/linux, where
-                         jpackage never codesigns anything - see the mac
-                         profiles for why this same approach doesn't survive
-                         macOS packaging unmodified. -->
-                    <arg value="--app-content"/>
-                    <arg value="${project.build.directory}/bs.cfg"/>
-                    <arg value="--app-content"/>
-                    <arg value="${project.build.directory}/.patch"/>
-                    <arg value="--app-content"/>
-                    <arg value="${project.build.directory}/data"/>
-                    <arg value="--app-content"/>
-                    <arg value="${project.build.directory}/edi"/>
-                    <arg value="--app-content"/>
-                    <arg value="${project.build.directory}/jasper"/>
-                    <arg value="--app-content"/>
-                    <arg value="${project.build.directory}/zebra"/>
-                    <arg value="--app-content"/>
-                    <arg value="${project.build.directory}/conf"/>
-                    <arg value="--app-content"/>
-                    <arg value="${project.build.directory}/logs"/>
-                    <arg value="--app-content"/>
-                    <arg value="${project.build.directory}/attachments"/>
-                    <arg value="--app-content"/>
-                    <arg value="${project.build.directory}/temp"/>
-                    <arg value="--win-dir-chooser"/>
-                    <arg value="--win-menu"/>
-                    <arg value="--win-shortcut"/>
-                  </exec>
-                </target>
-              </configuration>
-            </execution>
-          </executions>
-        </plugin>
-      </plugins>
-    </build>
   </profile>
   <profile>
         <id>linux-x86_64</id>
@@ -692,89 +607,14 @@
             <swt.version>4.3</swt.version>
             <installer.type>deb</installer.type>
             <installer.icon>${project.basedir}/sf/images/bs.png</installer.icon>
+            <installer.extra.flags>--linux-shortcut</installer.extra.flags>
             <!-- JBR release asset naming tokens - see jbr.version/jbr.build
-                 and the "download-jbr" antrun execution in the "jpackage"
-                 profile. -->
+                 and the "download-jbr"/"jpackage-run" antrun executions in
+                 the shared "jpackage" profile (see the "windows" profile's
+                 identical comment for why they live there and not here). -->
             <jbr.os>linux</jbr.os>
             <jbr.arch>x64</jbr.arch>
         </properties>
-        <build>
-          <plugins>
-            <plugin>
-              <groupId>org.apache.maven.plugins</groupId>
-              <artifactId>maven-antrun-plugin</artifactId>
-              <version>3.1.0</version>
-              <executions>
-                <execution>
-                  <!-- See the "windows" profile above for the full rationale
-                       for invoking jbr.home's own bin/jpackage directly via
-                       <exec> instead of org.panteleyev's
-                       jpackage-maven-plugin. -->
-                  <id>jpackage-run</id>
-                  <phase>package</phase>
-                  <goals>
-                    <goal>run</goal>
-                  </goals>
-                  <configuration>
-                    <target>
-                      <exec executable="${jbr.home}/bin/jpackage" failonerror="true">
-                        <arg value="--name"/>
-                        <arg value="BlueSeer"/>
-                        <arg value="--dest"/>
-                        <arg value="${project.build.directory}/installer"/>
-                        <arg value="--type"/>
-                        <arg value="${installer.type}"/>
-                        <arg value="--app-version"/>
-                        <arg value="${installer.appVersion}"/>
-                        <arg value="--description"/>
-                        <arg value="BlueSeer ERP"/>
-                        <arg value="--input"/>
-                        <arg value="${project.build.directory}/dist"/>
-                        <arg value="--vendor"/>
-                        <arg value="BlueSeer"/>
-                        <arg value="--main-class"/>
-                        <arg value="com.blueseer.utl.mf"/>
-                        <arg value="--main-jar"/>
-                        <arg value="${project.build.finalName}.jar"/>
-                        <arg value="--icon"/>
-                        <arg value="${installer.icon}"/>
-                        <arg value="--module-path"/>
-                        <arg value="${jbr.home}/jmods"/>
-                        <arg value="--add-modules"/>
-                        <arg value="java.base,java.compiler,java.desktop,java.instrument,java.logging,java.management,java.naming,java.rmi,java.security.jgss,java.security.sasl,java.sql,java.sql.rowset,java.xml,jdk.charsets,jdk.crypto.ec,jdk.localedata,jdk.management,jdk.unsupported,jdk.xml.dom"/>
-                        <arg value="--jlink-options"/>
-                        <arg value="--no-header-files --no-man-pages --strip-debug"/>
-                        <arg value="--java-options"/>
-                        <arg value="-Djava.util.logging.config.file=bslogging.properties"/>
-                        <arg value="--app-content"/>
-                        <arg value="${project.build.directory}/bs.cfg"/>
-                        <arg value="--app-content"/>
-                        <arg value="${project.build.directory}/.patch"/>
-                        <arg value="--app-content"/>
-                        <arg value="${project.build.directory}/data"/>
-                        <arg value="--app-content"/>
-                        <arg value="${project.build.directory}/edi"/>
-                        <arg value="--app-content"/>
-                        <arg value="${project.build.directory}/jasper"/>
-                        <arg value="--app-content"/>
-                        <arg value="${project.build.directory}/zebra"/>
-                        <arg value="--app-content"/>
-                        <arg value="${project.build.directory}/conf"/>
-                        <arg value="--app-content"/>
-                        <arg value="${project.build.directory}/logs"/>
-                        <arg value="--app-content"/>
-                        <arg value="${project.build.directory}/attachments"/>
-                        <arg value="--app-content"/>
-                        <arg value="${project.build.directory}/temp"/>
-                        <arg value="--linux-shortcut"/>
-                      </exec>
-                    </target>
-                  </configuration>
-                </execution>
-              </executions>
-            </plugin>
-          </plugins>
-        </build>
     </profile>
     <profile>
       <!-- Build a native installer with jpackage: mvn package -Pjpackage.
@@ -783,18 +623,25 @@
            to use a different, manually-managed runtime instead. Must run on
            the target OS: jpackage does not cross-build installers.
 
-           This profile only owns the JBR download - the actual
-           "jpackage-run" execution (which invokes jbr.home's own
-           bin/jpackage directly via antrun/exec, so jlink links its jmods
-           with the matching jlink build - see the windows/mac-aarch64
-           profiles' comments for why) lives entirely inside each
-           OS-specific profile (windows/linux-x86_64/mac-aarch64/
-           mac-x86_64) instead of being shared here. A real macOS build
-           showed that declaring the same plugin+execution id in two
-           simultaneously-active profiles (this one plus an OS-activated
-           one) makes Maven's lifecycle silently never invoke it at all -
-           no log banner, no error, the execution just never runs. Keeping
-           exactly one declaration per OS avoids that entirely. -->
+           This profile owns "jpackage-run" for windows/linux-x86_64 (their
+           OS-specific properties - installer.type, installer.icon,
+           installer.extra.flags, jbr.os/arch - parametrize the one shared
+           execution below). mac-aarch64/mac-x86_64 each declare their OWN
+           separate "jpackage-run" instead of using this one: a real macOS
+           build showed that declaring the SAME plugin+execution id in two
+           simultaneously-active profiles makes Maven's lifecycle silently
+           never invoke it at all (no log banner, no error) - and mac
+           profiles are always active alongside this one (auto-activated by
+           OS/arch, vs. this profile's explicit -Pjpackage flag), so they'd
+           conflict with this declaration the way windows/linux-x86_64 never
+           do (nothing else declares jpackage-run when either of those is
+           active). An earlier version of this pom "fixed" that conflict by
+           moving jpackage-run out of ALL four OS profiles including
+           windows/linux-x86_64 - which quietly broke plain "mvn package" on
+           those two (windows/linux-x86_64 auto-activate on every build, not
+           just -Pjpackage ones, so jpackage started running unconditionally
+           on every build). Keeping it here, shared, for the two profiles
+           that don't actually conflict is the fix. -->
       <id>jpackage</id>
       <build>
         <plugins>
@@ -806,9 +653,7 @@
               <execution>
                 <!-- Runs in an early phase, well before jpackage-run's
                      "package" phase, so jbr.home is already populated by
-                     the time jpackage's jlink step reads it. This is the
-                     only execution in this profile now - see the profile
-                     comment above for why jpackage-run moved out. -->
+                     the time jpackage's jlink step reads it. -->
                 <id>download-jbr</id>
                 <phase>generate-sources</phase>
                 <goals>
@@ -891,6 +736,100 @@
                         <include name="**/lib/jexec"/>
                       </fileset>
                     </chmod>
+                  </target>
+                </configuration>
+              </execution>
+              <execution>
+                <!-- Shared by windows/linux-x86_64 only - see this profile's
+                     comment above for why mac-aarch64/mac-x86_64 each need
+                     their own separate declaration instead. Invokes the
+                     downloaded JBR's own bin/jpackage directly with <exec>,
+                     rather than using org.panteleyev's jpackage-maven-plugin:
+                     that plugin runs jpackage from whatever JDK is running
+                     Maven itself (java.home), not from jbr.home. A real
+                     build showed jlink then fails with "cannot find the
+                     build signature in the java.base specified on module
+                     path, likely from an earlier build" - jlink refuses to
+                     link jmods from a JDK build other than the one its own
+                     jlink binary belongs to, so the module-path jmods (from
+                     the downloaded JBR) have to be linked by that SAME
+                     JBR's own jpackage/jlink, not the build's system JDK. -->
+                <id>jpackage-run</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>run</goal>
+                </goals>
+                <configuration>
+                  <target>
+                    <exec executable="${jbr.home}/bin/jpackage" failonerror="true">
+                      <arg value="--name"/>
+                      <arg value="BlueSeer"/>
+                      <arg value="--dest"/>
+                      <arg value="${project.build.directory}/installer"/>
+                      <arg value="--type"/>
+                      <arg value="${installer.type}"/>
+                      <arg value="--app-version"/>
+                      <arg value="${installer.appVersion}"/>
+                      <arg value="--description"/>
+                      <arg value="BlueSeer ERP"/>
+                      <arg value="--input"/>
+                      <arg value="${project.build.directory}/dist"/>
+                      <arg value="--vendor"/>
+                      <arg value="BlueSeer"/>
+                      <arg value="--main-class"/>
+                      <arg value="com.blueseer.utl.mf"/>
+                      <arg value="--main-jar"/>
+                      <arg value="${project.build.finalName}.jar"/>
+                      <arg value="--icon"/>
+                      <arg value="${installer.icon}"/>
+                      <arg value="--module-path"/>
+                      <arg value="${jbr.home}/jmods"/>
+                      <arg value="--add-modules"/>
+                      <arg value="java.base,java.compiler,java.desktop,java.instrument,java.logging,java.management,java.naming,java.rmi,java.security.jgss,java.security.sasl,java.sql,java.sql.rowset,java.xml,jdk.charsets,jdk.crypto.ec,jdk.localedata,jdk.management,jdk.unsupported,jdk.xml.dom"/>
+                      <!-- stripNativeCommands stays off (no strip-native-commands
+                           flag) because com.blueseer.utl.mf shells out to
+                           $JAVA_HOME/bin/java to relaunch itself in the app's own
+                           directory (see relaunchInAppDirectoryIfNeeded in mf.java),
+                           so that binary has to survive jlink. -->
+                      <arg value="--jlink-options"/>
+                      <arg value="--no-header-files --no-man-pages --strip-debug"/>
+                      <arg value="--java-options"/>
+                      <arg value="-Djava.util.logging.config.file=bslogging.properties"/>
+                      <!-- The app reads bs.cfg, data/, jasper/, etc. as relative
+                           paths from its working directory, so ship them
+                           alongside the jars inside the installed app image (not
+                           just on the classpath). Fine on windows/linux, where
+                           jpackage never codesigns anything - see the mac
+                           profiles for why this same approach doesn't survive
+                           macOS packaging unmodified. -->
+                      <arg value="--app-content"/>
+                      <arg value="${project.build.directory}/bs.cfg"/>
+                      <arg value="--app-content"/>
+                      <arg value="${project.build.directory}/.patch"/>
+                      <arg value="--app-content"/>
+                      <arg value="${project.build.directory}/data"/>
+                      <arg value="--app-content"/>
+                      <arg value="${project.build.directory}/edi"/>
+                      <arg value="--app-content"/>
+                      <arg value="${project.build.directory}/jasper"/>
+                      <arg value="--app-content"/>
+                      <arg value="${project.build.directory}/zebra"/>
+                      <arg value="--app-content"/>
+                      <arg value="${project.build.directory}/conf"/>
+                      <arg value="--app-content"/>
+                      <arg value="${project.build.directory}/logs"/>
+                      <arg value="--app-content"/>
+                      <arg value="${project.build.directory}/attachments"/>
+                      <arg value="--app-content"/>
+                      <arg value="${project.build.directory}/temp"/>
+                      <!-- windows/linux's only actual difference: the OS-specific
+                           trailing flags neither shares with the other
+                           (win-dir-chooser/win-menu/win-shortcut vs.
+                           linux-shortcut), set as a single property per OS
+                           profile and split on whitespace here via <arg line>
+                           instead of hardcoded individual <arg value> entries. -->
+                      <arg line="${installer.extra.flags}"/>
+                    </exec>
                   </target>
                 </configuration>
               </execution>

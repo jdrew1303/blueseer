@@ -21007,7 +21007,21 @@ return mystring;
     }    
         
     public static void printLabelItem(String item, String printer, String labelfile) throws IOException, PrintException {
-        printLabelItem(item, printer, labelfile, null, "", "", "", "", "");
+        printLabelItem(item, printer, labelfile, null, "", "", "", "", "", null, "", "");
+    }
+
+    /**
+     * Same as {@link #buildLabelZpl(String, String, com.blueseer.ing.IngredientLabelEngine.IngredientLabelResult,
+     * String, String, String, String, String, com.blueseer.ing.NutritionLabelEngine.NutritionLabelResult, String, String)}
+     * without the nutrition-declaration/storage/usage tokens, for older call
+     * sites that don't have them - see that overload for the actual work.
+     */
+    public static String buildLabelZpl(String item, String labelfile,
+            com.blueseer.ing.IngredientLabelEngine.IngredientLabelResult ingLabel,
+            String allergenWarnings, String lotNbr, String bestBefore, String itemDesc,
+            String netWeight) throws IOException {
+        return buildLabelZpl(item, labelfile, ingLabel, allergenWarnings, lotNbr, bestBefore, itemDesc, netWeight,
+                null, "", "");
     }
 
     /**
@@ -21015,11 +21029,22 @@ return mystring;
      * final ZPL text without sending it anywhere - shared by printLabelItem
      * (which sends this over the printer socket) and the Preview Label
      * button (which renders it to a PDF instead via com.blueseer.ing.LabelPreview).
+     * $NUTRITIONPANEL and $STORAGEUSAGE (FIC Article 9(1)(g)/(j) storage
+     * conditions + usage instructions, combined into one dynamic section)
+     * follow the same "must sit inside a normal ^FO/^A0N/^FB block"
+     * convention as $INGREDIENTLIST (see spliceIngredientListZpl) - neither
+     * needs bold-run handling, so both are considerably simpler than that
+     * method. All three sections chain: each one's actual rendered end-Y
+     * becomes the next section's start, via the cursorY threaded through
+     * spliceIngredientListZpl/spliceNutritionPanelZpl/spliceStorageUsageZpl,
+     * so a short ingredient list or an empty nutrition panel doesn't leave a
+     * fixed template guess's worth of dead whitespace before what follows.
      */
     public static String buildLabelZpl(String item, String labelfile,
             com.blueseer.ing.IngredientLabelEngine.IngredientLabelResult ingLabel,
             String allergenWarnings, String lotNbr, String bestBefore, String itemDesc,
-            String netWeight) throws IOException {
+            String netWeight, com.blueseer.ing.NutritionLabelEngine.NutritionLabelResult nutLabel,
+            String storageInstr, String usageInstr) throws IOException {
         Path template = checkForCustomPath(getSystemLabelDirectory(), labelfile);
 
         BufferedReader fsr = new BufferedReader(new FileReader(template.toFile(), StandardCharsets.UTF_8));
@@ -21032,7 +21057,13 @@ return mystring;
         fsr.close();
 
         concatline = concatline.replace("$ITEMNBR", item);
-        concatline = spliceIngredientListZpl(concatline, ingLabel, item, netWeight);
+        // Chains each dynamic section's actual end-Y into the next one's start (see
+        // SECTION_GAP/spliceIngredientListZpl) so a short section doesn't leave a fixed
+        // template guess's worth of dead whitespace before the next section starts.
+        int[] cursorY = new int[1];
+        concatline = spliceIngredientListZpl(concatline, ingLabel, item, netWeight, cursorY);
+        concatline = spliceNutritionPanelZpl(concatline, nutLabel, cursorY);
+        concatline = spliceStorageUsageZpl(concatline, storageInstr, usageInstr, cursorY);
         concatline = concatline.replace("$ALLERGENWARNINGS", allergenWarnings);
         concatline = concatline.replace("$LOTNBR", lotNbr);
         concatline = concatline.replace("$BESTBEFORE", bestBefore);
@@ -21053,6 +21084,20 @@ return mystring;
             com.blueseer.ing.IngredientLabelEngine.IngredientLabelResult ingLabel,
             String allergenWarnings, String lotNbr, String bestBefore, String itemDesc,
             String netWeight) throws IOException, PrintException {
+        printLabelItem(item, printer, labelfile, ingLabel, allergenWarnings, lotNbr, bestBefore, itemDesc,
+                netWeight, null, "", "");
+    }
+
+    /**
+     * Same as the six-arg-result overload above, plus the nutrition-panel/
+     * storage/usage tokens (see {@link #buildLabelZpl} for the full token
+     * list this adds).
+     */
+    public static void printLabelItem(String item, String printer, String labelfile,
+            com.blueseer.ing.IngredientLabelEngine.IngredientLabelResult ingLabel,
+            String allergenWarnings, String lotNbr, String bestBefore, String itemDesc,
+            String netWeight, com.blueseer.ing.NutritionLabelEngine.NutritionLabelResult nutLabel,
+            String storageInstr, String usageInstr) throws IOException, PrintException {
           String this_printer = "";
           try {
 
@@ -21073,7 +21118,7 @@ return mystring;
 
 
         String concatline = buildLabelZpl(item, labelfile, ingLabel, allergenWarnings, lotNbr,
-                bestBefore, itemDesc, netWeight);
+                bestBefore, itemDesc, netWeight, nutLabel, storageInstr, usageInstr);
 
          if (prt[2].equals("DirectToIP")) {
             Socket soc = null;
@@ -21110,6 +21155,11 @@ MainFrame.bslog(e);
 }
       }
 
+    // Vertical gap (dots) inserted between chained dynamic sections (ingredient list ->
+    // nutrition panel -> storage/usage), on top of whatever gap each section already
+    // adds internally before its own leading divider line.
+    private static final int SECTION_GAP = 20;
+
     /**
      * Replaces $INGREDIENTLIST with the entire dynamic lower section of the
      * label - the bold-allergen-aware ingredient text, disclaimer, any
@@ -21125,10 +21175,16 @@ MainFrame.bslog(e);
      * ingredient list on the label is still just an edit to the .prn text
      * file, not a code change. Falls back to a plain, non-bold substitution
      * if the token isn't wrapped that way (e.g. an older/malformed template).
+     *
+     * {@code cursorY[0]} is updated to just past this section (plus {@link
+     * #SECTION_GAP}) so a following $NUTRITIONPANEL/$STORAGEUSAGE section
+     * starts there instead of at its own template-guessed Y - see {@link
+     * #buildLabelZpl} - eliminating the dead whitespace a fixed per-section Y
+     * left behind whenever a section rendered shorter than guessed.
      */
     private static String spliceIngredientListZpl(String template,
             com.blueseer.ing.IngredientLabelEngine.IngredientLabelResult ingLabel,
-            String item, String netWeight) {
+            String item, String netWeight, int[] cursorY) {
         String tokenField = "^FD$INGREDIENTLIST^FS";
         int fsIdx = template.indexOf(tokenField);
         if (fsIdx < 0) {
@@ -21158,8 +21214,116 @@ MainFrame.bslog(e);
             width = Integer.parseInt(fbM.group(1));
             lineSpacing = Integer.parseInt(fbM.group(3));
         }
-        String zplBlock = ingLabel.toZplLabelBody(x, y, width, fontHeight, lineSpacing, item, netWeight);
-        return template.substring(0, blockStart) + zplBlock + template.substring(fsIdx + tokenField.length());
+        com.blueseer.ing.ZplTextUtils.Rendered rendered = ingLabel.toZplLabelBody(x, y, width, fontHeight, lineSpacing, item, netWeight);
+        cursorY[0] = rendered.endY() + SECTION_GAP;
+        return template.substring(0, blockStart) + rendered.zpl() + template.substring(fsIdx + tokenField.length());
+    }
+
+    /**
+     * Same convention as {@link #spliceIngredientListZpl} - $NUTRITIONPANEL
+     * must sit inside a normal ^FO/^A0N/^FB block, whose x/font height/width
+     * are read out of that block, but whose Y is overridden by {@code
+     * cursorY} (the ingredient section's actual end) whenever a prior
+     * section has already rendered - the template's own Y is only used as a
+     * fallback for a standalone/first-section placement. The calculated
+     * panel itself is now a ruled two-column table (nutrient/value), one row
+     * per nutrient x serving-size combination - see
+     * NutritionLabelEngine.NutritionLabelResult#toZplLabelBody.
+     */
+    private static String spliceNutritionPanelZpl(String template,
+            com.blueseer.ing.NutritionLabelEngine.NutritionLabelResult nutLabel, int[] cursorY) {
+        String tokenField = "^FD$NUTRITIONPANEL^FS";
+        int fsIdx = template.indexOf(tokenField);
+        if (fsIdx < 0) {
+            return template;
+        }
+        if (nutLabel == null) {
+            return template.replace(tokenField, "");
+        }
+        int blockStart = template.lastIndexOf("^FO", fsIdx);
+        int prevFieldEnd = template.lastIndexOf("^FS", fsIdx);
+        if (blockStart < 0 || blockStart < prevFieldEnd) {
+            return template.replace("$NUTRITIONPANEL", nutLabel.toPlainText());
+        }
+        String blockPrefix = template.substring(blockStart, fsIdx);
+        java.util.regex.Matcher foM = java.util.regex.Pattern.compile("\\^FO(\\d+),(\\d+)").matcher(blockPrefix);
+        java.util.regex.Matcher fontM = java.util.regex.Pattern.compile("\\^A0N,(\\d+),(\\d+)").matcher(blockPrefix);
+        java.util.regex.Matcher fbM = java.util.regex.Pattern.compile("\\^FB(\\d+),(\\d+),(\\d+)").matcher(blockPrefix);
+        if (!foM.find() || !fontM.find()) {
+            return template.replace("$NUTRITIONPANEL", nutLabel.toPlainText());
+        }
+        int x = Integer.parseInt(foM.group(1));
+        int templateY = Integer.parseInt(foM.group(2));
+        int fontHeight = Integer.parseInt(fontM.group(1));
+        int width = 732;
+        int lineSpacing = 6;
+        if (fbM.find()) {
+            width = Integer.parseInt(fbM.group(1));
+            lineSpacing = Integer.parseInt(fbM.group(3));
+        }
+        int y = cursorY[0] > 0 ? cursorY[0] : templateY;
+        com.blueseer.ing.ZplTextUtils.Rendered rendered = nutLabel.toZplLabelBody(x, y, width, fontHeight, lineSpacing);
+        cursorY[0] = rendered.endY() + SECTION_GAP;
+        return template.substring(0, blockStart) + rendered.zpl() + template.substring(fsIdx + tokenField.length());
+    }
+
+    /**
+     * Splices $STORAGEUSAGE (storage conditions + usage instructions, FIC
+     * Article 9(1)(g)/(j)) as one combined dynamic section, word-wrapped
+     * with the same real-font-measurement technique as the ingredient list
+     * ({@link com.blueseer.ing.ZplTextUtils#wrapPlain}) rather than relying
+     * on the printer/renderer's own ^FB auto-wrap - a label preview library
+     * was found not to wrap a short (3-line) ^FB block correctly, letting
+     * longer instruction text visually overrun into whatever sat to its
+     * right. Same x/font/width-from-template, Y-from-cursor convention as
+     * {@link #spliceNutritionPanelZpl}.
+     */
+    private static String spliceStorageUsageZpl(String template, String storageInstr, String usageInstr, int[] cursorY) {
+        String tokenField = "^FD$STORAGEUSAGE^FS";
+        int fsIdx = template.indexOf(tokenField);
+        if (fsIdx < 0) {
+            return template;
+        }
+        int blockStart = template.lastIndexOf("^FO", fsIdx);
+        int prevFieldEnd = template.lastIndexOf("^FS", fsIdx);
+        String storage = storageInstr == null ? "" : storageInstr;
+        String usage = usageInstr == null ? "" : usageInstr;
+        if (blockStart < 0 || blockStart < prevFieldEnd) {
+            return template.replace("$STORAGEUSAGE", "Storage: " + storage + " Usage: " + usage);
+        }
+        String blockPrefix = template.substring(blockStart, fsIdx);
+        java.util.regex.Matcher foM = java.util.regex.Pattern.compile("\\^FO(\\d+),(\\d+)").matcher(blockPrefix);
+        java.util.regex.Matcher fontM = java.util.regex.Pattern.compile("\\^A0N,(\\d+),(\\d+)").matcher(blockPrefix);
+        java.util.regex.Matcher fbM = java.util.regex.Pattern.compile("\\^FB(\\d+),(\\d+),(\\d+)").matcher(blockPrefix);
+        if (!foM.find() || !fontM.find()) {
+            return template.replace("$STORAGEUSAGE", "Storage: " + storage + " Usage: " + usage);
+        }
+        int x = Integer.parseInt(foM.group(1));
+        int templateY = Integer.parseInt(foM.group(2));
+        int fontHeight = Integer.parseInt(fontM.group(1));
+        int width = 732;
+        int lineSpacing = 6;
+        if (fbM.find()) {
+            width = Integer.parseInt(fbM.group(1));
+            lineSpacing = Integer.parseInt(fbM.group(3));
+        }
+        int y = cursorY[0] > 0 ? cursorY[0] : templateY;
+
+        StringBuilder zpl = new StringBuilder();
+        com.blueseer.ing.ZplTextUtils.appendDivider(zpl, x, y, width);
+        int cy = y + 14;
+        int rowGap = fontHeight + lineSpacing;
+        for (String line : com.blueseer.ing.ZplTextUtils.wrapPlain("Storage: " + storage, fontHeight, width)) {
+            com.blueseer.ing.ZplTextUtils.appendZplField(zpl, x, cy, fontHeight, line, false);
+            cy += rowGap;
+        }
+        cy += 10;
+        for (String line : com.blueseer.ing.ZplTextUtils.wrapPlain("Usage: " + usage, fontHeight, width)) {
+            com.blueseer.ing.ZplTextUtils.appendZplField(zpl, x, cy, fontHeight, line, false);
+            cy += rowGap;
+        }
+        cursorY[0] = cy;
+        return template.substring(0, blockStart) + zpl + template.substring(fsIdx + tokenField.length());
     }
 
     public static void printLabelStream(String text, String printer) throws IOException, PrintException {

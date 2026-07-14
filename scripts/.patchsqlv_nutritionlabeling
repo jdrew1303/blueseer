@@ -1,0 +1,148 @@
+/* sql updates for the EU/Irish FIC nutrition-declaration + storage/usage-
+   instructions feature (com.blueseer.ing) - see the epic and its 15 stories
+   on jdrew1303/blueseer (#2) for the full regulatory grounding.
+
+   NOTE: named descriptively rather than the next numeric version, same
+   convention as .patchsqlv_ingredientlabeling - rename/renumber this to fit
+   the client's actual .patchsqlvNN sequence at deploy time. Plain additive
+   CREATE TABLE IF NOT EXISTS plus idempotent seed inserts, safe regardless
+   of where it lands in the sequence.
+*/
+
+select '*** ALTER SCHEMA SECTION ***';
+select '';
+
+/* no changes to existing tables other than the two new ing_mstr columns
+   below (storage/usage instructions - not nutrition-specific, but this is
+   the item's existing "regulatory label data" home) */
+
+select '*** ADD TABLE IF NOT EXISTS SECTION ***';
+select '';
+
+/* nut_mstr: reference table, one row per nutrient the system knows about.
+   Rounding precision is stored per-nutrient (not hardcoded) because the
+   three-tier regime genuinely differs by nutrient group (Commission
+   guidance document, Dec 2012 - not Annex XV, which only sets units/order):
+     - fat/carbohydrate/sugars/protein/fibre/polyols/starch: >=10g -> nearest
+       1g, <10g and >0.5g -> nearest 0.1g, <=0.5g -> "0g"/"<0.5g"
+     - saturates/mono-/polyunsaturates: same 10g/1g/0.1g tiers, but a 0.1g
+       (not 0.5g) trace cutoff
+     - sodium: >=1g -> nearest 0.1g, <1g and >0.005g -> nearest 0.01g,
+       <=0.005g -> "0g"/"<0.005g"
+     - salt: >=1g -> nearest 0.1g, <1g and >0.0125g -> nearest 0.01g,
+       <=0.0125g -> "0g"/"<0.01g"
+   trace_label_g is the number actually shown in the "<Xg" trace text, which
+   is NOT always equal to trace_cutoff_g - salt's cutoff (0.0125) doesn't
+   match its own displayed label ("<0.01g", not "<0.0125g"), because the
+   guidance table's trace label is rounded to the nutrient's own mid-tier
+   granularity rather than repeating the raw cutoff number. Every other
+   nutrient's cutoff and label happen to coincide, but salt genuinely
+   differs, hence a separate column rather than deriving one from the
+   other.
+   energy_kj_per_g/energy_kcal_per_g are the Annex XIV conversion factors -
+   left null/0 on "of which" sub-line nutrients (saturates, sugars, starch,
+   mono-/polyunsaturates) and on sodium, since those must NOT contribute
+   their own extra energy on top of the parent fat/carbohydrate figure
+   they're already part of (see NutritionLabelEngine's energy calculation
+   for the carbohydrate-except-polyols carve-out this implies).
+   nrv_value/has_ri: has_ri is populated for the seven mandatory nutrients
+   (Annex XIII Part B gives all seven a reference intake - 8400kJ/2000kcal,
+   70g fat, 20g saturates, 260g carbohydrate, 90g sugars, 50g protein, 6g
+   salt, applied as fixed constants in the engine, not read from this
+   column). nrv_value (Annex XIII Part A, vitamins/minerals) stays null
+   everywhere this release - vitamins/minerals are explicitly out of scope
+   (client decision), so no rows are seeded for them; adding one later is a
+   data change, not a schema change. */
+CREATE TABLE IF NOT EXISTS `nut_mstr` (
+  `nutrient_code` varchar(30) NOT NULL PRIMARY KEY,
+  `display_name` varchar(60) NOT NULL DEFAULT '',
+  `unit` varchar(10) NOT NULL DEFAULT 'g',
+  `is_mandatory` tinyint(1) NOT NULL DEFAULT '0',
+  `sort_order` int(4) NOT NULL DEFAULT '0',
+  `energy_kj_per_g` decimal(8,3) NOT NULL DEFAULT '0',
+  `energy_kcal_per_g` decimal(8,3) NOT NULL DEFAULT '0',
+  `high_threshold_g` decimal(9,4) NOT NULL DEFAULT '10',
+  `high_precision_g` decimal(9,4) NOT NULL DEFAULT '1',
+  `mid_precision_g` decimal(9,4) NOT NULL DEFAULT '0.1',
+  `trace_cutoff_g` decimal(9,4) NOT NULL DEFAULT '0.5',
+  `trace_label_g` decimal(9,4) NOT NULL DEFAULT '0.5',
+  `nrv_value` decimal(10,3) DEFAULT NULL,
+  `has_ri` tinyint(1) NOT NULL DEFAULT '0'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+/* ing_nutrient: per-ingredient declared value, manual entry only (client
+   decision - no external/public dataset seeding), one row per (item,
+   nutrient). data_source is a data-provenance note (which of Article
+   31(4)'s three valid bases the figure came from), not used in
+   calculation. Sodium is stored here like any other nutrient even though
+   it is never itself printed - salt is derived from it centrally
+   (sodium x 2.5) rather than trusting whichever of salt/sodium a given
+   supplier sheet happened to declare. */
+CREATE TABLE IF NOT EXISTS `ing_nutrient` (
+  `it_item` varchar(36) NOT NULL,
+  `nutrient_code` varchar(30) NOT NULL,
+  `value_per_100g` decimal(12,5) NOT NULL DEFAULT '0',
+  `data_source` varchar(20) NOT NULL DEFAULT 'SUPPLIER_SPEC',
+  `notes` varchar(300) NOT NULL DEFAULT '',
+  PRIMARY KEY (`it_item`, `nutrient_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+/* item_nut_cfg: per FINISHED item nutrition-label configuration, 1:1 with
+   item_mstr. nut_placement drives whether/where the calculated panel
+   appears - NONE requires nut_exempt_reason to be non-blank (UI-enforced,
+   not a DB constraint, so historical/imported data doesn't break) so
+   there's an audit trail for why a product ships without one (e.g. Annex V
+   point 19 direct-supply exemption) rather than an unexplained gap. */
+CREATE TABLE IF NOT EXISTS `item_nut_cfg` (
+  `it_item` varchar(36) NOT NULL PRIMARY KEY,
+  `nut_placement` varchar(20) NOT NULL DEFAULT 'MAIN_LABEL',
+  `nut_exempt_reason` varchar(300) NOT NULL DEFAULT '',
+  `nut_show_ri_pct` tinyint(1) NOT NULL DEFAULT '1',
+  `nut_portion_size_g` decimal(10,3) DEFAULT NULL,
+  `nut_portion_desc` varchar(60) NOT NULL DEFAULT '',
+  `nut_portions_per_pack` int(5) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+select '*** ALTER TABLE SECTION (single-shot - not safely re-runnable, matching scripts/sqliteupgrade.txt convention for plain column adds) ***';
+select '';
+
+/* storage/usage instructions (FIC Article 9(1)(g)/(j)) - mandatory label
+   particulars in their own right, not nutrition-specific, but living on
+   ing_mstr since that's already this item's "regulatory label data" home
+   (see IngredientPanel/ItemMaint's Ingredient Data tab). Apply to every
+   label template via the new $STORAGE/$USAGE tokens (OVData.buildLabelZpl),
+   not just ones that also carry a nutrition panel. */
+alter table ing_mstr add column ing_storage_instr varchar(500) NOT NULL DEFAULT '';
+alter table ing_mstr add column ing_usage_instr varchar(500) NOT NULL DEFAULT '';
+
+select '*** UPDATE RECORDS SECTION ***';
+select '';
+/* none */
+
+select '*** INSERT RECORDS SECTION ***';
+select '';
+
+/* EU FIC Annex XV order of presentation; Annex XIV energy conversion
+   factors; rounding tiers per the Commission's Dec-2012 guidance document
+   (see this file's header comment). All editable afterwards - a
+   compliance reviewer should confirm these before go-live (see the epic's
+   NUTR-15 story), same as warn_rule's seed content in the ingredient
+   epic. */
+insert into nut_mstr (nutrient_code, display_name, unit, is_mandatory, sort_order, energy_kj_per_g, energy_kcal_per_g, high_threshold_g, high_precision_g, mid_precision_g, trace_cutoff_g, trace_label_g, has_ri) select 'ENERGY', 'Energy', 'kJ/kcal', 1, 1, 0, 0, 0, 1, 1, 0, 0, 1 where not exists(select 1 from nut_mstr where nutrient_code = 'ENERGY');
+insert into nut_mstr (nutrient_code, display_name, unit, is_mandatory, sort_order, energy_kj_per_g, energy_kcal_per_g, high_threshold_g, high_precision_g, mid_precision_g, trace_cutoff_g, trace_label_g, has_ri) select 'FAT', 'Fat', 'g', 1, 2, 37, 9, 10, 1, 0.1, 0.5, 0.5, 1 where not exists(select 1 from nut_mstr where nutrient_code = 'FAT');
+insert into nut_mstr (nutrient_code, display_name, unit, is_mandatory, sort_order, energy_kj_per_g, energy_kcal_per_g, high_threshold_g, high_precision_g, mid_precision_g, trace_cutoff_g, trace_label_g, has_ri) select 'SATURATES', 'of which saturates', 'g', 1, 3, 0, 0, 10, 1, 0.1, 0.1, 0.1, 1 where not exists(select 1 from nut_mstr where nutrient_code = 'SATURATES');
+insert into nut_mstr (nutrient_code, display_name, unit, is_mandatory, sort_order, energy_kj_per_g, energy_kcal_per_g, high_threshold_g, high_precision_g, mid_precision_g, trace_cutoff_g, trace_label_g, has_ri) select 'MONOUNSATURATES', 'of which mono-unsaturates', 'g', 0, 4, 0, 0, 10, 1, 0.1, 0.1, 0.1, 0 where not exists(select 1 from nut_mstr where nutrient_code = 'MONOUNSATURATES');
+insert into nut_mstr (nutrient_code, display_name, unit, is_mandatory, sort_order, energy_kj_per_g, energy_kcal_per_g, high_threshold_g, high_precision_g, mid_precision_g, trace_cutoff_g, trace_label_g, has_ri) select 'POLYUNSATURATES', 'of which polyunsaturates', 'g', 0, 5, 0, 0, 10, 1, 0.1, 0.1, 0.1, 0 where not exists(select 1 from nut_mstr where nutrient_code = 'POLYUNSATURATES');
+insert into nut_mstr (nutrient_code, display_name, unit, is_mandatory, sort_order, energy_kj_per_g, energy_kcal_per_g, high_threshold_g, high_precision_g, mid_precision_g, trace_cutoff_g, trace_label_g, has_ri) select 'CARBOHYDRATE', 'Carbohydrate', 'g', 1, 6, 17, 4, 10, 1, 0.1, 0.5, 0.5, 1 where not exists(select 1 from nut_mstr where nutrient_code = 'CARBOHYDRATE');
+insert into nut_mstr (nutrient_code, display_name, unit, is_mandatory, sort_order, energy_kj_per_g, energy_kcal_per_g, high_threshold_g, high_precision_g, mid_precision_g, trace_cutoff_g, trace_label_g, has_ri) select 'SUGARS', 'of which sugars', 'g', 1, 7, 0, 0, 10, 1, 0.1, 0.5, 0.5, 1 where not exists(select 1 from nut_mstr where nutrient_code = 'SUGARS');
+insert into nut_mstr (nutrient_code, display_name, unit, is_mandatory, sort_order, energy_kj_per_g, energy_kcal_per_g, high_threshold_g, high_precision_g, mid_precision_g, trace_cutoff_g, trace_label_g, has_ri) select 'POLYOLS', 'of which polyols', 'g', 0, 8, 10, 2.4, 10, 1, 0.1, 0.5, 0.5, 0 where not exists(select 1 from nut_mstr where nutrient_code = 'POLYOLS');
+insert into nut_mstr (nutrient_code, display_name, unit, is_mandatory, sort_order, energy_kj_per_g, energy_kcal_per_g, high_threshold_g, high_precision_g, mid_precision_g, trace_cutoff_g, trace_label_g, has_ri) select 'STARCH', 'of which starch', 'g', 0, 9, 0, 0, 10, 1, 0.1, 0.5, 0.5, 0 where not exists(select 1 from nut_mstr where nutrient_code = 'STARCH');
+insert into nut_mstr (nutrient_code, display_name, unit, is_mandatory, sort_order, energy_kj_per_g, energy_kcal_per_g, high_threshold_g, high_precision_g, mid_precision_g, trace_cutoff_g, trace_label_g, has_ri) select 'FIBRE', 'Fibre', 'g', 0, 10, 8, 2, 10, 1, 0.1, 0.5, 0.5, 0 where not exists(select 1 from nut_mstr where nutrient_code = 'FIBRE');
+insert into nut_mstr (nutrient_code, display_name, unit, is_mandatory, sort_order, energy_kj_per_g, energy_kcal_per_g, high_threshold_g, high_precision_g, mid_precision_g, trace_cutoff_g, trace_label_g, has_ri) select 'PROTEIN', 'Protein', 'g', 1, 11, 17, 4, 10, 1, 0.1, 0.5, 0.5, 1 where not exists(select 1 from nut_mstr where nutrient_code = 'PROTEIN');
+insert into nut_mstr (nutrient_code, display_name, unit, is_mandatory, sort_order, energy_kj_per_g, energy_kcal_per_g, high_threshold_g, high_precision_g, mid_precision_g, trace_cutoff_g, trace_label_g, has_ri) select 'SALT', 'Salt', 'g', 1, 12, 0, 0, 1, 0.1, 0.01, 0.0125, 0.01, 1 where not exists(select 1 from nut_mstr where nutrient_code = 'SALT');
+/* SODIUM: internal data-entry vessel only - never printed itself (salt is derived from it centrally, see NutritionLabelEngine); is_mandatory/has_ri both 0 and sort_order high so it never surfaces in the declared list. */
+insert into nut_mstr (nutrient_code, display_name, unit, is_mandatory, sort_order, energy_kj_per_g, energy_kcal_per_g, high_threshold_g, high_precision_g, mid_precision_g, trace_cutoff_g, trace_label_g, has_ri) select 'SODIUM', 'Sodium (internal - salt is derived from this)', 'g', 0, 99, 0, 0, 1, 0.1, 0.01, 0.005, 0.005, 0 where not exists(select 1 from nut_mstr where nutrient_code = 'SODIUM');
+
+select '';
+select concat("sql schema version is : ", ov_version) from ov_ctrl;
+select '*** SQL UPDATE ENDS ***';
