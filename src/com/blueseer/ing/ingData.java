@@ -668,7 +668,9 @@ public class ingData {
             ps.setString(1, item);
             try (ResultSet res = ps.executeQuery()) {
                 if (res.next()) {
-                    return new String[]{res.getString("in_serial"), res.getString("in_expire")};
+                    String serial = res.getString("in_serial");
+                    String expire = res.getString("in_expire");
+                    return new String[]{serial == null ? "" : serial, expire == null ? "" : expire};
                 }
             }
         } catch (SQLException s) {

@@ -14438,11 +14438,11 @@ return mystring;
             if (expire != null && expire.isBlank()) {
                 expire = null;
             }
-             
-            if (! serialized) {
+
+            if (serial == null || serial.isEmpty()) {
                 expire = null;
             }
-                               
+
 
                     // check if in_mstr record exists for this part, loc, wh, site, serial, expire combo
                     // if not add it
@@ -21045,6 +21045,14 @@ return mystring;
             String allergenWarnings, String lotNbr, String bestBefore, String itemDesc,
             String netWeight, com.blueseer.ing.NutritionLabelEngine.NutritionLabelResult nutLabel,
             String storageInstr, String usageInstr) throws IOException {
+        // Any of these can legitimately be unset (e.g. no best-before date on
+        // a shelf-stable item, or a batch whose lot wasn't resolved) - treat
+        // that as "blank on the label", not a crash.
+        allergenWarnings = allergenWarnings == null ? "" : allergenWarnings;
+        lotNbr = lotNbr == null ? "" : lotNbr;
+        bestBefore = bestBefore == null ? "" : bestBefore;
+        itemDesc = itemDesc == null ? "" : itemDesc;
+        netWeight = netWeight == null ? "" : netWeight;
         Path template = checkForCustomPath(getSystemLabelDirectory(), labelfile);
 
         BufferedReader fsr = new BufferedReader(new FileReader(template.toFile(), StandardCharsets.UTF_8));
