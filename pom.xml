@@ -313,12 +313,56 @@
     <version>4.5.13</version>
 </dependency>
 
-<!-- icepdf-core/icepdf-viewer removed: the one place that used them
-     (com.blueseer.utl.OVData.showPDFusingIcePDF, an embedded PDF viewer
-     window) now hands the file to the OS's default PDF viewer via
-     java.awt.Desktop instead (see OVData.openPDF). This also drops
-     icepdf-core's large transitive Apache Batik/xmlgraphics-commons
-     dependency tree, which was otherwise dead weight. -->
+<!-- Re-added for the Scan to Import split-screen document review pane
+     (com.blueseer.doc.DocumentPreviewPanel): renders a PDF page-by-page
+     next to the extracted fields so the user can check the source while
+     correcting them. Previously removed (see git history) purely to
+     shrink installer size for a single embedded-viewer-window use case
+     that's now handled via java.awt.Desktop instead - that reasoning no
+     longer applies now that IcePDF is genuinely the right tool again. -->
+<dependency>
+    <groupId>org.icepdf.os</groupId>
+    <artifactId>icepdf-core</artifactId>
+    <version>6.2.2</version>
+    <exclusions>
+        <!-- javax.media:jai_core is not published to Maven Central; icepdf only
+             uses it as an optional codec, so drop it rather than depend on the
+             now-unreliable jai.dev.java.net / osgeo mirrors. -->
+        <exclusion>
+            <groupId>javax.media</groupId>
+            <artifactId>jai_core</artifactId>
+        </exclusion>
+        <exclusion>
+            <groupId>com.sun.media</groupId>
+            <artifactId>jai_imageio</artifactId>
+        </exclusion>
+        <!-- superseded by the org.bouncycastle:*-jdk18on artifacts declared elsewhere in this pom -->
+        <exclusion>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk15on</artifactId>
+        </exclusion>
+        <exclusion>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-ext-jdk15on</artifactId>
+        </exclusion>
+        <exclusion>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk15on</artifactId>
+        </exclusion>
+    </exclusions>
+</dependency>
+
+<dependency>
+    <groupId>org.icepdf.os</groupId>
+    <artifactId>icepdf-viewer</artifactId>
+    <version>6.2.2</version>
+    <exclusions>
+        <exclusion>
+            <groupId>javax.media</groupId>
+            <artifactId>jai_core</artifactId>
+        </exclusion>
+    </exclusions>
+</dependency>
 
 <dependency>
     <groupId>com.ibm.icu</groupId>
