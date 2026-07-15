@@ -54,7 +54,25 @@ public class docData {
     public record llm_config(String provider, String baseurl, String model, boolean enabled) {
     }
 
+    /**
+     * Optional second model for Scan to Import - a document-layout model
+     * (e.g. IBM's granite-docling-258M) that converts a page image into
+     * "DocTags" text carrying a bounding box per block, used to show where
+     * an extracted field actually came from in the source document. Blank
+     * model means "not configured" - see docs/patchsqlv_docimport_layoutmodel
+     * and DocumentExtractionService's class javadoc for why this is a
+     * genuinely separate model from ov_llm_provider/baseurl/model rather
+     * than a mode switch on the same one.
+     */
+    public record layout_llm_config(String provider, String baseurl, String model) {
+        public boolean configured() {
+            return model != null && !model.isBlank();
+        }
+    }
+
     private static final llm_config DEFAULT_CONFIG = new llm_config("LMSTUDIO", "http://localhost:1234", "", false);
+    private static final layout_llm_config DEFAULT_LAYOUT_CONFIG =
+            new layout_llm_config("LMSTUDIO", "http://localhost:1234", "");
 
     public static llm_config getLlmConfig() {
         String sql = "select ov_llm_provider, ov_llm_baseurl, ov_llm_model, ov_llm_enabled from ov_ctrl;";
@@ -79,6 +97,38 @@ public class docData {
             ps.setString(2, cfg.baseurl());
             ps.setString(3, cfg.model());
             ps.setBoolean(4, cfg.enabled());
+            int rows = ps.executeUpdate();
+            return rows > 0
+                    ? new String[]{BlueSeerUtils.SuccessBit, BlueSeerUtils.updateRecordSuccess}
+                    : new String[]{BlueSeerUtils.ErrorBit, BlueSeerUtils.updateRecordError};
+        } catch (SQLException e) {
+            MainFrame.bslog(e);
+            return new String[]{BlueSeerUtils.ErrorBit, BlueSeerUtils.updateRecordError};
+        }
+    }
+
+    public static layout_llm_config getLayoutLlmConfig() {
+        String sql = "select ov_llm_layout_provider, ov_llm_layout_baseurl, ov_llm_layout_model from ov_ctrl;";
+        try (Connection con = (ds == null ? DriverManager.getConnection(url + db, user, pass) : ds.getConnection());
+                PreparedStatement ps = con.prepareStatement(sql);
+                ResultSet res = ps.executeQuery()) {
+            if (res.next()) {
+                return new layout_llm_config(res.getString("ov_llm_layout_provider"),
+                        res.getString("ov_llm_layout_baseurl"), res.getString("ov_llm_layout_model"));
+            }
+        } catch (SQLException e) {
+            MainFrame.bslog(e);
+        }
+        return DEFAULT_LAYOUT_CONFIG;
+    }
+
+    public static String[] saveLayoutLlmConfig(layout_llm_config cfg) {
+        String sql = "update ov_ctrl set ov_llm_layout_provider = ?, ov_llm_layout_baseurl = ?, ov_llm_layout_model = ?;";
+        try (Connection con = (ds == null ? DriverManager.getConnection(url + db, user, pass) : ds.getConnection());
+                PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, cfg.provider());
+            ps.setString(2, cfg.baseurl());
+            ps.setString(3, cfg.model());
             int rows = ps.executeUpdate();
             return rows > 0
                     ? new String[]{BlueSeerUtils.SuccessBit, BlueSeerUtils.updateRecordSuccess}

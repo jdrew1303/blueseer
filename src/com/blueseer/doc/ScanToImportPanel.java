@@ -95,6 +95,7 @@ public class ScanToImportPanel extends JPanel {
     private InvoiceExtraction pendingInvoice;
     private byte[] currentImageBytes;
     private String currentExt;
+    private List<DocTagsParser.Block> currentDocTagsBlocks = List.of();
 
     public ScanToImportPanel() {
         setLayout(new java.awt.BorderLayout());
@@ -186,6 +187,7 @@ public class ScanToImportPanel extends JPanel {
         pendingInvoice = null;
         currentImageBytes = imageBytes;
         currentExt = ext;
+        currentDocTagsBlocks = List.of();
         clearReview();
         ddDocType.setVisible(false);
         btApplyDocType.setVisible(false);
@@ -228,6 +230,7 @@ public class ScanToImportPanel extends JPanel {
         lineModel.setLines(new ArrayList<>());
         lblReconcileWarning.setText(" ");
         btOpenTarget.setVisible(false);
+        preview.highlightBlocks(List.of());
     }
 
     private void showReview(InvoiceExtraction invoice) {
@@ -238,18 +241,109 @@ public class ScanToImportPanel extends JPanel {
         lblReconcileWarning.setText(invoice.totalsReconcile() ? " "
                 : "The line items don't add up to the printed total - check quantities/prices below.");
         btOpenTarget.setVisible(true);
+        highlightSourceBlocks(invoice);
     }
 
     private static String bsFormatDouble(double value) {
         return String.format("%.2f", value);
     }
 
-    private class ClassifyThenExtractTask extends SwingWorker<Object, Void> {
+    /**
+     * Draws a box on the preview around whichever DocTags-tagged region of
+     * the source document each extracted field most likely came from -
+     * only has anything to work with when the optional document-layout
+     * model is configured (see docData.layout_llm_config); a plain
+     * substring correlation rather than asking either model to echo
+     * coordinates back through the JSON, which small models aren't
+     * reliable at copying faithfully.
+     */
+    private void highlightSourceBlocks(InvoiceExtraction invoice) {
+        if (currentDocTagsBlocks.isEmpty()) {
+            return;
+        }
+        List<String> values = new ArrayList<>();
+        values.add(invoice.supplier());
+        values.add(invoice.invoiceNumber());
+        if (invoice.lines() != null) {
+            for (InvoiceExtraction.Line line : invoice.lines()) {
+                values.add(line.description());
+            }
+        }
+        List<DocTagsParser.Block> matches = new ArrayList<>();
+        for (String value : values) {
+            if (value == null || value.isBlank()) {
+                continue;
+            }
+            String needle = value.trim().toLowerCase();
+            for (DocTagsParser.Block block : currentDocTagsBlocks) {
+                String haystack = block.text().toLowerCase();
+                if (!haystack.isBlank() && (haystack.contains(needle) || needle.contains(haystack))) {
+                    matches.add(block);
+                    break;
+                }
+            }
+        }
+        preview.highlightBlocks(matches);
+    }
+
+    /**
+     * Result of one classify(+extract) run - blocks is only ever non-empty
+     * when the optional document-layout model produced DocTags for this
+     * document (see docData.layout_llm_config); empty otherwise (the
+     * ordinary single-pass, image-straight-to-JSON path).
+     */
+    private record ExtractionResult(DocumentClassification classification, InvoiceExtraction invoice,
+            List<DocTagsParser.Block> blocks) {
+    }
+
+    /**
+     * Runs classify+extract (or, with forceInvoice, extraction alone,
+     * skipping classification entirely - the manual "Use This Type"
+     * override path). When a document-layout model is configured, this is
+     * genuinely two model calls per step: image -> DocTags (the layout
+     * model), then DocTags plain text -> JSON (the regular extraction
+     * model, text-only) - a layout model like granite-docling-258M can't
+     * classify/extract JSON itself, see DocumentExtractionService's class
+     * javadoc. Falls back to sending the image straight to the extraction
+     * model, exactly as before, whenever no layout model is configured.
+     */
+    private ExtractionResult runExtraction(byte[] imageBytes, String ext, boolean forceInvoice)
+            throws DocumentExtractionService.DocumentExtractionException {
+        docData.layout_llm_config layoutCfg = docData.getLayoutLlmConfig();
+        List<DocTagsParser.Block> blocks = List.of();
+        String plainText = null;
+        if (layoutCfg.configured()) {
+            String rawDocTags = DocumentExtractionService.convertToDocTags(imageBytes, ext, layoutCfg);
+            blocks = DocTagsParser.parse(rawDocTags);
+            plainText = DocTagsParser.toPlainText(blocks);
+        }
+
+        DocumentClassification classification = null;
+        if (!forceInvoice) {
+            classification = plainText != null
+                    ? DocumentExtractionService.extractStructuredFromText(plainText, DocumentClassification.SYSTEM_INSTRUCTIONS,
+                            DocumentClassification.JSON_SHAPE, DocumentClassification.class)
+                    : DocumentExtractionService.extractStructured(imageBytes, ext, DocumentClassification.SYSTEM_INSTRUCTIONS,
+                            DocumentClassification.JSON_SHAPE, DocumentClassification.class);
+        }
+
+        InvoiceExtraction invoice = null;
+        if (forceInvoice || (classification != null && DocumentClassification.INVOICE.equals(classification.documentType()))) {
+            invoice = plainText != null
+                    ? DocumentExtractionService.extractStructuredFromText(plainText, InvoiceExtraction.SYSTEM_INSTRUCTIONS,
+                            InvoiceExtraction.JSON_SHAPE, InvoiceExtraction.class)
+                    : DocumentExtractionService.extractStructured(imageBytes, ext, InvoiceExtraction.SYSTEM_INSTRUCTIONS,
+                            InvoiceExtraction.JSON_SHAPE, InvoiceExtraction.class);
+        }
+
+        return new ExtractionResult(classification, invoice, blocks);
+    }
+
+    private class ClassifyThenExtractTask extends SwingWorker<ExtractionResult, Void> {
 
         private final byte[] imageBytes;
         private final String ext;
         private String errorMessage;
-        private DocumentClassification classification;
 
         ClassifyThenExtractTask(byte[] imageBytes, String ext) {
             this.imageBytes = imageBytes;
@@ -257,16 +351,9 @@ public class ScanToImportPanel extends JPanel {
         }
 
         @Override
-        public Object doInBackground() {
+        public ExtractionResult doInBackground() {
             try {
-                classification = DocumentExtractionService.extractStructured(imageBytes, ext,
-                        DocumentClassification.SYSTEM_INSTRUCTIONS, DocumentClassification.JSON_SHAPE,
-                        DocumentClassification.class);
-                if (DocumentClassification.INVOICE.equals(classification.documentType())) {
-                    return DocumentExtractionService.extractStructured(imageBytes, ext,
-                            InvoiceExtraction.SYSTEM_INSTRUCTIONS, InvoiceExtraction.JSON_SHAPE, InvoiceExtraction.class);
-                }
-                return null;
+                return runExtraction(imageBytes, ext, false);
             } catch (DocumentExtractionService.DocumentExtractionException ex) {
                 errorMessage = ex.getMessage();
                 return null;
@@ -280,11 +367,20 @@ public class ScanToImportPanel extends JPanel {
                 lblStatus.setText(errorMessage);
                 return;
             }
-            if (classification == null) {
+            ExtractionResult result;
+            try {
+                result = get();
+            } catch (Exception ex) {
+                MainFrame.bslog(ex);
                 lblStatus.setText("Something went wrong reading the document.");
                 return;
             }
-            boolean detectedInvoice = DocumentClassification.INVOICE.equals(classification.documentType());
+            if (result == null || result.classification() == null) {
+                lblStatus.setText("Something went wrong reading the document.");
+                return;
+            }
+            currentDocTagsBlocks = result.blocks();
+            boolean detectedInvoice = DocumentClassification.INVOICE.equals(result.classification().documentType());
             ddDocType.setSelectedItem(detectedInvoice ? TYPE_INVOICE : TYPE_OTHER);
             ddDocType.setVisible(true);
             btApplyDocType.setVisible(true);
@@ -293,23 +389,17 @@ public class ScanToImportPanel extends JPanel {
                         + "pick that above and click \"" + btApplyDocType.getText() + "\".");
                 return;
             }
-            try {
-                Object result = get();
-                if (result instanceof InvoiceExtraction invoice) {
-                    pendingInvoice = invoice;
-                    lblStatus.setText("This looks like a supplier invoice/packing slip.");
-                    showReview(invoice);
-                } else {
-                    lblStatus.setText("Recognized as an invoice, but couldn't read the details - try a clearer photo.");
-                }
-            } catch (Exception ex) {
-                MainFrame.bslog(ex);
-                lblStatus.setText("Something went wrong reading the document.");
+            if (result.invoice() != null) {
+                pendingInvoice = result.invoice();
+                lblStatus.setText("This looks like a supplier invoice/packing slip.");
+                showReview(result.invoice());
+            } else {
+                lblStatus.setText("Recognized as an invoice, but couldn't read the details - try a clearer photo.");
             }
         }
     }
 
-    private class ExtractInvoiceTask extends SwingWorker<InvoiceExtraction, Void> {
+    private class ExtractInvoiceTask extends SwingWorker<ExtractionResult, Void> {
 
         private final byte[] imageBytes;
         private final String ext;
@@ -321,10 +411,9 @@ public class ScanToImportPanel extends JPanel {
         }
 
         @Override
-        protected InvoiceExtraction doInBackground() {
+        protected ExtractionResult doInBackground() {
             try {
-                return DocumentExtractionService.extractStructured(imageBytes, ext,
-                        InvoiceExtraction.SYSTEM_INSTRUCTIONS, InvoiceExtraction.JSON_SHAPE, InvoiceExtraction.class);
+                return runExtraction(imageBytes, ext, true);
             } catch (DocumentExtractionService.DocumentExtractionException ex) {
                 errorMessage = ex.getMessage();
                 return null;
@@ -339,11 +428,12 @@ public class ScanToImportPanel extends JPanel {
                 return;
             }
             try {
-                InvoiceExtraction invoice = get();
-                if (invoice != null) {
-                    pendingInvoice = invoice;
+                ExtractionResult result = get();
+                if (result != null && result.invoice() != null) {
+                    currentDocTagsBlocks = result.blocks();
+                    pendingInvoice = result.invoice();
                     lblStatus.setText("This looks like a supplier invoice/packing slip.");
-                    showReview(invoice);
+                    showReview(result.invoice());
                 }
             } catch (Exception ex) {
                 MainFrame.bslog(ex);
@@ -388,6 +478,7 @@ public class ScanToImportPanel extends JPanel {
         pendingInvoice = null;
         currentImageBytes = null;
         currentExt = null;
+        currentDocTagsBlocks = List.of();
         clearReview();
         ddDocType.setVisible(false);
         btApplyDocType.setVisible(false);

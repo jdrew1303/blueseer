@@ -28,6 +28,8 @@ package com.blueseer.doc;
 import net.miginfocom.swing.MigLayout;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
@@ -45,6 +47,12 @@ import java.awt.FlowLayout;
  * GroupLayout. Set once by whoever installs/supports a given customer;
  * shop staff never see this screen and the Import buttons elsewhere just
  * stay hidden when nothing here is configured.
+ *
+ * Has two independent model configs: the extraction model (required,
+ * enabled/disabled explicitly) and an optional document-layout model (e.g.
+ * granite-docling-258M) that only ever helps show where an extracted field
+ * came from in the source document - leaving its model field blank turns
+ * it off with no other behavior change, see docData.layout_llm_config.
  */
 public class DocImportSettingsPanel extends JPanel {
 
@@ -52,6 +60,9 @@ public class DocImportSettingsPanel extends JPanel {
     private final JTextField tbBaseUrl = new JTextField(30);
     private final JTextField tbModel = new JTextField(30);
     private final JCheckBox cbEnabled = new JCheckBox("Scan to Import enabled");
+    private final JComboBox<String> ddLayoutProvider = new JComboBox<>(new String[]{"LMSTUDIO", "OLLAMA"});
+    private final JTextField tbLayoutBaseUrl = new JTextField(30);
+    private final JTextField tbLayoutModel = new JTextField(30);
     private final JButton btSave = new JButton("Save");
     private final JLabel lblStatus = new JLabel(" ");
 
@@ -62,15 +73,29 @@ public class DocImportSettingsPanel extends JPanel {
         // card (e.g. RecvMaint's "Receiver Maintenance" TitledBorder box), so
         // this does the same instead of introducing a one-off look.
         //
-        // FlowLayout (not BorderLayout.NORTH) so the card sizes to its own
-        // preferred width instead of stretching full-width; CENTER (not LEFT)
-        // to match every other screen's top-centered look (e.g. RecvMaint's
-        // outer panel relies on JPanel's own default FlowLayout, which is
-        // CENTER).
+        // FlowLayout (not BorderLayout.NORTH) so the outer wrapper sizes to its
+        // own preferred width instead of stretching full-width; CENTER (not
+        // LEFT) to match every other screen's top-centered look (e.g.
+        // RecvMaint's outer panel relies on JPanel's own default FlowLayout,
+        // which is CENTER).
         setLayout(new FlowLayout(FlowLayout.CENTER));
+        JPanel outer = new JPanel();
+        outer.setLayout(new BoxLayout(outer, BoxLayout.Y_AXIS));
+        outer.add(buildExtractionCard());
+        outer.add(Box.createVerticalStrut(10));
+        outer.add(buildLayoutModelCard());
+        add(outer);
+
+        ddProvider.addActionListener(e -> applyProviderDefault(ddProvider, tbBaseUrl));
+        ddLayoutProvider.addActionListener(e -> applyProviderDefault(ddLayoutProvider, tbLayoutBaseUrl));
+        btSave.addActionListener(e -> save());
+
+        load();
+    }
+
+    private JPanel buildExtractionCard() {
         JPanel card = new JPanel(new MigLayout("insets 12, wrap 2", "[right]8[]"));
         card.setBorder(BorderFactory.createTitledBorder("Scan to Import Settings"));
-        add(card);
 
         card.add(new JLabel("Runtime"));
         card.add(ddProvider);
@@ -83,18 +108,28 @@ public class DocImportSettingsPanel extends JPanel {
         card.add(new JLabel());
         card.add(btSave);
         card.add(lblStatus, "span 2");
-
-        ddProvider.addActionListener(e -> applyProviderDefault());
-        btSave.addActionListener(e -> save());
-
-        load();
+        return card;
     }
 
-    private void applyProviderDefault() {
-        if (!tbBaseUrl.getText().isBlank()) {
+    private JPanel buildLayoutModelCard() {
+        JPanel card = new JPanel(new MigLayout("insets 12, wrap 2", "[right]8[]"));
+        card.setBorder(BorderFactory.createTitledBorder("Document Layout Model (optional)"));
+
+        card.add(new JLabel("Leave the model field blank to skip this - Scan to Import works fine without it."), "span 2, wrap");
+        card.add(new JLabel("Runtime"));
+        card.add(ddLayoutProvider);
+        card.add(new JLabel("Base URL"));
+        card.add(tbLayoutBaseUrl);
+        card.add(new JLabel("Model"));
+        card.add(tbLayoutModel);
+        return card;
+    }
+
+    private static void applyProviderDefault(JComboBox<String> providerCombo, JTextField baseUrlField) {
+        if (!baseUrlField.getText().isBlank()) {
             return;
         }
-        tbBaseUrl.setText("OLLAMA".equals(ddProvider.getSelectedItem()) ? "http://localhost:11434" : "http://localhost:1234");
+        baseUrlField.setText("OLLAMA".equals(providerCombo.getSelectedItem()) ? "http://localhost:11434" : "http://localhost:1234");
     }
 
     private void load() {
@@ -103,12 +138,22 @@ public class DocImportSettingsPanel extends JPanel {
         tbBaseUrl.setText(cfg.baseurl());
         tbModel.setText(cfg.model());
         cbEnabled.setSelected(cfg.enabled());
+
+        docData.layout_llm_config layoutCfg = docData.getLayoutLlmConfig();
+        ddLayoutProvider.setSelectedItem(layoutCfg.provider());
+        tbLayoutBaseUrl.setText(layoutCfg.baseurl());
+        tbLayoutModel.setText(layoutCfg.model());
     }
 
     private void save() {
         docData.llm_config cfg = new docData.llm_config(
                 ddProvider.getSelectedItem().toString(), tbBaseUrl.getText().trim(), tbModel.getText().trim(), cbEnabled.isSelected());
         String[] result = docData.saveLlmConfig(cfg);
+
+        docData.layout_llm_config layoutCfg = new docData.layout_llm_config(
+                ddLayoutProvider.getSelectedItem().toString(), tbLayoutBaseUrl.getText().trim(), tbLayoutModel.getText().trim());
+        docData.saveLayoutLlmConfig(layoutCfg);
+
         lblStatus.setText(result.length > 1 ? result[1] : "");
     }
 }

@@ -1,0 +1,26 @@
+/* Optional second model for Scan to Import: a document-layout model (e.g.
+   IBM's granite-docling-258M) that converts a page image into "DocTags" -
+   a tagged transcription where each text/table/figure block carries its
+   own <loc_x1><loc_y1><loc_x2><loc_y2> bounding box. This is genuinely a
+   second pass, not a replacement for the existing extraction model
+   (ov_llm_provider/baseurl/model): a layout model like granite-docling is
+   narrowly trained to produce DocTags and can't reliably classify a
+   document or extract it into our JSON shape on request, so the pipeline
+   becomes image -> DocTags (this model) -> DocTags text -> classify/
+   extract JSON (the existing extraction model, text-only this time). See
+   DocumentExtractionService.convertToDocTags/DocTagsParser.
+
+   Blank ov_llm_layout_model means "not configured" - DocumentExtractionService
+   falls back to today's single-pass, image-straight-to-JSON flow with no
+   behavior change for anyone who doesn't set this up. No separate enabled
+   flag for the same reason ov_llm_enabled exists on the main config: kept
+   consistent by using blank-model-name as the off switch here instead,
+   since this one's opt-in-by-configuration rather than opt-in-by-toggle.
+
+   Single-shot ALTER TABLE (not safely re-runnable), same convention as
+   .patchsqlv_ingredientmaterialtype/.patchsqlv_ingredientlabeling's
+   storage/usage-instruction columns.
+*/
+alter table ov_ctrl add column ov_llm_layout_provider varchar(20) NOT NULL DEFAULT 'LMSTUDIO';
+alter table ov_ctrl add column ov_llm_layout_baseurl varchar(200) NOT NULL DEFAULT 'http://localhost:1234';
+alter table ov_ctrl add column ov_llm_layout_model varchar(100) NOT NULL DEFAULT '';

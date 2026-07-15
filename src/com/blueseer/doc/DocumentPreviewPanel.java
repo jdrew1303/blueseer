@@ -33,15 +33,20 @@ import org.icepdf.ri.common.MyAnnotationCallback;
 
 import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
-import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.SwingConstants;
+import java.awt.BasicStroke;
 import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -52,12 +57,20 @@ import java.util.Set;
  * for exactly this, see pom.xml); a plain photographed image (the more
  * common case for a small bakery's receiving desk) is just displayed
  * directly - no PDF library involved for that path.
+ *
+ * When the optional document-layout model is configured (see
+ * docData.layout_llm_config), {@link #highlightBlocks} draws a box around
+ * whichever DocTags-tagged regions of the source image correlate to the
+ * extracted fields - image documents only; the PDF path uses IcePDF's own
+ * viewer component, which isn't straightforward to draw an accurately
+ * positioned overlay on top of given its own independent zoom/scroll state.
  */
 public class DocumentPreviewPanel extends JPanel {
 
     private static final Set<String> IMAGE_EXTENSIONS = Set.of("jpg", "jpeg", "png", "gif", "bmp");
 
     private SwingController pdfController;
+    private ImageCanvas imageCanvas;
 
     public DocumentPreviewPanel() {
         setLayout(new BorderLayout());
@@ -75,6 +88,7 @@ public class DocumentPreviewPanel extends JPanel {
 
     public void showDocument(byte[] bytes, String ext) {
         removeAll();
+        imageCanvas = null;
         if (IMAGE_EXTENSIONS.contains(ext.toLowerCase())) {
             showImage(bytes);
         } else {
@@ -91,9 +105,8 @@ public class DocumentPreviewPanel extends JPanel {
                 add(new JLabel("Couldn't display this image.", SwingConstants.CENTER), BorderLayout.CENTER);
                 return;
             }
-            JLabel imageLabel = new JLabel(new ImageIcon(scaleToFit(image, 700)));
-            imageLabel.setHorizontalAlignment(SwingConstants.CENTER);
-            add(new JScrollPane(imageLabel), BorderLayout.CENTER);
+            imageCanvas = new ImageCanvas(scaleToFit(image, 700));
+            add(new JScrollPane(imageCanvas), BorderLayout.CENTER);
         } catch (Exception ex) {
             MainFrame.bslog(ex);
             add(new JLabel("Couldn't display this image.", SwingConstants.CENTER), BorderLayout.CENTER);
@@ -127,8 +140,62 @@ public class DocumentPreviewPanel extends JPanel {
         }
     }
 
+    /**
+     * Draws a box around each given block's location on the currently
+     * displayed image - a no-op if nothing's loaded or the source wasn't an
+     * image (the PDF path, see class javadoc). Blocks carry normalized
+     * 0-500-grid coordinates (see DocTagsParser), which map to a fraction
+     * of the displayed image regardless of how much it's been scaled down.
+     */
+    public void highlightBlocks(List<DocTagsParser.Block> blocks) {
+        if (imageCanvas != null) {
+            imageCanvas.setHighlights(blocks);
+        }
+    }
+
     public void clear() {
         pdfController = null;
+        imageCanvas = null;
         showPlaceholder();
+    }
+
+    private static class ImageCanvas extends JPanel {
+
+        private static final Color HIGHLIGHT_COLOR = new Color(0xE6, 0x8A, 0x00);
+
+        private final Image image;
+        private List<DocTagsParser.Block> highlights = List.of();
+
+        ImageCanvas(Image image) {
+            this.image = image;
+            setPreferredSize(new Dimension(image.getWidth(null), image.getHeight(null)));
+        }
+
+        void setHighlights(List<DocTagsParser.Block> highlights) {
+            this.highlights = highlights;
+            repaint();
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            g.drawImage(image, 0, 0, this);
+            if (highlights.isEmpty()) {
+                return;
+            }
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setColor(HIGHLIGHT_COLOR);
+            g2.setStroke(new BasicStroke(2f));
+            int imgWidth = image.getWidth(null);
+            int imgHeight = image.getHeight(null);
+            for (DocTagsParser.Block block : highlights) {
+                int x = (int) (block.left() / 500.0 * imgWidth);
+                int y = (int) (block.top() / 500.0 * imgHeight);
+                int w = (int) ((block.right() - block.left()) / 500.0 * imgWidth);
+                int h = (int) ((block.bottom() - block.top()) / 500.0 * imgHeight);
+                g2.drawRect(x, y, w, h);
+            }
+            g2.dispose();
+        }
     }
 }

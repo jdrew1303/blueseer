@@ -77,15 +77,31 @@ public class DocumentExtractionService {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private static PromptExecutor buildExecutor(docData.llm_config cfg) {
-        if ("OLLAMA".equalsIgnoreCase(cfg.provider())) {
-            return PromptExecutor.builder().ollama(cfg.baseurl()).build();
+        return buildExecutor(cfg.provider(), cfg.baseurl());
+    }
+
+    private static PromptExecutor buildExecutor(docData.layout_llm_config cfg) {
+        return buildExecutor(cfg.provider(), cfg.baseurl());
+    }
+
+    private static PromptExecutor buildExecutor(String provider, String baseurl) {
+        if ("OLLAMA".equalsIgnoreCase(provider)) {
+            return PromptExecutor.builder().ollama(baseurl).build();
         }
         OpenAIClientSettings settings = new OpenAIClientSettings(
-                cfg.baseurl(), new ConnectionTimeoutConfig(), "v1/chat/completions", "", "", "", "");
+                baseurl, new ConnectionTimeoutConfig(), "v1/chat/completions", "", "", "", "");
         return PromptExecutor.builder().openAI("not-needed", settings).build();
     }
 
     private static LLModel buildModel(docData.llm_config cfg) {
+        return buildModel(cfg.model());
+    }
+
+    private static LLModel buildModel(docData.layout_llm_config cfg) {
+        return buildModel(cfg.model());
+    }
+
+    private static LLModel buildModel(String modelName) {
         // OpenAIEndpoint.Completions is required, not optional decoration:
         // OpenAILLMClient.determineParams picks its request-param strategy by
         // checking model.supports(OpenAIEndpoint.Completions/.Responses) and
@@ -95,7 +111,7 @@ public class DocumentExtractionService {
         // LLMCapability.Tools is declared unconditionally too (harmless when
         // unused) since AbstractOpenAILLMClient.getResponse requires it on
         // the model whenever a non-empty tool list is passed to execute().
-        return new LLModel(LLMProvider.OpenAI, cfg.model(),
+        return new LLModel(LLMProvider.OpenAI, modelName,
                 List.of(LLMCapability.Vision.Image.INSTANCE, LLMCapability.OpenAIEndpoint.Completions.INSTANCE,
                         LLMCapability.Completion.INSTANCE, LLMCapability.Tools.INSTANCE));
     }
@@ -138,6 +154,44 @@ public class DocumentExtractionService {
             return agent.run(query);
         } catch (Exception e) {
             throw new DocumentExtractionException("Couldn't reach the local AI service - check it's running.", e);
+        }
+    }
+
+    /**
+     * Fixed prompt a document-layout model like granite-docling-258M
+     * expects - unlike the classify/extract calls elsewhere in this class,
+     * a layout model isn't a general instruction-follower, so this isn't
+     * built from caller-supplied system instructions; it only ever does
+     * this one conversion task. Matches the prompt used by IBM's own
+     * reference WebGPU/Transformers.js sample this was modeled on.
+     */
+    private static final String DOCLING_PROMPT = "Convert this page to docling.";
+
+    /**
+     * Runs the document-layout model's one job: convert a page image into
+     * raw "DocTags" text (see {@link DocTagsParser}), so the classify/
+     * extract pass can run against that text instead of the image, and
+     * extracted fields can later be correlated back to a source-document
+     * bounding box for highlighting. No JSON parsing or retry here - unlike
+     * extractStructured, there's no "wrong shape" to correct a layout model
+     * back onto; whatever it returns is handed to DocTagsParser as-is,
+     * which degrades gracefully (zero blocks) on unparseable output rather
+     * than throwing.
+     */
+    public static String convertToDocTags(byte[] imageBytes, String imageFormat, docData.layout_llm_config cfg)
+            throws DocumentExtractionException {
+        if (!cfg.configured()) {
+            throw new DocumentExtractionException("No document layout model is configured - see Scan to Import Settings.");
+        }
+        try {
+            PromptExecutor executor = buildExecutor(cfg);
+            LLModel model = buildModel(cfg);
+            Message.User userMessage = buildUserMessage(DOCLING_PROMPT, imageBytes, imageFormat);
+            Prompt prompt = new Prompt(List.of(userMessage), "doc-import-layout");
+            Message.Assistant response = executor.execute(prompt, model);
+            return response.textContent();
+        } catch (Exception e) {
+            throw new DocumentExtractionException("Couldn't reach the local document layout model - check it's running.", e);
         }
     }
 
@@ -193,7 +247,37 @@ public class DocumentExtractionService {
         if (!cfg.enabled()) {
             throw new DocumentExtractionException("Document import isn't turned on for this system - see System Control.");
         }
+        Message.User userMessage = buildUserMessage("Extract the data from this document.", imageBytes, imageFormat);
+        return extractStructuredFromMessage(userMessage, systemInstructions, jsonShapeDescription, targetType, cfg);
+    }
 
+    /**
+     * Same idea as {@link #extractStructured}, but the "document" is
+     * already plain text rather than an image - the second pass of the
+     * optional layout-model pipeline (image -> DocTags -> this), since a
+     * layout model like granite-docling-258M can't classify/extract JSON
+     * itself. Uses the same configured extraction model as the image path;
+     * a layout model is purely an optional upstream step, not a
+     * replacement for it.
+     */
+    public static <T> T extractStructuredFromText(String documentText, String systemInstructions,
+            String jsonShapeDescription, Class<T> targetType) throws DocumentExtractionException {
+        return extractStructuredFromText(documentText, systemInstructions, jsonShapeDescription, targetType,
+                docData.getLlmConfig());
+    }
+
+    public static <T> T extractStructuredFromText(String documentText, String systemInstructions,
+            String jsonShapeDescription, Class<T> targetType, docData.llm_config cfg) throws DocumentExtractionException {
+        if (!cfg.enabled()) {
+            throw new DocumentExtractionException("Document import isn't turned on for this system - see System Control.");
+        }
+        Message.User userMessage = buildUserMessage(
+                "Extract the data from this document transcription:\n\n" + documentText, null, null);
+        return extractStructuredFromMessage(userMessage, systemInstructions, jsonShapeDescription, targetType, cfg);
+    }
+
+    private static <T> T extractStructuredFromMessage(Message.User userMessage, String systemInstructions,
+            String jsonShapeDescription, Class<T> targetType, docData.llm_config cfg) throws DocumentExtractionException {
         PromptExecutor executor;
         LLModel model;
         try {
@@ -208,7 +292,6 @@ public class DocumentExtractionService {
                 + "\n\nRespond with ONLY a single JSON object matching this shape, no markdown fences, no commentary:\n"
                 + jsonShapeDescription;
         Message.System systemMessage = new Message.System(fullInstructions, RequestMetaInfo.Companion.getEmpty());
-        Message.User userMessage = buildUserMessage("Extract the data from this document.", imageBytes, imageFormat);
 
         List<Message> messages = new ArrayList<>();
         messages.add(systemMessage);
