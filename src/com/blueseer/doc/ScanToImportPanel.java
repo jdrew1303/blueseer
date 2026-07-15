@@ -70,7 +70,11 @@ public class ScanToImportPanel extends JPanel {
     private InvoiceExtraction pendingInvoice;
 
     public ScanToImportPanel() {
-        setLayout(new FlowLayout(FlowLayout.LEFT));
+        // FlowLayout.CENTER (not LEFT) to match every other screen's top-centered
+        // card look (e.g. RecvMaint's outer panel relies on JPanel's own default
+        // FlowLayout, which is CENTER) now that the card is sized to its content
+        // rather than stretched full-width.
+        setLayout(new FlowLayout(FlowLayout.CENTER));
         JPanel card = new JPanel(new MigLayout("insets 12, wrap 1", "[grow, fill]"));
         card.setBorder(BorderFactory.createTitledBorder("Scan to Import"));
         add(card);

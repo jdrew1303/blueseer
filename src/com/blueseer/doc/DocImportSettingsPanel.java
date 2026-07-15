@@ -62,12 +62,12 @@ public class DocImportSettingsPanel extends JPanel {
         // card (e.g. RecvMaint's "Receiver Maintenance" TitledBorder box), so
         // this does the same instead of introducing a one-off look.
         //
-        // FlowLayout(LEFT) rather than BorderLayout.NORTH: NORTH stretches its
-        // child to the full container width regardless of the child's own
-        // preferred size, which is what made this screen look "full screen"
-        // compared to every other compact form - FlowLayout sizes the card to
-        // its own preferred width and leaves the rest of the window alone.
-        setLayout(new FlowLayout(FlowLayout.LEFT));
+        // FlowLayout (not BorderLayout.NORTH) so the card sizes to its own
+        // preferred width instead of stretching full-width; CENTER (not LEFT)
+        // to match every other screen's top-centered look (e.g. RecvMaint's
+        // outer panel relies on JPanel's own default FlowLayout, which is
+        // CENTER).
+        setLayout(new FlowLayout(FlowLayout.CENTER));
         JPanel card = new JPanel(new MigLayout("insets 12, wrap 2", "[right]8[]"));
         card.setBorder(BorderFactory.createTitledBorder("Scan to Import Settings"));
         add(card);
