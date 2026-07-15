@@ -8371,22 +8371,45 @@ public class OVData {
     }   
   
     public static String getDefaultSite() {
-        String r = "";        
+        String r = "";
         String sql = "select ov_site from ov_mstr;";
         try (Connection con = (ds == null ? DriverManager.getConnection(url + db, user, pass) : ds.getConnection());
 	PreparedStatement ps = con.prepareStatement(sql);) {
             try (ResultSet res = ps.executeQuery();) {
                while (res.next()) {
-                r = res.getString("ov_site");                    
+                r = res.getString("ov_site");
                 }
             }
         } catch (SQLException e){
             MainFrame.bslog(e);
-        } 
+        }
         return r;
-        
+
     }
-              
+
+    /**
+     * The System Control screen's background color fields (ov_rcolor/
+     * ov_gcolor/ov_bcolor) - read directly at startup so the login screen
+     * (shown before any user has authenticated, so before the rest of the
+     * app's post-login config load runs) reflects a configured color from
+     * its very first paint instead of a hardcoded default.
+     */
+    public static java.awt.Color getBackgroundColor() {
+        java.awt.Color defaultColor = new java.awt.Color(0, 102, 204);
+        String sql = "select ov_rcolor, ov_gcolor, ov_bcolor from ov_ctrl;";
+        try (Connection con = (ds == null ? DriverManager.getConnection(url + db, user, pass) : ds.getConnection());
+	PreparedStatement ps = con.prepareStatement(sql);) {
+            try (ResultSet res = ps.executeQuery();) {
+               while (res.next()) {
+                   return new java.awt.Color(res.getInt("ov_rcolor"), res.getInt("ov_gcolor"), res.getInt("ov_bcolor"));
+               }
+            }
+        } catch (SQLException e){
+            MainFrame.bslog(e);
+        }
+        return defaultColor;
+    }
+
     public static String getDefaultWH() {
            String myitem = null;
          try{

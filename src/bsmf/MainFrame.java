@@ -2133,7 +2133,7 @@ extends JFrame {
         }
         this.setLanguageTags(this.primarypanel);
         ver = OVData.major + "." + OVData.minor;
-        backgroundcolor = new Color(0, 102, 204);
+        backgroundcolor = OVData.getBackgroundColor();
         PanelMain.setBackground(backgroundcolor);
         backgroundpanel = new BackGroundPanel();
         this.add(backgroundpanel);
