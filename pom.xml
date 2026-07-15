@@ -565,6 +565,22 @@
       <version>1.0.0</version>
     </dependency>
 
+    <!-- JetBrains Koog (com.blueseer.doc, agentic document import - see
+         docs/epics/agentic-document-import.md). Ships compiled Kotlin
+         bytecode with a documented Java-friendly API - no Kotlin compiler
+         plugin needed in this build, same as any other third-party jar.
+         Only the blocking PromptExecutor.execute(Prompt, LLModel) entry
+         point is used from Java (confirmed callable via javap against the
+         real jar); executeStructured is a Kotlin-only suspend/reified-
+         generic API with no Java-callable overload, so structured
+         extraction is done at the application layer instead (see
+         DocumentExtractionService's JSON-in-prompt + Jackson parsing). -->
+    <dependency>
+      <groupId>ai.koog</groupId>
+      <artifactId>koog-agents-jvm</artifactId>
+      <version>1.0.0</version>
+    </dependency>
+
   </dependencies>
 
 <profiles>

@@ -1,0 +1,65 @@
+/* sql updates for agentic document import (com.blueseer.doc) - see
+   docs/epics/agentic-document-import.md for the full epic.
+
+   NOTE: named descriptively rather than the next numeric version, same
+   convention as .patchsqlv_ingredientlabeling - the SQL itself is plain
+   additive CREATE TABLE IF NOT EXISTS plus idempotent seed logic, so it's
+   safe to run regardless of where it lands in the client's actual
+   .patchsqlvNN sequence.
+*/
+
+select '*** ALTER SCHEMA SECTION (single-shot - not safely re-runnable, matching .patchsqlv_ingredientmaterialtype convention) ***';
+select '';
+
+/* One-time setup, never shown to end users - see epic Sec 7.3. Provider is
+   free text (not a DB-enforced enum) so a future runtime option doesn't
+   need a schema change; DocumentExtractionService is the only code that
+   interprets the value. ov_llm_baseurl defaults to LM Studio's own default
+   local endpoint. */
+alter table ov_ctrl add column ov_llm_provider varchar(20) NOT NULL DEFAULT 'LMSTUDIO';
+alter table ov_ctrl add column ov_llm_baseurl varchar(200) NOT NULL DEFAULT 'http://localhost:1234';
+alter table ov_ctrl add column ov_llm_model varchar(100) NOT NULL DEFAULT '';
+alter table ov_ctrl add column ov_llm_enabled tinyint(1) NOT NULL DEFAULT '0';
+
+select '*** ADD TABLE IF NOT EXISTS SECTION ***';
+select '';
+
+/* Traceability record only (epic Sec 7.1 step 7) - not a workflow screen
+   staff interact with. log_doctype is free text (e.g. 'INVOICE',
+   'INGREDIENT_SPEC') matching the extraction schema used; log_target_key
+   is whatever key ties this import back to what it populated (a receiver
+   id for the invoice case, an item code for the ingredient-spec case). */
+CREATE TABLE IF NOT EXISTS `doc_import_log` (
+  `log_id` varchar(10) NOT NULL PRIMARY KEY,
+  `log_doctype` varchar(30) NOT NULL DEFAULT '',
+  `log_target_key` varchar(40) NOT NULL DEFAULT '',
+  `log_extracted_json` text,
+  `log_userid` varchar(30) NOT NULL DEFAULT '',
+  `log_created` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+/* Supplier item-description memory (epic Sec 7, DOC-21/DOC-12) - once a
+   user maps a supplier's raw invoice line text to a real item_mstr row,
+   remember it here so the same supplier's future invoices auto-fill that
+   line without asking again. Keyed by (vendor, raw text) since the same
+   wording can mean different things from different suppliers. alias_vend
+   matches recv_mstr.rv_vend / vd_mstr.vd_addr's varchar(10) sizing. */
+CREATE TABLE IF NOT EXISTS `doc_item_alias` (
+  `alias_vend` varchar(10) NOT NULL,
+  `alias_rawtext` varchar(200) NOT NULL,
+  `alias_item` varchar(100) NOT NULL DEFAULT '',
+  PRIMARY KEY (`alias_vend`, `alias_rawtext`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+select '*** UPDATE RECORDS SECTION ***';
+select '';
+/* none */
+
+select '*** INSERT RECORDS SECTION ***';
+select '';
+/* none - ov_ctrl is a singleton row already created by the base install;
+   the ALTER TABLE defaults above populate it for existing installs */
+
+select '';
+select concat("sql schema version is : ", ov_version) from ov_ctrl;
+select '*** SQL UPDATE ENDS ***';
