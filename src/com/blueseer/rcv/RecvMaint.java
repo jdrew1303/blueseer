@@ -1766,7 +1766,7 @@ public class RecvMaint extends javax.swing.JPanel implements IBlueSeerV {
     // (NORTH strip + generated panel unchanged at CENTER) instead of
     // editing panelMainLayout's GroupLayout blocks directly - same
     // technique used for ItemMaint's food-tracking checkbox.
-    private final javax.swing.JButton btimportdoc = new javax.swing.JButton("Import from Document");
+    private final javax.swing.JButton btimportdoc = new javax.swing.JButton("Scan to Import");
     private javax.swing.JPanel mainTabWrapper;
     private javax.swing.JFileChooser docImportChooser;
 
@@ -1837,7 +1837,7 @@ public class RecvMaint extends javax.swing.JPanel implements IBlueSeerV {
             @Override
             public void done() {
                 btimportdoc.setEnabled(true);
-                btimportdoc.setText("Import from Document");
+                btimportdoc.setText("Scan to Import");
                 if (errorMessage != null) {
                     BlueSeerUtils.message(new String[]{"1", errorMessage});
                     return;
@@ -1899,7 +1899,7 @@ public class RecvMaint extends javax.swing.JPanel implements IBlueSeerV {
         if (msg.length() == 0) {
             msg.append("Nothing readable was found on that document.");
         }
-        JOptionPane.showMessageDialog(this, msg.toString(), "Document Import", JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(this, msg.toString(), "Scan to Import", JOptionPane.INFORMATION_MESSAGE);
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables

@@ -61,21 +61,26 @@ select '';
    install; the ALTER TABLE defaults above populate it for existing
    installs.
 
-   Document Import Settings menu item (com.blueseer.doc.
+   Scan to Import Settings menu item (com.blueseer.doc.
    DocImportSettingsPanel) - a standalone Admin screen rather than a new
    SystemControl tab, to avoid hand-editing SystemControl's generated
    GroupLayout. Same menu_mstr/menu_tree/perm_mstr shape as every other
    menu-driven screen (copied from the SystemControl row); mt_index 28
    is the next free slot under Admin (see menu_tree where mt_par='Admin'
    at patch-authoring time - re-check before applying if the client's
-   Admin menu has grown since). */
+   Admin menu has grown since).
+
+   Labeled "Scan to Import" rather than "Document Import" throughout the
+   UI (menu_id/class names are unchanged, just the visible text) - the
+   client felt "Document Import" reads too close to the existing
+   "Master Data Import" bulk-CSV-load screen for non-technical staff. */
 insert into menu_mstr (menu_id, menu_desc, menu_panel, menu_type, menu_navcode)
-select 'DocImportSettings', 'Document Import Settings',
+select 'DocImportSettings', 'Scan to Import Settings',
        'com.blueseer.doc.DocImportSettingsPanel', 'JMenuItem', 'docimport'
 where not exists (select 1 from menu_mstr where menu_id = 'DocImportSettings');
 
 insert into menu_tree (mt_par, mt_child, mt_index, mt_type, mt_label, mt_icon, mt_initvar, mt_func, mt_visible, mt_enable)
-select 'Admin', 'DocImportSettings', 28, 'JMenuItem', 'Document Import Settings', '', '1', '', 1, 1
+select 'Admin', 'DocImportSettings', 28, 'JMenuItem', 'Scan to Import Settings', '', '1', '', 1, 1
 where not exists (select 1 from menu_tree where mt_par = 'Admin' and mt_child = 'DocImportSettings');
 
 insert into perm_mstr (perm_user, perm_menu, perm_readonly)

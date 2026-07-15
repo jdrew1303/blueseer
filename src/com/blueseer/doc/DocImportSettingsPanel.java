@@ -34,7 +34,7 @@ import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
-import java.awt.BorderLayout;
+import java.awt.FlowLayout;
 
 /**
  * One-time local-LLM runtime setup for agentic document import (epic
@@ -51,7 +51,7 @@ public class DocImportSettingsPanel extends JPanel {
     private final JComboBox<String> ddProvider = new JComboBox<>(new String[]{"LMSTUDIO", "OLLAMA"});
     private final JTextField tbBaseUrl = new JTextField(30);
     private final JTextField tbModel = new JTextField(30);
-    private final JCheckBox cbEnabled = new JCheckBox("Document import enabled");
+    private final JCheckBox cbEnabled = new JCheckBox("Scan to Import enabled");
     private final JButton btSave = new JButton("Save");
     private final JLabel lblStatus = new JLabel(" ");
 
@@ -61,10 +61,16 @@ public class DocImportSettingsPanel extends JPanel {
         // together - every other screen groups its fields inside a bordered
         // card (e.g. RecvMaint's "Receiver Maintenance" TitledBorder box), so
         // this does the same instead of introducing a one-off look.
-        setLayout(new BorderLayout());
-        JPanel card = new JPanel(new MigLayout("insets 12, wrap 2", "[right]8[grow, fill]"));
-        card.setBorder(BorderFactory.createTitledBorder("Document Import Settings"));
-        add(card, BorderLayout.NORTH);
+        //
+        // FlowLayout(LEFT) rather than BorderLayout.NORTH: NORTH stretches its
+        // child to the full container width regardless of the child's own
+        // preferred size, which is what made this screen look "full screen"
+        // compared to every other compact form - FlowLayout sizes the card to
+        // its own preferred width and leaves the rest of the window alone.
+        setLayout(new FlowLayout(FlowLayout.LEFT));
+        JPanel card = new JPanel(new MigLayout("insets 12, wrap 2", "[right]8[]"));
+        card.setBorder(BorderFactory.createTitledBorder("Scan to Import Settings"));
+        add(card);
 
         card.add(new JLabel("Runtime"));
         card.add(ddProvider);
