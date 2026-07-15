@@ -40,28 +40,23 @@ an autonomous agent making inventory decisions.
   malformed JSON), explicit Vision/Image model capabilities for reading
   scanned documents, and SwingWorker-compatible synchronous or async
   execution.
-- **LM Studio is the user's preferred runtime** (his words: "nice UI and
-  very user friendly") and, like Ollama, serves an OpenAI-compatible REST
-  API. Koog's `OpenAILLMClient` takes an `OpenAIClientSettings(baseUrl,
-  chatCompletionsPath, ...)` — this is Koog's documented mechanism for
-  pointing the OpenAI client at non-OpenAI endpoints (shown for Azure
-  OpenAI and other OpenAI-compatible providers). LM Studio's own default
-  endpoint (`http://localhost:1234/v1/chat/completions`) fits this shape
-  directly: `OpenAIClientSettings(baseUrl = "http://localhost:1234",
-  chatCompletionsPath = "v1/chat/completions")`.
-  - **Caveat, stated plainly:** there is no first-class `lmStudio { }`
-    provider block in Koog the way there is for Ollama
-    (`baseUrl = "http://localhost:11434"`) — [JetBrains/koog issue #139
-    "LM Studio Support"](https://github.com/JetBrains/koog/issues/139) is
-    still open. The generic-`OpenAIClientSettings` route above is the
-    correct integration path by direct analogy to Koog's documented Azure/
-    MiniMax examples, but it hasn't been proven end-to-end against a real
-    LM Studio server yet. **Story DOC-2 below is a short spike to confirm
-    this before any other story depends on it.**
-  - Ollama has confirmed first-class Koog support today and should be
-    offered as the alternative runtime from day one — some users will
-    prefer Ollama's CLI-first workflow, and it de-risks the "LM Studio
-    might not work cleanly" case for v1.
+- **LM Studio is the confirmed runtime for v1** (the user's preferred
+  tool — "nice UI and very user friendly") and, like Ollama, serves an
+  OpenAI-compatible REST API. Koog's `OpenAILLMClient` takes an
+  `OpenAIClientSettings(baseUrl, chatCompletionsPath, ...)` — this is
+  Koog's documented mechanism for pointing the OpenAI client at
+  non-OpenAI endpoints (shown for Azure OpenAI and other OpenAI-compatible
+  providers), and LM Studio's own default endpoint
+  (`http://localhost:1234/v1/chat/completions`) fits it directly:
+  `OpenAIClientSettings(baseUrl = "http://localhost:1234",
+  chatCompletionsPath = "v1/chat/completions")`. (Note for whoever
+  implements this: Koog has no first-class `lmStudio { }` provider block
+  the way it does for Ollama, so this is wired as a plain OpenAI client
+  pointed at a local URL rather than a named provider — a config detail,
+  not an open question.)
+  - Ollama is offered as a second runtime option from day one, since it
+    has first-class Koog support and some installs may already run it —
+    but LM Studio is the primary, expected path.
 
 ## 3. What "agentic" means here (and what it deliberately doesn't)
 
@@ -160,69 +155,101 @@ disabled and a progress indicator shown for the duration of the call.
 ## 6. Data quality principle (non-negotiable for v1)
 
 Nothing extracted is written to `recv_det`, `item_mstr`, `ing_mstr`, or any
-other real table without an explicit user "Accept" action per field group.
-The review screen always shows extracted values pre-filled into ordinary
-editable form fields (not a locked/read-only preview) so a wrong read is
-just as easy to fix as it would be to type correctly the first time. This
-matters more here than in most ERP features because bad data entering
-`ing_mstr`/allergen fields is a food-safety issue, not just an inventory
-nuisance — the same seriousness already applied to the FIC labeling work
-applies here.
+other real table until the user hits the same **Add**/**Save** button they
+already use for manual entry today — the extracted data just arrives
+pre-filled in that same familiar form instead of blank. A wrong read is
+exactly as easy to fix as a typo would be, no harder — this matters more
+here than in most ERP features because bad data entering `ing_mstr`/
+allergen fields is a food-safety issue, not just an inventory nuisance.
+That said, given the users are non-technical shop staff, not QA
+reviewers, the review step should stay as close as possible to "glance at
+it, fix anything obviously wrong, save" — see §7 for how the design leans
+into that rather than adding extra confirmation ceremony.
 
 ## 7. UX and UI integration
+
+**Design principle:** the users are non-technical bakery-shop staff, not
+IT people, and BlueSeer is installed per-customer rather than run as a
+hosted product — there's no analytics pipeline or support feedback loop
+to lean on, so the interface has to be self-evidently simple the first
+time, not tuned over many releases. Every design choice below is aimed at
+cutting clicks and jargon for the person actually doing the data entry:
+
+- **No separate "accept" step per field or per line.** The extracted data
+  lands directly in the same editable grid/form fields staff already use
+  for manual entry. There's nothing new to learn — it behaves exactly
+  like someone already filled the form in for you, and you just check it
+  over before hitting the **Add** button you already know.
+- **Remember item mappings so the same correction is never made twice.**
+  The first time a supplier's line text (e.g. "STRONG WHITE FLR 25KG")
+  is matched to a BlueSeer item, that mapping is remembered per supplier
+  (a new `doc_item_alias` table: supplier + raw line text → item code).
+  The next invoice from the same supplier with the same wording
+  auto-fills the item instead of asking again — most of a small bakery's
+  receiving is the same handful of suppliers and items on repeat, so this
+  is where the real time savings compound. See DOC-12/DOC-21.
+- **No technical settings in the day-to-day screens.** Model names,
+  base URLs, and provider choice live only in System Control, set up once
+  (by whoever installs/supports BlueSeer for that customer) and never
+  touched again by shop staff. The Import buttons on Receiver Maintenance
+  and the Ingredient Data tab show no provider/model/confidence-score
+  language at all.
+- **Plain visual cues, not jargon.** A field the model wasn't sure about
+  gets a simple highlight so it catches the eye — no "confidence: 62%"
+  text, no technical explanation. If something's not clearly readable
+  from the photo, the field is just left blank/highlighted rather than
+  guessed at, which is itself a simpler rule than exposing a score.
+- **One capture step, not a wizard.** A single button — take or choose a
+  photo — leads straight into the pre-filled form. No multi-page wizard,
+  no separate "review" screen to navigate to; the form the extraction
+  populates *is* the same Receiver Maintenance / Ingredient Data screen
+  staff already use.
 
 ### 7.1 End-user flow (the bakery-shop scenario)
 
 1. A supplier's paper invoice arrives with today's flour delivery.
-2. From **Receiving → Receiver Maintenance**, the user clicks a new
-   **"Import from Document"** button next to the existing manual-entry
-   line grid.
-3. A small capture dialog opens: **"Take Photo"** (if a webcam is
-   available) or **"Choose File"** (existing PDF/photo already on disk —
-   reuses the same `JFileChooser` pattern already used elsewhere in
-   BlueSeer, e.g. `ItemMaint`'s image/attachment pickers).
+2. From **Receiving → Receiver Maintenance**, the user clicks
+   **"Import from Document"** next to the existing manual-entry line grid.
+3. **"Take Photo"** (if a webcam is available) or **"Choose File"**
+   (a photo already on the phone/disk — reuses the same `JFileChooser`
+   pattern already used elsewhere in BlueSeer, e.g. `ItemMaint`'s
+   image/attachment pickers).
 4. The image is preprocessed (deskew/crop) and sent to the configured
-   local LLM in the background (SwingWorker, progress spinner, screen
-   stays responsive/cancelable).
-5. The **Extraction Review** panel opens: the source image on the left,
-   a pre-filled editable form on the right — supplier, invoice number,
-   date, and a line-item grid (item description as read, quantity, unit
-   cost). Fields the model flagged low-confidence are highlighted (e.g. a
-   yellow left-border on that field) so the user knows to double-check
-   them, not just trust the whole form.
-6. For each line, the user maps the read item description to an actual
-   BlueSeer `item_mstr` row via the existing item lookup/autocomplete
-   (never auto-matched blind — a misread "Flour 25kg" must not silently
-   attach to the wrong SKU).
-7. User clicks **Accept & Populate** — the confirmed values flow into the
-   normal Receiver Maintenance grid exactly as if typed by hand, ready for
-   the existing lot/serial capture (`rvd_lot`/`rvd_serial`) and the
-   existing **Add**/save flow. The import doesn't bypass any existing
-   validation — it's a faster way to fill the same form.
-8. A record of the import (source image, extracted JSON, what was
-   accepted/edited/rejected) is kept for audit, in the new `docData`
-   table.
+   local LLM in the background (progress spinner, screen stays
+   responsive) — no extra screen, this happens right on the Receiver
+   Maintenance panel.
+5. The line grid fills in — supplier, invoice number, date, and each line
+   (item, quantity, unit cost). Known suppliers' items auto-map from
+   memory (see the item-alias point above); anything new or unclear is
+   highlighted so it's obvious what to check before saving.
+6. The user glances it over, fixes anything wrong exactly like fixing a
+   typo, and clicks **Add** — the same button, same save path, same
+   `rvd_lot`/`rvd_serial` capture as manual entry today. Nothing about
+   the underlying save/validation logic changes.
+7. The source photo and what was extracted are kept in the background
+   (`docData`/`doc_import_log`) purely as a traceability record for
+   food-safety audit purposes — not shown as a workflow step staff have
+   to think about.
 
 ### 7.2 Second integration point: Ingredient Data tab
 
-Same capture/review pattern, launched from `ItemMaint`'s **Ingredient
-Data** tab, targeting a supplier ingredient spec sheet: legal name,
-allergen declarations, E-numbers. This is a smaller/simpler schema than
-the invoice case but arguably the highest food-safety-value target,
-since spec sheets are exactly where allergen data originates today (typed
-by hand from paper). Treated as its own story group since it reuses the
-capture/review UI shell but has a different extraction schema and a
-different commit target (`ing_mstr`/`ing_allergen` instead of
+Same pattern, launched from `ItemMaint`'s **Ingredient Data** tab,
+targeting a supplier ingredient spec sheet: legal name, allergen
+declarations, E-numbers. Smaller/simpler schema than the invoice case but
+arguably the highest food-safety-value target, since spec sheets are
+exactly where allergen data originates today (typed by hand from paper).
+Its own story group since it reuses the capture UI but has a different
+extraction schema and commit target (`ing_mstr`/`ing_allergen` instead of
 `recv_det`).
 
-### 7.3 Settings/admin UX
+### 7.3 One-time setup (not a staff-facing screen)
 
-A **"Document Import"** section added to System Control: provider
-dropdown (LM Studio / Ollama), base URL field, model name field, a
-**"Test Connection"** button (round-trips a trivial prompt to confirm the
-configured runtime is reachable before a user ever hits it mid-workflow),
-and an enable/disable toggle (the feature is fully optional — sites
-without a local LLM runtime set up simply don't see the Import buttons).
+A **"Document Import"** section in System Control: provider (LM Studio /
+Ollama), base URL, model name, and an enable/disable toggle. This is
+configured once, by whoever sets the customer up (following a
+`docs/user-guide` page, same as the existing site-branding/background-
+color setup), and shop staff never see or need to understand it — if it's
+off or unreachable, the Import buttons simply don't appear.
 
 ## 8. Out of scope for this epic (explicitly deferred)
 
@@ -234,8 +261,9 @@ without a local LLM runtime set up simply don't see the Import buttons).
   an open PO, auto-flagging price variances) — see §3.
 - Multi-page document splitting/classification pipelines.
 - Visual bounding-box grounding on the review screen.
-- Auto-accept of any field without human confirmation, regardless of
-  confidence score.
+- A dedicated "review and accept" screen separate from the real data-entry
+  form — see §7, the extraction fills the same form staff already use,
+  by design.
 - OCR-only (non-LLM) fallback path for sites with no local LLM runtime at
   all — the feature is simply unavailable there for v1 (toggle stays off).
 
@@ -252,17 +280,15 @@ without a local LLM runtime set up simply don't see the Import buttons).
   Koog `executeStructured` call and the full existing build (`mvn package
   -Pjpackage`) still completes.
 
-- **DOC-2 — Spike: confirm LM Studio via `OpenAIClientSettings`.** Stand
-  up a local LM Studio instance with a small vision-capable model
-  (e.g. a Qwen2-VL or Llama-3.2-Vision GGUF), configure Koog's
+- **DOC-2 — Wire up LM Studio as the default runtime.** Configure Koog's
   `OpenAILLMClient` with `baseUrl = "http://localhost:1234"` /
-  `chatCompletionsPath = "v1/chat/completions"`, and confirm a real
-  `executeStructured` image-extraction call round-trips correctly. Also
-  smoke-test the same against Ollama, to confirm the alternate-runtime
-  path. *Acceptance:* a short written note (or an addendum to this doc)
-  confirming which runtime(s) actually work, with the exact working
-  config, before any UI work begins. If LM Studio doesn't work cleanly,
-  this is the checkpoint to re-scope to Ollama-first for v1.
+  `chatCompletionsPath = "v1/chat/completions"`, pick a small
+  vision-capable local model (e.g. Qwen2-VL or Llama-3.2-Vision GGUF) as
+  the recommended default, and get one real `executeStructured`
+  image-extraction call round-tripping end-to-end. Also wire the Ollama
+  path (`baseUrl = "http://localhost:11434"`) as the second supported
+  runtime. *Acceptance:* both runtimes produce a working structured
+  extraction from a real test image.
 
 - **DOC-3 — Pick and integrate an image preprocessing approach.** Spike
   a small deskew/crop/contrast-normalization step for phone-photographed
@@ -272,12 +298,14 @@ without a local LLM runtime set up simply don't see the Import buttons).
   is normalized before being handed to the extraction call, verified by
   visual inspection of the preprocessed output.
 
-- **DOC-4 — Schema patch: `ov_ctrl` LLM runtime columns +
-  `doc_import_log` audit table.** New `.patchsqlv_docimport` file, same
-  idempotent `information_schema.columns` pattern as existing patches.
+- **DOC-4 — Schema patch: `ov_ctrl` LLM runtime columns,
+  `doc_import_log` audit table, `doc_item_alias` learning table.** New
+  `.patchsqlv_docimport` file, same idempotent
+  `information_schema.columns` pattern as existing patches.
 
-- **DOC-5 — `docData.java` CRUD** for the runtime config and the import
-  audit log, following `ingData.java`'s conventions.
+- **DOC-5 — `docData.java` CRUD** for the runtime config, the import
+  audit log, and the item-alias lookups, following `ingData.java`'s
+  conventions.
 
 ### Extraction engine
 
@@ -288,60 +316,63 @@ without a local LLM runtime set up simply don't see the Import buttons).
 
 - **DOC-7 — Field-level confidence in the extraction output.** Extend the
   schema/prompt so each field (or line item) carries a confidence
-  indicator the review UI can use to highlight uncertain reads, per the
-  routing pattern in §4 (review-flagging only — no auto-accept path).
+  indicator, used only to decide whether to leave a field blank/highlighted
+  versus fill it in — never shown to the user as a number or technical
+  term (§7).
 
 - **DOC-8 — Define the ingredient-spec extraction schema** (legal name,
   declared allergens, E-numbers) for the Ingredient Data tab integration.
 
 - **DOC-9 — Error handling for unreachable/misconfigured LLM runtime.**
-  Clear, actionable error message (not a stack trace) when the configured
-  `baseUrl` isn't reachable, model isn't loaded, or the response can't be
-  parsed even after Koog's `fixingParser` retry — with a link/pointer back
-  to the System Control "Test Connection" button.
+  Clear, plain-language message ("Couldn't reach the local AI service —
+  check it's running" — not a stack trace, not technical jargon) when the
+  configured `baseUrl` isn't reachable, the model isn't loaded, or the
+  response can't be parsed even after Koog's `fixingParser` retry.
 
 ### Capture & review UX
 
-- **DOC-10 — Capture dialog:** "Take Photo" (webcam, if available) /
-  "Choose File" entry point, reusable across both integration points (§7.1
-  and §7.2). SwingWorker-backed preprocessing + extraction call with a
-  cancelable progress indicator.
+- **DOC-10 — Capture entry point:** a single "Import from Document"
+  button — "Take Photo" (webcam, if available) / "Choose File" — reusable
+  across both integration points (§7.1 and §7.2), landing straight back on
+  the same screen the button was clicked from. SwingWorker-backed
+  preprocessing + extraction call with a progress indicator.
 
-- **DOC-11 — `ExtractionReviewPanel`:** side-by-side source-image +
-  editable pre-filled form, low-confidence field highlighting, per §7.1
-  step 5. Built with MigLayout (consistent with the in-progress GroupLayout
-  → MigLayout migration convention).
+- **DOC-11 — Fill the existing grid/form directly** with extracted values
+  rather than building a separate review screen — the source data-entry
+  screen (Receiver Maintenance line grid / Ingredient Data tab fields) *is*
+  the review UI. Low-confidence fields get a simple visual highlight only.
 
-- **DOC-12 — Item-lookup mapping step** for invoice/packing-slip line
-  items: each extracted line description must be explicitly matched to a
-  real `item_mstr` row via the existing item autocomplete before it can be
-  accepted — no blind auto-matching (§7.1 step 6).
+- **DOC-12 — Item lookup with auto-map from memory:** each extracted line
+  description is matched against `doc_item_alias` (see DOC-21) first; a
+  known match fills the item silently, an unknown one opens the existing
+  item autocomplete/lookup so staff pick it once. Never silently attaches
+  an unfamiliar description to the wrong SKU (§7.1 step 5).
 
-- **DOC-13 — Import audit trail UI:** a simple browse screen (mirroring
-  existing `*Browse.java` patterns) listing past imports with source
-  image, extracted JSON, and what was actually accepted, for traceability.
+- **DOC-21 — `doc_item_alias` learning table:** when a user picks/corrects
+  an item for a given supplier + raw line-description pair, remember it
+  (`doc_item_alias`: supplier, raw text, item code). Future imports from
+  that supplier auto-fill the same item without asking again — this is
+  the main lever for cutting repeat work, since most receiving is the
+  same suppliers/items on repeat (§7).
 
 ### Receiver Maintenance integration
 
-- **DOC-14 — "Import from Document" button on `RecvMaint`,** launching
-  the capture/review flow scoped to the invoice/packing-slip schema, with
-  **Accept & Populate** flowing confirmed values into the existing
-  Receiver Maintenance line grid exactly as manual entry would (§7.1 step
-  7) — no bypass of existing `rvd_lot`/`rvd_serial` capture or save
-  validation.
+- **DOC-14 — "Import from Document" button on `RecvMaint`,** landing
+  extracted values directly in the existing line grid exactly as manual
+  entry would (§7.1) — no bypass of existing `rvd_lot`/`rvd_serial`
+  capture or save validation, same **Add** button as today.
 
 ### Item Maintenance / Ingredient Data integration
 
 - **DOC-15 — "Import from Document" button on the Ingredient Data tab,**
-  launching the capture/review flow scoped to the ingredient-spec schema,
-  committing confirmed values to `ing_mstr`/`ing_allergen` through the
-  existing `ingData` save path (§7.2).
+  landing extracted values directly into the existing tab fields,
+  committed through the existing `ingData` save path (§7.2).
 
 ### Admin / settings
 
 - **DOC-16 — System Control "Document Import" section:** provider
-  dropdown, base URL, model name, enable/disable toggle, **Test
-  Connection** button (§7.3).
+  dropdown, base URL, model name, enable/disable toggle (§7.3) — a
+  one-time setup screen, not part of any staff workflow.
 
 - **DOC-17 — Feature-flagged rollout:** confirm the Import buttons on
   `RecvMaint` and the Ingredient Data tab are hidden entirely when
@@ -367,17 +398,20 @@ without a local LLM runtime set up simply don't see the Import buttons).
 
 ## 10. Suggested sequencing
 
-1. **DOC-1 → DOC-2** (foundation + the LM Studio spike) — do these first
-   and don't commit to anything else until DOC-2's answer is in, since it
-   determines whether v1 ships LM Studio-first or Ollama-first.
-2. DOC-3 → DOC-4 → DOC-5 (remaining foundation, can run alongside DOC-2).
+Purely dependency order — there's no staged rollout or feedback-gathering
+period to plan around (BlueSeer is installed per-customer, not run as a
+hosted product with usage analytics), so each phase below just unblocks
+the next:
+
+1. **DOC-1 → DOC-2** (Koog dependency + LM Studio/Ollama wired up).
+2. DOC-3 → DOC-4 → DOC-5 (image preprocessing + schema/data layer, can run
+   alongside DOC-2).
 3. DOC-6 → DOC-7 → DOC-9 (extraction engine for the invoice case).
-4. DOC-10 → DOC-11 → DOC-12 → DOC-13 (capture/review UI shell).
-5. DOC-14 (first real integration: Receiver Maintenance) — ship and get
-   real user feedback here before building the second integration point,
-   the same "ship one thing, learn, then extend" pattern already used for
-   the site-logo branding work this project did earlier.
-6. DOC-8 → DOC-15 (Ingredient Data tab integration, once the shell is
-   proven).
-7. DOC-16 → DOC-17 (admin polish, can land any time after DOC-2).
+4. DOC-10 → DOC-11 → DOC-12 → DOC-21 (capture flow, filling the existing
+   grid directly, item-alias memory).
+5. DOC-14 (Receiver Maintenance integration — the first fully usable
+   slice).
+6. DOC-8 → DOC-15 (Ingredient Data tab integration, reusing the same
+   capture shell).
+7. DOC-16 → DOC-17 (one-time setup screen + hide-when-disabled).
 8. DOC-18 → DOC-19 → DOC-20 throughout, not saved for the end.
