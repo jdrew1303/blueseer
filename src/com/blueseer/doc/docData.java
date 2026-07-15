@@ -166,4 +166,37 @@ public class docData {
             return new String[]{BlueSeerUtils.ErrorBit, BlueSeerUtils.addRecordError};
         }
     }
+
+    /**
+     * Best-effort match of an extracted supplier name (free text read off a
+     * photo) to a real vd_mstr vendor code, for pre-selecting the vendor
+     * combo when the central Scan to Import screen routes into Receiver
+     * Maintenance. A simple case-insensitive substring match either way -
+     * good enough to save a click on an exact/near match, not intended to be
+     * clever; returns "" (leaving the user to pick manually) rather than
+     * guess when nothing matches or more than one vendor does.
+     */
+    public static String findVendorByName(String extractedName) {
+        if (extractedName == null || extractedName.isBlank()) {
+            return "";
+        }
+        String sql = "select vd_addr, vd_name from vd_mstr where instr(lower(vd_name), lower(?)) > 0 or instr(lower(?), lower(vd_name)) > 0;";
+        try (Connection con = (ds == null ? DriverManager.getConnection(url + db, user, pass) : ds.getConnection());
+                PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, extractedName);
+            ps.setString(2, extractedName);
+            String match = "";
+            int matches = 0;
+            try (ResultSet res = ps.executeQuery()) {
+                while (res.next()) {
+                    matches++;
+                    match = res.getString("vd_addr");
+                }
+            }
+            return matches == 1 ? match : "";
+        } catch (SQLException e) {
+            MainFrame.bslog(e);
+            return "";
+        }
+    }
 }

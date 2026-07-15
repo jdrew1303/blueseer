@@ -104,13 +104,8 @@ import javax.swing.JScrollPane;
 import javax.swing.JViewport;
 import org.kordamp.ikonli.swing.FontIcon;
 import org.kordamp.ikonli.materialdesign2.MaterialDesignM;
-import com.blueseer.doc.DocumentExtractionService;
 import com.blueseer.doc.docData;
 import com.blueseer.doc.schema.InvoiceExtraction;
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 
 
@@ -376,7 +371,7 @@ public class RecvMaint extends javax.swing.JPanel implements IBlueSeerV {
         
         
         jTabbedPane1.removeAll();
-       jTabbedPane1.add("Main", getMainTabWrapper());
+       jTabbedPane1.add("Main", panelMain);
        jTabbedPane1.add("Attachments", panelAttachment);
        
        attachmentmodel.setNumRows(0);
@@ -1761,102 +1756,25 @@ public class RecvMaint extends javax.swing.JPanel implements IBlueSeerV {
         executeTask(dbaction.delete, new String[]{tbkey.getText()});
     }//GEN-LAST:event_btdeleteActionPerformed
 
-    // Agentic document import (com.blueseer.doc, epic docs/epics/
-    // agentic-document-import.md, DOC-14). Wraps the generated panelMain
-    // (NORTH strip + generated panel unchanged at CENTER) instead of
-    // editing panelMainLayout's GroupLayout blocks directly - same
-    // technique used for ItemMaint's food-tracking checkbox.
-    private final javax.swing.JButton btimportdoc = new javax.swing.JButton("Scan to Import");
-    private javax.swing.JPanel mainTabWrapper;
-    private javax.swing.JFileChooser docImportChooser;
-
-    private javax.swing.JPanel getMainTabWrapper() {
-        if (mainTabWrapper == null) {
-            // panelMain has no explicit setBackground() of its own - its "card" look
-            // against the app's configurable background color comes entirely from
-            // its TitledBorder plus whatever Swing/FlatLaf assigns a plain JPanel by
-            // default. Matching that exact color (rather than leaving the strip
-            // transparent, which shows the app background straight through) is what
-            // makes the button read as part of this screen instead of floating.
-            mainTabWrapper = new javax.swing.JPanel(new java.awt.BorderLayout());
-            mainTabWrapper.setBackground(panelMain.getBackground());
-            javax.swing.JPanel strip = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
-            strip.setBackground(panelMain.getBackground());
-            strip.setBorder(javax.swing.BorderFactory.createEmptyBorder(6, 10, 0, 0));
-            strip.add(btimportdoc);
-            mainTabWrapper.add(strip, java.awt.BorderLayout.NORTH);
-            mainTabWrapper.add(panelMain, java.awt.BorderLayout.CENTER);
-            btimportdoc.addActionListener(e -> btimportdocActionPerformed());
-        }
-        return mainTabWrapper;
-    }
-
-    private void btimportdocActionPerformed() {
-        if (ddvend.getSelectedItem() == null || ddvend.getSelectedItem().toString().isBlank()) {
-            BlueSeerUtils.message(new String[]{"1", "Select a vendor first."});
-            return;
-        }
-        if (docImportChooser == null) {
-            docImportChooser = new JFileChooser();
-            docImportChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-        }
-        int returnVal = docImportChooser.showOpenDialog(this);
-        if (returnVal != JFileChooser.APPROVE_OPTION) {
-            return;
-        }
-        File file = docImportChooser.getSelectedFile();
-        String fileName = file.getName();
-        int dot = fileName.lastIndexOf('.');
-        String ext = dot >= 0 ? fileName.substring(dot + 1).toLowerCase() : "jpeg";
-        byte[] imageBytes;
-        try {
-            imageBytes = Files.readAllBytes(file.toPath());
-        } catch (IOException ex) {
-            MainFrame.bslog(ex);
-            BlueSeerUtils.message(new String[]{"1", "Couldn't read that file."});
-            return;
-        }
-        String vend = ddvend.getSelectedItem().toString();
-        btimportdoc.setEnabled(false);
-        btimportdoc.setText("Reading document...");
-
-        class ImportTask extends SwingWorker<InvoiceExtraction, Void> {
-            String errorMessage = null;
-
-            @Override
-            public InvoiceExtraction doInBackground() {
-                try {
-                    return DocumentExtractionService.extractStructured(imageBytes, ext,
-                            InvoiceExtraction.SYSTEM_INSTRUCTIONS, InvoiceExtraction.JSON_SHAPE, InvoiceExtraction.class);
-                } catch (DocumentExtractionService.DocumentExtractionException ex) {
-                    errorMessage = ex.getMessage();
-                    return null;
-                }
-            }
-
-            @Override
-            public void done() {
-                btimportdoc.setEnabled(true);
-                btimportdoc.setText("Scan to Import");
-                if (errorMessage != null) {
-                    BlueSeerUtils.message(new String[]{"1", errorMessage});
-                    return;
-                }
-                InvoiceExtraction result;
-                try {
-                    result = get();
-                } catch (Exception ex) {
-                    MainFrame.bslog(ex);
-                    BlueSeerUtils.message(new String[]{"1", "Something went wrong reading the document."});
-                    return;
-                }
-                applyExtractedInvoice(vend, result);
+    /**
+     * Entry point for the central "Scan to Import" screen (com.blueseer.doc.
+     * ScanToImportPanel) - called after it has navigated here via
+     * MainFrame.reinitpanels and fetched this instance from panelmap. Unlike
+     * the earlier per-screen-button design, the vendor isn't necessarily
+     * selected yet when this runs, so it's matched from the extracted
+     * supplier name (docData.findVendorByName) rather than assumed.
+     */
+    public void applyExtractedInvoice(InvoiceExtraction result) {
+        String vend = "";
+        if (ddvend.getSelectedItem() != null && !ddvend.getSelectedItem().toString().isBlank()) {
+            vend = ddvend.getSelectedItem().toString();
+        } else {
+            String matched = docData.findVendorByName(result.supplier());
+            if (!matched.isBlank()) {
+                ddvend.setSelectedItem(matched);
+                vend = matched;
             }
         }
-        new ImportTask().execute();
-    }
-
-    private void applyExtractedInvoice(String vend, InvoiceExtraction result) {
         if (tbpackingslip.getText().isBlank() && result.invoiceNumber() != null) {
             tbpackingslip.setText(result.invoiceNumber());
         }
@@ -1864,7 +1782,7 @@ public class RecvMaint extends javax.swing.JPanel implements IBlueSeerV {
         int added = 0;
         if (result.lines() != null) {
             for (InvoiceExtraction.Line ln : result.lines()) {
-                String item = docData.lookupItemAlias(vend, ln.description());
+                String item = vend.isBlank() ? "" : docData.lookupItemAlias(vend, ln.description());
                 if (item == null || item.isBlank()) {
                     unmatched.add(ln);
                     continue;
@@ -1885,7 +1803,9 @@ public class RecvMaint extends javax.swing.JPanel implements IBlueSeerV {
             MainFrame.bslog(ex);
         }
         StringBuilder msg = new StringBuilder();
-        if (added > 0) {
+        if (vend.isBlank()) {
+            msg.append("Couldn't match a vendor automatically - pick one, then use Item Lookup + Add Item for the lines below.\n");
+        } else if (added > 0) {
             msg.append(added).append(" line(s) added from known items for this supplier.\n");
         }
         if (!unmatched.isEmpty()) {
@@ -1895,6 +1815,10 @@ public class RecvMaint extends javax.swing.JPanel implements IBlueSeerV {
                         .append(" ").append(ln.unit()).append(")\n");
             }
             msg.append("Use Item Lookup + Add Item as usual for these.");
+        }
+        if (!result.totalsReconcile()) {
+            msg.append("\n\nHeads up: the line amounts don't add up to the printed total (").append(bsFormatDouble(result.total()))
+                    .append(") - worth double-checking the quantities/costs above against the document.");
         }
         if (msg.length() == 0) {
             msg.append("Nothing readable was found on that document.");

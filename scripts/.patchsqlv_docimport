@@ -87,6 +87,49 @@ insert into perm_mstr (perm_user, perm_menu, perm_readonly)
 select user_id, 'DocImportSettings', 0 from user_mstr
 where not exists (select 1 from perm_mstr where perm_user = user_mstr.user_id and perm_menu = 'DocImportSettings');
 
+/* Scan to Import - the actual staff-facing screen (com.blueseer.doc.
+   ScanToImportPanel), one central entry point rather than buried under an
+   unrelated domain menu (Purchasing, Inventory, etc.) or scattered across
+   every screen that might receive paper (see the epic and
+   ScanToImportPanel's class javadoc).
+
+   IMPORTANT: BlueSeer's top-level menu bar is NOT purely data-driven - it's
+   a fixed, hardcoded list in MainFrame.getmenuheaders() (edi, address,
+   purchasing, ..., help, custom), each resolved through
+   BlueSeerUtils.getGlobalMenuTag(key) against the bs*.properties language
+   files. A brand new top-level menu_id (e.g. 'Scan') would never render,
+   no matter what's inserted here - MainFrame.getMenus() only ever looks
+   for menu_tree rows under the exact label text getGlobalMenuTag returns
+   for one of those fixed keys. The last of those, "custom" -> "Custom"
+   (global.menu.custom in bs.properties), is exactly this project's
+   designed-in extension slot for a client-specific top-level menu with no
+   Java changes, so this hangs Scan to Import off that instead of inventing
+   a new one. mt_index values below are cosmetic bookkeeping only - actual
+   top-bar position is fixed by that hardcoded array, not by mt_index. */
+insert into menu_mstr (menu_id, menu_desc, menu_panel, menu_type, menu_navcode)
+select 'Custom', '', '', 'JMenu', ''
+where not exists (select 1 from menu_mstr where menu_id = 'Custom');
+
+insert into menu_tree (mt_par, mt_child, mt_index, mt_type, mt_label, mt_icon, mt_initvar, mt_func, mt_visible, mt_enable)
+select 'root', 'Custom', 14, 'JMenu', 'Custom', '', '1', '', 1, 1
+where not exists (select 1 from menu_tree where mt_par = 'root' and mt_child = 'Custom');
+
+insert into menu_mstr (menu_id, menu_desc, menu_panel, menu_type, menu_navcode)
+select 'ScanToImport', 'Scan to Import', 'com.blueseer.doc.ScanToImportPanel', 'JMenuItem', 'scantoimport'
+where not exists (select 1 from menu_mstr where menu_id = 'ScanToImport');
+
+insert into menu_tree (mt_par, mt_child, mt_index, mt_type, mt_label, mt_icon, mt_initvar, mt_func, mt_visible, mt_enable)
+select 'Custom', 'ScanToImport', 1, 'JMenuItem', 'Scan to Import', '', '1', '', 1, 1
+where not exists (select 1 from menu_tree where mt_par = 'Custom' and mt_child = 'ScanToImport');
+
+insert into perm_mstr (perm_user, perm_menu, perm_readonly)
+select user_id, 'Custom', 0 from user_mstr
+where not exists (select 1 from perm_mstr where perm_user = user_mstr.user_id and perm_menu = 'Custom');
+
+insert into perm_mstr (perm_user, perm_menu, perm_readonly)
+select user_id, 'ScanToImport', 0 from user_mstr
+where not exists (select 1 from perm_mstr where perm_user = user_mstr.user_id and perm_menu = 'ScanToImport');
+
 select '';
 select concat("sql schema version is : ", ov_version) from ov_ctrl;
 select '*** SQL UPDATE ENDS ***';

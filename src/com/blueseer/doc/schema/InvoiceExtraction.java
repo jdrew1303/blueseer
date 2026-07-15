@@ -33,20 +33,43 @@ import java.util.List;
  * record - no Koog-side structured-output API involved, see
  * DocumentExtractionService's class javadoc for why.
  */
-public record InvoiceExtraction(String supplier, String invoiceNumber, String date, List<Line> lines) {
+public record InvoiceExtraction(String supplier, String invoiceNumber, String date, double total, List<Line> lines) {
 
     public record Line(String description, double quantity, String unit, double unitCost, String confidence) {
     }
 
     public static final String SYSTEM_INSTRUCTIONS =
             "You are reading a supplier invoice or packing slip photographed by a small bakery's "
-            + "receiving staff. Extract the supplier name, invoice/packing-slip number, date, and every "
-            + "line item (raw item description exactly as printed, quantity, unit of measure, unit cost). "
-            + "If a field is illegible or not present, use an empty string (or 0 for numbers) and set that "
-            + "line's confidence to \"low\". Never guess a quantity or price you can't actually read.";
+            + "receiving staff. Extract the supplier name, invoice/packing-slip number, date, the printed "
+            + "grand total, and every line item (raw item description exactly as printed, quantity, unit "
+            + "of measure, unit cost). If a field is illegible or not present, use an empty string (or 0 "
+            + "for numbers) and set that line's confidence to \"low\". Never guess a quantity or price you "
+            + "can't actually read.";
 
     public static final String JSON_SHAPE =
             "{\"supplier\": string, \"invoiceNumber\": string, \"date\": string (YYYY-MM-DD), "
-            + "\"lines\": [{\"description\": string, \"quantity\": number, \"unit\": string, "
-            + "\"unitCost\": number, \"confidence\": \"high\"|\"low\"}]}";
+            + "\"total\": number, \"lines\": [{\"description\": string, \"quantity\": number, "
+            + "\"unit\": string, \"unitCost\": number, \"confidence\": \"high\"|\"low\"}]}";
+
+    private static final double RECONCILE_TOLERANCE = 0.02;
+
+    /**
+     * Deterministic arithmetic check, not an LLM tool call - summing the
+     * extracted line costs and comparing to the extracted printed total is
+     * fully verifiable in plain Java, so there's no reason to trust the
+     * model's own arithmetic (or build a tool-calling loop) for this. A
+     * mismatch here is a strong, grounded signal that a quantity or price
+     * was misread, worth surfacing to the user even though every individual
+     * field looked plausible on its own.
+     */
+    public boolean totalsReconcile() {
+        if (total <= 0 || lines == null || lines.isEmpty()) {
+            return true;
+        }
+        double sum = 0;
+        for (Line line : lines) {
+            sum += line.quantity() * line.unitCost();
+        }
+        return Math.abs(sum - total) <= Math.max(RECONCILE_TOLERANCE, total * RECONCILE_TOLERANCE);
+    }
 }
