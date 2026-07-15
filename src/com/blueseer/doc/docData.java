@@ -199,4 +199,36 @@ public class docData {
             return "";
         }
     }
+
+    /**
+     * Fuzzy item search by description - backs the ERPTools.searchItemsByDescription
+     * tool (com.blueseer.doc.ERPTools) an extraction agent calls itself to resolve
+     * a raw invoice line description to a real item_mstr row, rather than BlueSeer
+     * matching it after the fact. Returns up to 5 "CODE - description" candidates,
+     * one per line, or "" if nothing matches within the given catalog.
+     */
+    public static String searchItemsByDescription(String description) {
+        if (description == null || description.isBlank()) {
+            return "";
+        }
+        String sql = "select it_item, it_desc from item_mstr where instr(lower(it_desc), lower(?)) > 0 or instr(lower(?), lower(it_desc)) > 0 limit 5;";
+        StringBuilder result = new StringBuilder();
+        try (Connection con = (ds == null ? DriverManager.getConnection(url + db, user, pass) : ds.getConnection());
+                PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, description);
+            ps.setString(2, description);
+            try (ResultSet res = ps.executeQuery()) {
+                while (res.next()) {
+                    if (result.length() > 0) {
+                        result.append("\n");
+                    }
+                    result.append(res.getString("it_item")).append(" - ").append(res.getString("it_desc"));
+                }
+            }
+        } catch (SQLException e) {
+            MainFrame.bslog(e);
+            return "";
+        }
+        return result.toString();
+    }
 }

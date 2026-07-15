@@ -25,6 +25,9 @@ SOFTWARE.
  */
 package com.blueseer.doc;
 
+import ai.koog.agents.core.agent.AIAgent;
+import ai.koog.agents.core.tools.ToolBase;
+import ai.koog.agents.core.tools.ToolRegistry;
 import ai.koog.prompt.Prompt;
 import ai.koog.prompt.executor.clients.ConnectionTimeoutConfig;
 import ai.koog.prompt.executor.clients.openai.OpenAIClientSettings;
@@ -89,9 +92,53 @@ public class DocumentExtractionService {
         // throws LLMClientException("Cannot determine proper LLM params...")
         // if neither capability is declared (confirmed by decompiling the
         // real 1.0.0 jar - the model *id* string isn't what's being checked).
+        // LLMCapability.Tools is declared unconditionally too (harmless when
+        // unused) since AbstractOpenAILLMClient.getResponse requires it on
+        // the model whenever a non-empty tool list is passed to execute().
         return new LLModel(LLMProvider.OpenAI, cfg.model(),
                 List.of(LLMCapability.Vision.Image.INSTANCE, LLMCapability.OpenAIEndpoint.Completions.INSTANCE,
-                        LLMCapability.Completion.INSTANCE));
+                        LLMCapability.Completion.INSTANCE, LLMCapability.Tools.INSTANCE));
+    }
+
+    /**
+     * Resolves a single ambiguous piece of extracted text (a supplier name, a
+     * raw item description) by giving an agent real tool access to BlueSeer's
+     * own lookups (com.blueseer.doc.ERPTools), rather than BlueSeer matching
+     * it after the fact with hand-rolled SQL. Uses Koog's default "single
+     * run" agent strategy (no explicit graph/planner strategy set), which
+     * handles the whole ask-model / call-tool / feed-result-back loop
+     * internally - AIAgent.run(Input) is a plain blocking Java method
+     * regardless of how many tool calls happen inside it.
+     */
+    public static String resolveWithTools(String systemPrompt, String query) throws DocumentExtractionException {
+        return resolveWithTools(systemPrompt, query, docData.getLlmConfig());
+    }
+
+    /**
+     * Same as {@link #resolveWithTools(String, String)} but takes the
+     * runtime config explicitly - lets this be exercised in a unit test
+     * against a fake local server, same pattern as
+     * {@link #extractStructured(byte[], String, String, String, Class, docData.llm_config)}.
+     */
+    public static String resolveWithTools(String systemPrompt, String query, docData.llm_config cfg) throws DocumentExtractionException {
+        if (!cfg.enabled()) {
+            throw new DocumentExtractionException("Document import isn't turned on for this system - see System Control.");
+        }
+        try {
+            PromptExecutor executor = buildExecutor(cfg);
+            LLModel model = buildModel(cfg);
+            ToolRegistry registry = new ToolRegistry();
+            registry.addAll(new ERPTools().asTools().toArray(new ToolBase<?, ?>[0]));
+            AIAgent<String, String> agent = AIAgent.builder()
+                    .promptExecutor(executor)
+                    .llmModel(model)
+                    .toolRegistry(registry)
+                    .systemPrompt(systemPrompt)
+                    .build();
+            return agent.run(query);
+        } catch (Exception e) {
+            throw new DocumentExtractionException("Couldn't reach the local AI service - check it's running.", e);
+        }
     }
 
     private static Message.User buildUserMessage(String promptText, byte[] imageBytes, String imageFormat) {

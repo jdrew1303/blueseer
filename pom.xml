@@ -18,6 +18,14 @@
          class files (UnsupportedClassVersionError). Bump both together once
          a JBR26 release exists. -->
     <maven.compiler.release>25</maven.compiler.release>
+    <!-- Required for Koog's reflection-based tool calling
+         (ai.koog.agents.core.tools.reflect.ToolFromCallable): it binds a
+         tool call's named JSON arguments to Kotlin/Java method parameters
+         by name via kotlin-reflect, which needs real parameter names in
+         the compiled bytecode - without this, javac emits synthetic names
+         (arg0, arg1, ...) and every tool call fails with
+         "No argument provided for a required parameter". -->
+    <maven.compiler.parameters>true</maven.compiler.parameters>
 
     <!-- jpackage installer defaults (see the "jpackage" profile below and the
          "windows" / "linux-x86_64" / "mac-aarch64" / "mac-x86_64" profiles for
