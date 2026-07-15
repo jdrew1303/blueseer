@@ -73,10 +73,15 @@ import java.util.List;
  */
 public class ScanToImportPanel extends JPanel {
 
+    private static final String TYPE_INVOICE = "Invoice / Packing Slip";
+    private static final String TYPE_OTHER = "Other / Not Supported";
+
     private final JButton btChoose = new JButton("Choose Photo or File...");
     private final JLabel lblStatus = new JLabel(" ");
     private final JLabel lblReconcileWarning = new JLabel(" ");
     private final JButton btOpenTarget = new JButton("Open in Receiver Maintenance");
+    private final javax.swing.JComboBox<String> ddDocType = new javax.swing.JComboBox<>(new String[]{TYPE_INVOICE, TYPE_OTHER});
+    private final JButton btApplyDocType = new JButton("Use This Type");
     private JFileChooser fileChooser;
 
     private final DocumentPreviewPanel preview = new DocumentPreviewPanel();
@@ -86,7 +91,10 @@ public class ScanToImportPanel extends JPanel {
     private final LineTableModel lineModel = new LineTableModel();
     private final JTable lineTable = new JTable(lineModel);
 
+    private final JSplitPane splitPane;
     private InvoiceExtraction pendingInvoice;
+    private byte[] currentImageBytes;
+    private String currentExt;
 
     public ScanToImportPanel() {
         setLayout(new java.awt.BorderLayout());
@@ -98,15 +106,33 @@ public class ScanToImportPanel extends JPanel {
         introCard.add(new JLabel("Photograph or pick a supplier document - BlueSeer will figure out what it is and show you what it read."));
         introCard.add(btChoose);
         introCard.add(lblStatus);
+        JPanel docTypeRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        docTypeRow.add(new JLabel("Document Type:"));
+        docTypeRow.add(ddDocType);
+        docTypeRow.add(btApplyDocType);
+        introCard.add(docTypeRow);
+        ddDocType.setVisible(false);
+        btApplyDocType.setVisible(false);
         add(topStrip, java.awt.BorderLayout.NORTH);
 
-        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, preview, buildReviewCard());
-        splitPane.setResizeWeight(0.55);
-        splitPane.setDividerLocation(500);
+        // The document is the source of truth, so it gets the larger share
+        // of the split (60/40) - resizeWeight alone only governs how *extra*
+        // space from a window resize is distributed, so the initial 60%
+        // position is set proportionally once this panel actually has a
+        // size (see addNotify()).
+        splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, preview, buildReviewCard());
+        splitPane.setResizeWeight(0.6);
         add(splitPane, java.awt.BorderLayout.CENTER);
 
         btChoose.addActionListener(e -> chooseAndScan());
         btOpenTarget.addActionListener(e -> routeToTarget());
+        btApplyDocType.addActionListener(e -> applyDocTypeOverride());
+    }
+
+    @Override
+    public void addNotify() {
+        super.addNotify();
+        javax.swing.SwingUtilities.invokeLater(() -> splitPane.setDividerLocation(0.6));
     }
 
     private JPanel buildReviewCard() {
@@ -158,12 +184,41 @@ public class ScanToImportPanel extends JPanel {
         }
 
         pendingInvoice = null;
+        currentImageBytes = imageBytes;
+        currentExt = ext;
         clearReview();
+        ddDocType.setVisible(false);
+        btApplyDocType.setVisible(false);
         preview.showDocument(imageBytes, ext);
         btChoose.setEnabled(false);
         lblStatus.setText("Reading document...");
 
         new ClassifyThenExtractTask(imageBytes, ext).execute();
+    }
+
+    /**
+     * Lets the user override the AI's classification - it won't always be
+     * right, and until more document types/targets are wired up, "Other" is
+     * a dead end otherwise. Re-runs extraction with the invoice schema on
+     * the same bytes rather than duplicating any of the classify/extract
+     * logic here.
+     */
+    private void applyDocTypeOverride() {
+        if (currentImageBytes == null) {
+            return;
+        }
+        if (TYPE_INVOICE.equals(ddDocType.getSelectedItem())) {
+            if (pendingInvoice != null) {
+                return;
+            }
+            btApplyDocType.setEnabled(false);
+            lblStatus.setText("Reading as an invoice/packing slip...");
+            new ExtractInvoiceTask(currentImageBytes, currentExt).execute();
+        } else {
+            pendingInvoice = null;
+            clearReview();
+            lblStatus.setText("Marked as not a supported document type.");
+        }
     }
 
     private void clearReview() {
@@ -225,8 +280,17 @@ public class ScanToImportPanel extends JPanel {
                 lblStatus.setText(errorMessage);
                 return;
             }
-            if (classification == null || DocumentClassification.OTHER.equals(classification.documentType())) {
-                lblStatus.setText("This doesn't look like a supported document type yet.");
+            if (classification == null) {
+                lblStatus.setText("Something went wrong reading the document.");
+                return;
+            }
+            boolean detectedInvoice = DocumentClassification.INVOICE.equals(classification.documentType());
+            ddDocType.setSelectedItem(detectedInvoice ? TYPE_INVOICE : TYPE_OTHER);
+            ddDocType.setVisible(true);
+            btApplyDocType.setVisible(true);
+            if (!detectedInvoice) {
+                lblStatus.setText("This doesn't look like a supported document type yet - if it's actually an invoice/packing slip, "
+                        + "pick that above and click \"" + btApplyDocType.getText() + "\".");
                 return;
             }
             try {
@@ -236,7 +300,50 @@ public class ScanToImportPanel extends JPanel {
                     lblStatus.setText("This looks like a supplier invoice/packing slip.");
                     showReview(invoice);
                 } else {
-                    lblStatus.setText("Recognized as " + classification.documentType() + ", but there's no screen wired up for it yet.");
+                    lblStatus.setText("Recognized as an invoice, but couldn't read the details - try a clearer photo.");
+                }
+            } catch (Exception ex) {
+                MainFrame.bslog(ex);
+                lblStatus.setText("Something went wrong reading the document.");
+            }
+        }
+    }
+
+    private class ExtractInvoiceTask extends SwingWorker<InvoiceExtraction, Void> {
+
+        private final byte[] imageBytes;
+        private final String ext;
+        private String errorMessage;
+
+        ExtractInvoiceTask(byte[] imageBytes, String ext) {
+            this.imageBytes = imageBytes;
+            this.ext = ext;
+        }
+
+        @Override
+        protected InvoiceExtraction doInBackground() {
+            try {
+                return DocumentExtractionService.extractStructured(imageBytes, ext,
+                        InvoiceExtraction.SYSTEM_INSTRUCTIONS, InvoiceExtraction.JSON_SHAPE, InvoiceExtraction.class);
+            } catch (DocumentExtractionService.DocumentExtractionException ex) {
+                errorMessage = ex.getMessage();
+                return null;
+            }
+        }
+
+        @Override
+        protected void done() {
+            btApplyDocType.setEnabled(true);
+            if (errorMessage != null) {
+                lblStatus.setText(errorMessage);
+                return;
+            }
+            try {
+                InvoiceExtraction invoice = get();
+                if (invoice != null) {
+                    pendingInvoice = invoice;
+                    lblStatus.setText("This looks like a supplier invoice/packing slip.");
+                    showReview(invoice);
                 }
             } catch (Exception ex) {
                 MainFrame.bslog(ex);
@@ -279,7 +386,11 @@ public class ScanToImportPanel extends JPanel {
         recvMaint.initvars(new String[0]);
         recvMaint.applyExtractedInvoice(toRoute);
         pendingInvoice = null;
+        currentImageBytes = null;
+        currentExt = null;
         clearReview();
+        ddDocType.setVisible(false);
+        btApplyDocType.setVisible(false);
         preview.clear();
         lblStatus.setText(" ");
     }
