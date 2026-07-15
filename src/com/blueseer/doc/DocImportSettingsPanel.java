@@ -27,12 +27,14 @@ package com.blueseer.doc;
 
 import net.miginfocom.swing.MigLayout;
 
+import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
+import java.awt.BorderLayout;
 
 /**
  * One-time local-LLM runtime setup for agentic document import (epic
@@ -54,19 +56,27 @@ public class DocImportSettingsPanel extends JPanel {
     private final JLabel lblStatus = new JLabel(" ");
 
     public DocImportSettingsPanel() {
-        setLayout(new MigLayout("insets 12, wrap 2", "[right]8[grow, fill]"));
+        // A bare MigLayout directly on `this` left the fields floating on the
+        // app's configurable background color with nothing visually tying them
+        // together - every other screen groups its fields inside a bordered
+        // card (e.g. RecvMaint's "Receiver Maintenance" TitledBorder box), so
+        // this does the same instead of introducing a one-off look.
+        setLayout(new BorderLayout());
+        JPanel card = new JPanel(new MigLayout("insets 12, wrap 2", "[right]8[grow, fill]"));
+        card.setBorder(BorderFactory.createTitledBorder("Document Import Settings"));
+        add(card, BorderLayout.NORTH);
 
-        add(new JLabel("Runtime"));
-        add(ddProvider);
-        add(new JLabel("Base URL"));
-        add(tbBaseUrl);
-        add(new JLabel("Model"));
-        add(tbModel);
-        add(new JLabel());
-        add(cbEnabled);
-        add(new JLabel());
-        add(btSave);
-        add(lblStatus, "span 2");
+        card.add(new JLabel("Runtime"));
+        card.add(ddProvider);
+        card.add(new JLabel("Base URL"));
+        card.add(tbBaseUrl);
+        card.add(new JLabel("Model"));
+        card.add(tbModel);
+        card.add(new JLabel());
+        card.add(cbEnabled);
+        card.add(new JLabel());
+        card.add(btSave);
+        card.add(lblStatus, "span 2");
 
         ddProvider.addActionListener(e -> applyProviderDefault());
         btSave.addActionListener(e -> save());

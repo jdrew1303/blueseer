@@ -1772,8 +1772,17 @@ public class RecvMaint extends javax.swing.JPanel implements IBlueSeerV {
 
     private javax.swing.JPanel getMainTabWrapper() {
         if (mainTabWrapper == null) {
+            // panelMain has no explicit setBackground() of its own - its "card" look
+            // against the app's configurable background color comes entirely from
+            // its TitledBorder plus whatever Swing/FlatLaf assigns a plain JPanel by
+            // default. Matching that exact color (rather than leaving the strip
+            // transparent, which shows the app background straight through) is what
+            // makes the button read as part of this screen instead of floating.
             mainTabWrapper = new javax.swing.JPanel(new java.awt.BorderLayout());
+            mainTabWrapper.setBackground(panelMain.getBackground());
             javax.swing.JPanel strip = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
+            strip.setBackground(panelMain.getBackground());
+            strip.setBorder(javax.swing.BorderFactory.createEmptyBorder(6, 10, 0, 0));
             strip.add(btimportdoc);
             mainTabWrapper.add(strip, java.awt.BorderLayout.NORTH);
             mainTabWrapper.add(panelMain, java.awt.BorderLayout.CENTER);
