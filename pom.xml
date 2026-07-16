@@ -260,6 +260,15 @@
     <version>3.7.2</version>
 </dependency>
 
+<!-- FlatSVGIcon - official FlatLaf companion library (always released in
+     lockstep with the core artifact above) for crisp, theme-aware SVG
+     icons, used by ScanToImportPanel's rail (see src/images/queue-*.svg). -->
+<dependency>
+    <groupId>com.formdev</groupId>
+    <artifactId>flatlaf-extras</artifactId>
+    <version>3.7.2</version>
+</dependency>
+
 <dependency>
     <!-- Modern replacement for GroupLayout in hand-migrated panels (see the
          "Layout" section in README) - handles resizing/HiDPI far better. -->

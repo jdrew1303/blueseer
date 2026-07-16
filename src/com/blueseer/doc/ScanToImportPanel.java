@@ -29,21 +29,24 @@ import bsmf.MainFrame;
 import com.blueseer.doc.schema.DocumentClassification;
 import com.blueseer.doc.schema.InvoiceExtraction;
 import com.blueseer.rcv.RecvMaint;
+import com.formdev.flatlaf.extras.FlatSVGIcon;
 import net.miginfocom.swing.MigLayout;
 
 import javax.swing.BorderFactory;
-import javax.swing.BoxLayout;
-import javax.swing.ButtonGroup;
+import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
-import javax.swing.JToggleButton;
+import javax.swing.ListCellRenderer;
+import javax.swing.ListSelectionModel;
+import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.Timer;
@@ -51,8 +54,10 @@ import javax.swing.table.AbstractTableModel;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
@@ -60,7 +65,9 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Single, central entry point for "paper in, form pre-filled" across the
@@ -88,13 +95,15 @@ public class ScanToImportPanel extends JPanel {
     private static final String TYPE_OTHER = "Other / Not Supported";
     private static final int REFRESH_INTERVAL_MS = 2000;
 
+    /** One row in the left rail nav list - see {@link RailCellRenderer}. */
+    private record RailItem(String state, String label, FlatSVGIcon icon) {
+    }
+
     // Left rail
     private final JButton btAddFiles = new JButton("+ Add Files...");
-    private final JToggleButton btInbox = new JToggleButton("Inbox (0)");
-    private final JToggleButton btPendingReview = new JToggleButton("Pending Review (0)");
-    private final JToggleButton btOutbox = new JToggleButton("Outbox (0)");
-    private final JToggleButton btSent = new JToggleButton("Sent (0)");
-    private final JToggleButton btError = new JToggleButton("Error (0)");
+    private final DefaultListModel<RailItem> railModel = new DefaultListModel<>();
+    private final JList<RailItem> railList = new JList<>(railModel);
+    private final Map<String, Integer> railCounts = new HashMap<>();
     private JFileChooser fileChooser;
 
     // List card
@@ -141,11 +150,11 @@ public class ScanToImportPanel extends JPanel {
         add(centerPanel, BorderLayout.CENTER);
 
         btAddFiles.addActionListener(e -> addFiles());
-        btInbox.addActionListener(e -> selectRailState(docData.QUEUE_INBOX));
-        btPendingReview.addActionListener(e -> selectRailState(docData.QUEUE_PENDING_REVIEW));
-        btOutbox.addActionListener(e -> selectRailState(docData.QUEUE_OUTBOX));
-        btSent.addActionListener(e -> selectRailState(docData.QUEUE_SENT));
-        btError.addActionListener(e -> selectRailState(docData.QUEUE_ERROR));
+        railList.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting() && railList.getSelectedValue() != null) {
+                selectRailState(railList.getSelectedValue().state());
+            }
+        });
         btOpenSelected.addActionListener(e -> openSelected());
         btRetrySelected.addActionListener(e -> retrySelected());
         btDiscardSelected.addActionListener(e -> discardSelected());
@@ -164,7 +173,7 @@ public class ScanToImportPanel extends JPanel {
             }
         });
 
-        btInbox.setSelected(true);
+        railList.setSelectedIndex(0);
         selectRailState(docData.QUEUE_INBOX);
 
         Timer refreshTimer = new Timer(REFRESH_INTERVAL_MS, e -> {
@@ -191,28 +200,73 @@ public class ScanToImportPanel extends JPanel {
     }
 
     private JPanel buildLeftRail() {
-        JPanel rail = new JPanel();
-        rail.setLayout(new BoxLayout(rail, BoxLayout.Y_AXIS));
+        JPanel rail = new JPanel(new BorderLayout(0, 8));
         rail.setBorder(BorderFactory.createTitledBorder("Scan to Import"));
-        rail.setPreferredSize(new Dimension(210, 0));
+        rail.setPreferredSize(new Dimension(220, 0));
 
-        ButtonGroup group = new ButtonGroup();
-        for (JToggleButton button : List.of(btInbox, btPendingReview, btOutbox, btSent, btError)) {
-            group.add(button);
-            button.setAlignmentX(LEFT_ALIGNMENT);
-            button.setMaximumSize(new Dimension(Integer.MAX_VALUE, button.getPreferredSize().height));
+        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        topPanel.add(btAddFiles);
+        rail.add(topPanel, BorderLayout.NORTH);
+
+        railModel.addElement(new RailItem(docData.QUEUE_INBOX, "Inbox", new FlatSVGIcon("images/queue-inbox.svg", 18, 18)));
+        railModel.addElement(new RailItem(docData.QUEUE_PENDING_REVIEW, "Pending Review", new FlatSVGIcon("images/queue-pendingreview.svg", 18, 18)));
+        railModel.addElement(new RailItem(docData.QUEUE_OUTBOX, "Outbox", new FlatSVGIcon("images/queue-outbox.svg", 18, 18)));
+        railModel.addElement(new RailItem(docData.QUEUE_SENT, "Sent", new FlatSVGIcon("images/queue-sent.svg", 18, 18)));
+        railModel.addElement(new RailItem(docData.QUEUE_ERROR, "Error", new FlatSVGIcon("images/queue-error.svg", 18, 18)));
+        railList.setCellRenderer(new RailCellRenderer());
+        railList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        railList.setFocusable(true);
+        railList.setBorder(BorderFactory.createEmptyBorder());
+        rail.add(railList, BorderLayout.CENTER);
+        return rail;
+    }
+
+    /**
+     * Draws each rail row as icon + label + a pill-shaped count badge (only
+     * shown once a section actually has something in it), with a flat
+     * highlight fill for the selected row - matching the sidebar look of
+     * the reference mockup rather than JToggleButton's default chrome.
+     */
+    private class RailCellRenderer extends JPanel implements ListCellRenderer<RailItem> {
+
+        private static final Color SELECTED_BACKGROUND = new Color(0xDC, 0xEA, 0xFB);
+        private static final Color BADGE_BACKGROUND = new Color(0x3B, 0x6F, 0xD6);
+
+        private final JLabel iconLabel = new JLabel();
+        private final JLabel textLabel = new JLabel();
+        private final JLabel badgeLabel = new JLabel();
+
+        RailCellRenderer() {
+            setLayout(new BorderLayout(8, 0));
+            setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 10));
+            setOpaque(true);
+
+            JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+            left.setOpaque(false);
+            left.add(iconLabel);
+            left.add(textLabel);
+            add(left, BorderLayout.CENTER);
+
+            badgeLabel.setOpaque(true);
+            badgeLabel.setForeground(Color.WHITE);
+            badgeLabel.setBackground(BADGE_BACKGROUND);
+            badgeLabel.setHorizontalAlignment(SwingConstants.CENTER);
+            badgeLabel.setFont(badgeLabel.getFont().deriveFont(Font.BOLD, 11f));
+            badgeLabel.setBorder(BorderFactory.createEmptyBorder(2, 7, 2, 7));
+            add(badgeLabel, BorderLayout.EAST);
         }
 
-        btAddFiles.setAlignmentX(LEFT_ALIGNMENT);
-        rail.add(btAddFiles);
-        rail.add(javax.swing.Box.createVerticalStrut(12));
-        rail.add(btInbox);
-        rail.add(btPendingReview);
-        rail.add(btOutbox);
-        rail.add(btSent);
-        rail.add(btError);
-        rail.add(javax.swing.Box.createVerticalGlue());
-        return rail;
+        @Override
+        public Component getListCellRendererComponent(JList<? extends RailItem> list, RailItem value,
+                int index, boolean isSelected, boolean cellHasFocus) {
+            iconLabel.setIcon(value.icon());
+            textLabel.setText(value.label());
+            setBackground(isSelected ? SELECTED_BACKGROUND : list.getBackground());
+            int count = railCounts.getOrDefault(value.state(), 0);
+            badgeLabel.setVisible(count > 0);
+            badgeLabel.setText(String.valueOf(count));
+            return this;
+        }
     }
 
     private JPanel buildListCard() {
@@ -244,37 +298,41 @@ public class ScanToImportPanel extends JPanel {
     }
 
     private JPanel buildReviewCard() {
-        JPanel card = new JPanel(new MigLayout("insets 12, wrap 2", "[right]8[grow, fill]"));
+        JPanel card = new JPanel(new MigLayout("insets 12, wrap 1", "[grow, fill]"));
         card.setBorder(BorderFactory.createTitledBorder("Extracted Fields - review and correct"));
 
-        card.add(new JLabel("Document Type:"));
+        JPanel infoSection = new JPanel(new MigLayout("insets 8, wrap 2", "[right]8[grow, fill]"));
+        infoSection.setBorder(BorderFactory.createTitledBorder("Document Info"));
+        infoSection.add(new JLabel("Document Type:"));
         JPanel docTypeRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         docTypeRow.add(ddDocType);
         docTypeRow.add(btApplyDocType);
-        card.add(docTypeRow);
+        infoSection.add(docTypeRow);
+        infoSection.add(new JLabel("Supplier:"));
+        infoSection.add(tbSupplier);
+        infoSection.add(new JLabel("Invoice/Packing Slip #:"));
+        infoSection.add(tbInvoiceNumber);
+        infoSection.add(new JLabel("Printed Total:"));
+        infoSection.add(tbTotal);
+        card.add(infoSection);
 
-        card.add(new JLabel("Supplier:"));
-        card.add(tbSupplier);
-        card.add(new JLabel("Invoice/Packing Slip #:"));
-        card.add(tbInvoiceNumber);
-        card.add(new JLabel("Printed Total:"));
-        card.add(tbTotal);
-
+        JPanel lineSection = new JPanel(new MigLayout("insets 8, wrap 1", "[grow, fill]"));
+        lineSection.setBorder(BorderFactory.createTitledBorder("Line Items - click a cell to correct it"));
         lineTable.setRowHeight(24);
         JScrollPane tableScroll = new JScrollPane(lineTable);
-        tableScroll.setPreferredSize(new Dimension(400, 200));
-        card.add(new JLabel("Line Items (click a cell to correct it):"), "span 2");
-        card.add(tableScroll, "span 2, grow, push");
+        tableScroll.setPreferredSize(new Dimension(400, 180));
+        lineSection.add(tableScroll, "grow, push");
+        card.add(lineSection, "grow, push");
 
         lblReconcileWarning.setForeground(new Color(0xB0, 0x30, 0x30));
-        card.add(lblReconcileWarning, "span 2");
+        card.add(lblReconcileWarning);
 
         JPanel actionRow = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         actionRow.add(btApprove);
         actionRow.add(btReject);
         actionRow.add(btSend);
         actionRow.add(btSendAndOpenNext);
-        card.add(actionRow, "span 2");
+        card.add(actionRow);
 
         return card;
     }
@@ -304,7 +362,7 @@ public class ScanToImportPanel extends JPanel {
             }
         }
         lblListStatus.setText(added + " document(s) added to Inbox.");
-        btInbox.setSelected(true);
+        railList.setSelectedIndex(0);
         selectRailState(docData.QUEUE_INBOX);
     }
 
@@ -318,11 +376,12 @@ public class ScanToImportPanel extends JPanel {
     }
 
     private void refreshCounts() {
-        btInbox.setText("Inbox (" + docData.countQueueItems(docData.QUEUE_INBOX) + ")");
-        btPendingReview.setText("Pending Review (" + docData.countQueueItems(docData.QUEUE_PENDING_REVIEW) + ")");
-        btOutbox.setText("Outbox (" + docData.countQueueItems(docData.QUEUE_OUTBOX) + ")");
-        btSent.setText("Sent (" + docData.countQueueItems(docData.QUEUE_SENT) + ")");
-        btError.setText("Error (" + docData.countQueueItems(docData.QUEUE_ERROR) + ")");
+        railCounts.put(docData.QUEUE_INBOX, docData.countQueueItems(docData.QUEUE_INBOX));
+        railCounts.put(docData.QUEUE_PENDING_REVIEW, docData.countQueueItems(docData.QUEUE_PENDING_REVIEW));
+        railCounts.put(docData.QUEUE_OUTBOX, docData.countQueueItems(docData.QUEUE_OUTBOX));
+        railCounts.put(docData.QUEUE_SENT, docData.countQueueItems(docData.QUEUE_SENT));
+        railCounts.put(docData.QUEUE_ERROR, docData.countQueueItems(docData.QUEUE_ERROR));
+        railList.repaint();
     }
 
     /**
