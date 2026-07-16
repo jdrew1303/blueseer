@@ -33,13 +33,19 @@ import static bsmf.MainFrame.pass;
 import static bsmf.MainFrame.url;
 import static bsmf.MainFrame.user;
 import com.blueseer.utl.BlueSeerUtils;
+import static com.blueseer.utl.BlueSeerUtils.cleanDirString;
 import com.blueseer.utl.OVData;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Data access for agentic document import: the one-time local-LLM runtime
@@ -280,5 +286,211 @@ public class docData {
             return "";
         }
         return result.toString();
+    }
+
+    // --- Scan queue (multi-document Inbox/Pending Review/Outbox/Sent/Error) ---
+    // Lets more than one document be dropped in at once and processed in the
+    // background (see ScanQueueProcessor) instead of one document tying up
+    // the whole screen synchronously. Files themselves live on disk under
+    // the system's existing attachment directory (same convention as
+    // OVData.addFileAttachment - a real BlueSeer file-storage location,
+    // not a new one invented for this), with only the path stored here.
+
+    public static final String QUEUE_INBOX = "INBOX";
+    public static final String QUEUE_PENDING_REVIEW = "PENDING_REVIEW";
+    public static final String QUEUE_OUTBOX = "OUTBOX";
+    public static final String QUEUE_SENT = "SENT";
+    public static final String QUEUE_ERROR = "ERROR";
+
+    public record QueueItem(String id, String filename, String filepath, String ext, String state,
+            String docType, String extractedJson, String docTags, String error, String userid,
+            Timestamp created, Timestamp updated) {
+    }
+
+    /**
+     * Copies the given bytes into the attachment directory and inserts a new
+     * INBOX row - ScanQueueProcessor's background thread picks it up from
+     * there. Returns null (and logs) on any I/O or SQL failure rather than a
+     * half-written row with no file, or a file with no row.
+     */
+    public static String addQueueItem(byte[] bytes, String filename, String ext) {
+        String id = String.valueOf(OVData.getNextNbr("scanqueue"));
+        String filepath = cleanDirString(OVData.getSystemAttachmentDirectory()) + "scanqueue_" + id + "_" + filename;
+        try {
+            Files.write(Path.of(filepath), bytes);
+        } catch (IOException e) {
+            MainFrame.bslog(e);
+            return null;
+        }
+        String sql = "insert into doc_scan_queue (queue_id, queue_filename, queue_filepath, queue_ext, "
+                + "queue_state, queue_userid, queue_created, queue_updated) values (?,?,?,?,?,?,?,?);";
+        try (Connection con = (ds == null ? DriverManager.getConnection(url + db, user, pass) : ds.getConnection());
+                PreparedStatement ps = con.prepareStatement(sql)) {
+            Timestamp now = new Timestamp(System.currentTimeMillis());
+            ps.setString(1, id);
+            ps.setString(2, filename);
+            ps.setString(3, filepath);
+            ps.setString(4, ext);
+            ps.setString(5, QUEUE_INBOX);
+            ps.setString(6, MainFrame.userid);
+            ps.setTimestamp(7, now);
+            ps.setTimestamp(8, now);
+            int rows = ps.executeUpdate();
+            return rows > 0 ? id : null;
+        } catch (SQLException e) {
+            MainFrame.bslog(e);
+            return null;
+        }
+    }
+
+    public static byte[] readQueueFileBytes(QueueItem item) {
+        try {
+            return Files.readAllBytes(Path.of(item.filepath()));
+        } catch (IOException e) {
+            MainFrame.bslog(e);
+            return null;
+        }
+    }
+
+    /**
+     * ScanQueueProcessor calls this once classify/extract succeeds. docTags
+     * is the raw layout-model output (or "" if no layout model is
+     * configured) - kept so the review screen can re-derive source
+     * highlighting without re-running any model when the item is opened.
+     */
+    public static void markQueueProcessed(String id, String docType, String extractedJson, String docTags) {
+        String sql = "update doc_scan_queue set queue_state = ?, queue_doctype = ?, queue_extracted_json = ?, "
+                + "queue_doctags = ?, queue_error = '', queue_updated = ? where queue_id = ?;";
+        try (Connection con = (ds == null ? DriverManager.getConnection(url + db, user, pass) : ds.getConnection());
+                PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, QUEUE_PENDING_REVIEW);
+            ps.setString(2, docType);
+            ps.setString(3, extractedJson);
+            ps.setString(4, docTags == null ? "" : docTags);
+            ps.setTimestamp(5, new Timestamp(System.currentTimeMillis()));
+            ps.setString(6, id);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            MainFrame.bslog(e);
+        }
+    }
+
+    /** ScanQueueProcessor calls this when classify/extract fails outright. */
+    public static void markQueueError(String id, String error) {
+        String sql = "update doc_scan_queue set queue_state = ?, queue_error = ?, queue_updated = ? where queue_id = ?;";
+        try (Connection con = (ds == null ? DriverManager.getConnection(url + db, user, pass) : ds.getConnection());
+                PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, QUEUE_ERROR);
+            ps.setString(2, error);
+            ps.setTimestamp(3, new Timestamp(System.currentTimeMillis()));
+            ps.setString(4, id);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            MainFrame.bslog(e);
+        }
+    }
+
+    /**
+     * Plain state transition with no other field changes - Approve
+     * (PENDING_REVIEW -> OUTBOX), Send (OUTBOX -> SENT), Retry
+     * (ERROR -> INBOX, picked up by the processor again).
+     */
+    public static void setQueueState(String id, String state) {
+        String sql = "update doc_scan_queue set queue_state = ?, queue_updated = ? where queue_id = ?;";
+        try (Connection con = (ds == null ? DriverManager.getConnection(url + db, user, pass) : ds.getConnection());
+                PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, state);
+            ps.setTimestamp(2, new Timestamp(System.currentTimeMillis()));
+            ps.setString(3, id);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            MainFrame.bslog(e);
+        }
+    }
+
+    /**
+     * Saves the user's corrections from the review screen back onto the
+     * queue row (Approve, or a document-type override) without changing its
+     * state - docTags is normally whatever was already stored (preserved
+     * as-is on a plain field correction) or freshly recomputed blocks (on a
+     * type override, which re-runs extraction and may produce new ones).
+     */
+    public static void updateQueueExtractedJson(String id, String docType, String extractedJson, String docTags) {
+        String sql = "update doc_scan_queue set queue_doctype = ?, queue_extracted_json = ?, queue_doctags = ?, "
+                + "queue_updated = ? where queue_id = ?;";
+        try (Connection con = (ds == null ? DriverManager.getConnection(url + db, user, pass) : ds.getConnection());
+                PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, docType);
+            ps.setString(2, extractedJson);
+            ps.setString(3, docTags == null ? "" : docTags);
+            ps.setTimestamp(4, new Timestamp(System.currentTimeMillis()));
+            ps.setString(5, id);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            MainFrame.bslog(e);
+        }
+    }
+
+    /** Discards a queue item entirely (Reject in Pending Review, Discard in Error) - deletes the row and its file. */
+    public static void deleteQueueItem(String id) {
+        String selectSql = "select queue_filepath from doc_scan_queue where queue_id = ?;";
+        String deleteSql = "delete from doc_scan_queue where queue_id = ?;";
+        try (Connection con = (ds == null ? DriverManager.getConnection(url + db, user, pass) : ds.getConnection())) {
+            String filepath = null;
+            try (PreparedStatement ps = con.prepareStatement(selectSql)) {
+                ps.setString(1, id);
+                try (ResultSet res = ps.executeQuery()) {
+                    if (res.next()) {
+                        filepath = res.getString("queue_filepath");
+                    }
+                }
+            }
+            try (PreparedStatement ps = con.prepareStatement(deleteSql)) {
+                ps.setString(1, id);
+                ps.executeUpdate();
+            }
+            if (filepath != null && !filepath.isBlank()) {
+                Files.deleteIfExists(Path.of(filepath));
+            }
+        } catch (SQLException | IOException e) {
+            MainFrame.bslog(e);
+        }
+    }
+
+    public static List<QueueItem> listQueueItems(String state) {
+        List<QueueItem> items = new ArrayList<>();
+        String sql = "select queue_id, queue_filename, queue_filepath, queue_ext, queue_state, queue_doctype, "
+                + "queue_extracted_json, queue_doctags, queue_error, queue_userid, queue_created, queue_updated "
+                + "from doc_scan_queue where queue_state = ? order by queue_created asc;";
+        try (Connection con = (ds == null ? DriverManager.getConnection(url + db, user, pass) : ds.getConnection());
+                PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, state);
+            try (ResultSet res = ps.executeQuery()) {
+                while (res.next()) {
+                    items.add(new QueueItem(res.getString("queue_id"), res.getString("queue_filename"),
+                            res.getString("queue_filepath"), res.getString("queue_ext"), res.getString("queue_state"),
+                            res.getString("queue_doctype"), res.getString("queue_extracted_json"),
+                            res.getString("queue_doctags"), res.getString("queue_error"), res.getString("queue_userid"),
+                            res.getTimestamp("queue_created"), res.getTimestamp("queue_updated")));
+                }
+            }
+        } catch (SQLException e) {
+            MainFrame.bslog(e);
+        }
+        return items;
+    }
+
+    public static int countQueueItems(String state) {
+        String sql = "select count(*) as cnt from doc_scan_queue where queue_state = ?;";
+        try (Connection con = (ds == null ? DriverManager.getConnection(url + db, user, pass) : ds.getConnection());
+                PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, state);
+            try (ResultSet res = ps.executeQuery()) {
+                return res.next() ? res.getInt("cnt") : 0;
+            }
+        } catch (SQLException e) {
+            MainFrame.bslog(e);
+            return 0;
+        }
     }
 }

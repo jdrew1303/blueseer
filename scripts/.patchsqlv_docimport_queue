@@ -1,0 +1,53 @@
+/* Multi-document Scan to Import queue (Inbox/Pending Review/Outbox/Sent/
+   Error) - lets more than one document be dropped in at once and
+   processed in the background by ScanQueueProcessor, rather than one
+   document tying up the whole screen synchronously until it's routed.
+
+   queue_filepath points into the system's existing attachment directory
+   (ov_ctrl/sys_meta's attachment_directory, same one OVData.
+   addFileAttachment already writes into) - only the path lives here, not
+   the file bytes, matching that existing convention rather than inventing
+   BLOB storage.
+
+   queue_extracted_json holds whatever the classify/extract pass produced
+   (or the user's corrected review edits, once saved) as a JSON string -
+   re-parsed back into DocumentClassification/InvoiceExtraction by
+   ScanToImportPanel rather than re-running the LLM every time a queue
+   item is viewed. queue_doctags is the parsed DocTagsParser.Block list
+   (as JSON), only ever non-empty when the optional document-layout model
+   produced them - saved so source-highlighting can be redrawn on reopen
+   without calling the layout model again.
+*/
+CREATE TABLE IF NOT EXISTS `doc_scan_queue` (
+  `queue_id` varchar(10) NOT NULL PRIMARY KEY,
+  `queue_filename` varchar(200) NOT NULL DEFAULT '',
+  `queue_filepath` varchar(400) NOT NULL DEFAULT '',
+  `queue_ext` varchar(10) NOT NULL DEFAULT '',
+  `queue_state` varchar(20) NOT NULL DEFAULT 'INBOX',
+  `queue_doctype` varchar(30) NOT NULL DEFAULT '',
+  `queue_extracted_json` text,
+  `queue_doctags` text,
+  `queue_error` varchar(500) NOT NULL DEFAULT '',
+  `queue_userid` varchar(30) NOT NULL DEFAULT '',
+  `queue_created` datetime DEFAULT NULL,
+  `queue_updated` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+/* OVData.getNextNbr(countername) only ever UPDATEs an existing counter row
+   (select max(counter_id)+1, then update ... where counter_name = ?) - it
+   never inserts one, so a counter_name with no seeded row silently no-ops
+   the UPDATE and returns the same id (1) every single call, handing out
+   duplicate queue_ids. Seeding this row is required, not optional cleanup.
+
+   docimportlog has the exact same gap from the original .patchsqlv_docimport
+   patch (docData.logImport uses that counter too, with nothing seeding it) -
+   fixed here as well since it's the same root cause and this is the first
+   place that gap would actually bite (a second logged import would have
+   collided with the first). */
+insert into counter (counter_name, counter_desc, counter_prefix, counter_id)
+select 'scanqueue', 'Scan to Import Queue', '', 0
+where not exists (select 1 from counter where counter_name = 'scanqueue');
+
+insert into counter (counter_name, counter_desc, counter_prefix, counter_id)
+select 'docimportlog', 'Scan to Import Audit Log', '', 0
+where not exists (select 1 from counter where counter_name = 'docimportlog');

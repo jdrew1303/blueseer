@@ -195,6 +195,27 @@ public class DocumentExtractionService {
         }
     }
 
+    /**
+     * Serializes an already-extracted record back to a JSON string for
+     * storage on a scan-queue row (see docData.QueueItem), so a queued
+     * document's result can be redisplayed without calling the LLM again.
+     */
+    public static <T> String toJson(T value) throws DocumentExtractionException {
+        try {
+            return MAPPER.writeValueAsString(value);
+        } catch (JsonProcessingException e) {
+            throw new DocumentExtractionException("Couldn't save the extracted data.", e);
+        }
+    }
+
+    public static <T> T fromJson(String json, Class<T> targetType) throws DocumentExtractionException {
+        try {
+            return MAPPER.readValue(json, targetType);
+        } catch (JsonProcessingException e) {
+            throw new DocumentExtractionException("Couldn't read the saved extracted data.", e);
+        }
+    }
+
     private static Message.User buildUserMessage(String promptText, byte[] imageBytes, String imageFormat) {
         List<MessagePart.RequestPart> parts = new ArrayList<>();
         parts.add(new MessagePart.Text(promptText));
