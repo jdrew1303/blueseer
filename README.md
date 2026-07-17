@@ -66,6 +66,12 @@ architecture makes BlueSeer usable as a Desktop Application Framework — applic
 independent of the core software can be quickly deployed given the menu/class
 management and permissions functionality already built in.
 </br>
+There's also an experimental, work-in-progress path to running the Swing UI inside a
+browser tab via <a href="https://cheerpj.com/docs/overview">CheerpJ</a>, mainly so
+browser-automation tools can capture product demo videos without a human recording
+them. See <a href="browser/README.md">browser/README.md</a> for the current state
+(what's confirmed vs. still unverified).
+</br>
 
 <h1>Building from Source</h1>
 
