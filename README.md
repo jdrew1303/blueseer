@@ -66,11 +66,11 @@ architecture makes BlueSeer usable as a Desktop Application Framework — applic
 independent of the core software can be quickly deployed given the menu/class
 management and permissions functionality already built in.
 </br>
-There's also an experimental, work-in-progress path to running the Swing UI inside a
-browser tab via <a href="https://cheerpj.com/docs/overview">CheerpJ</a>, mainly so
-browser-automation tools can capture product demo videos without a human recording
-them. See <a href="browser/README.md">browser/README.md</a> for the current state
-(what's confirmed vs. still unverified).
+There's also a headless demo-video capture pipeline
+(<a href="tools/ui-regression/README.md#demo-video-capture">tools/ui-regression/</a>):
+a JSON-scripted flow drives the real Swing UI via AssertJ-Swing under Xvfb, with
+ffmpeg recording the session - built so product demo videos can be generated without
+a human recording them by hand.
 </br>
 
 <h1>Building from Source</h1>

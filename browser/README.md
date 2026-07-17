@@ -1,5 +1,14 @@
 # Running BlueSeer in the browser (CheerpJ) — for demo-video capture
 
+**Superseded.** This path turned out to be a dead end (CheerpJ's Java-17
+bytecode ceiling and JNI limitations, then Webswing's licensing requirements
+- see the git history/PR discussion for the full trail) and is kept here only
+for the record. What actually worked instead: running the real desktop app
+headless (Xvfb + fluxbox for a proper maximized window) and driving it
+directly via AssertJ-Swing, with ffmpeg recording the display. See
+[`tools/ui-regression/README.md`](../tools/ui-regression/README.md#demo-video-capture)
+for the working demo-video pipeline.
+
 This is a first pass at getting BlueSeer's existing Swing UI to boot inside a
 browser tab via [CheerpJ](https://cheerpj.com/docs/overview), so that browser
 automation tools that record web pages (e.g.
