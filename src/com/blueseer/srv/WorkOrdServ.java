@@ -35,6 +35,7 @@ import static bsmf.MainFrame.user;
 import com.blueseer.inv.invData;
 import com.blueseer.sch.schData;
 import com.blueseer.utl.BlueSeerUtils;
+import static com.blueseer.utl.BlueSeerUtils.confirmServerAuthAPI;
 import static com.blueseer.utl.BlueSeerUtils.createMessage;
 import static com.blueseer.utl.BlueSeerUtils.createMessageJSON;
 import com.blueseer.utl.OVData;
@@ -86,9 +87,14 @@ import org.json.JSONObject;
 public class WorkOrdServ extends HttpServlet {
     
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) 
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         response.setContentType("text/plain");
+        if (! confirmServerAuthAPI(request, authServ.hmuser)) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().println(" br549edipost authorization failed");
+            return;
+        }
         response.setStatus(HttpServletResponse.SC_OK);
         String id = request.getParameter("id");
         String fromdate = request.getParameter("fromdate");
@@ -106,10 +112,15 @@ public class WorkOrdServ extends HttpServlet {
     }
      
     @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) 
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
        // BufferedReader reader = request.getReader();
         response.setContentType("text/plain");
+        if (! confirmServerAuthAPI(request, authServ.hmuser)) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().println(" br549edipost authorization failed");
+            return;
+        }
         response.setStatus(HttpServletResponse.SC_OK);
         if (request == null) {
             response.getWriter().println("no valid payload provided");

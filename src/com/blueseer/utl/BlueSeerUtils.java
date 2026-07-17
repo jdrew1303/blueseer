@@ -2230,7 +2230,7 @@ public class BlueSeerUtils {
     }
     
      
-     public static String createMessage(String status, String message, String key) throws TransformerException {
+     public static String createMessage(String message, String status, String key) throws TransformerException {
         String x = "";
         DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
         DocumentBuilder docBuilder = null;

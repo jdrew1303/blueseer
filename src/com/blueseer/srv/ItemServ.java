@@ -33,6 +33,7 @@ import static bsmf.MainFrame.pass;
 import static bsmf.MainFrame.url;
 import static bsmf.MainFrame.user;
 import com.blueseer.utl.BlueSeerUtils;
+import static com.blueseer.utl.BlueSeerUtils.confirmServerAuthAPI;
 import static com.blueseer.utl.BlueSeerUtils.createMessageJSON;
 import com.blueseer.utl.OVData;
 import java.io.BufferedReader;
@@ -65,9 +66,14 @@ public class ItemServ extends HttpServlet {
     
         
 @Override
-protected void doGet(HttpServletRequest request, HttpServletResponse response) 
+protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         response.setContentType("text/plain");
+        if (! confirmServerAuthAPI(request, authServ.hmuser)) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().println(" br549edipost authorization failed");
+            return;
+        }
         response.setStatus(HttpServletResponse.SC_OK);
         String id = request.getParameter("id");
         String fromitem = request.getParameter("fromitem");
