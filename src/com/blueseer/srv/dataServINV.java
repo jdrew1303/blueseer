@@ -62,6 +62,7 @@ import static com.blueseer.inv.invData.getComponentByBomOp;
 import static com.blueseer.inv.invData.getCurrentCost;
 import static com.blueseer.inv.invData.getINVCtrl;
 import static com.blueseer.inv.invData.getInMstr;
+import static com.blueseer.inv.invData.getInMstrByLocation;
 import static com.blueseer.inv.invData.getInvBrowseView;
 import static com.blueseer.inv.invData.getInvMaintInit;
 import static com.blueseer.inv.invData.getInvMaintInit_min;
@@ -975,14 +976,22 @@ protected void doGet(HttpServletRequest request, HttpServletResponse response)
             break;
           }
         
-        case "getInMstr" : { 
-            ArrayList<invData.in_mstr> x = getInMstr(new String[]{request.getHeader("param1")}); 
+        case "getInMstr" : {
+            ArrayList<invData.in_mstr> x = getInMstr(new String[]{request.getHeader("param1")});
             ObjectMapper objectMapper = new ObjectMapper();
             String r = objectMapper.writeValueAsString(x);
             response.getWriter().print(r);
             break;
           }
-        
+
+        case "getInMstrByLocation" : {
+            ArrayList<invData.in_mstr> x = getInMstrByLocation(new String[]{request.getHeader("param1"), request.getHeader("param2"), request.getHeader("param3")});
+            ObjectMapper objectMapper = new ObjectMapper();
+            String r = objectMapper.writeValueAsString(x);
+            response.getWriter().print(r);
+            break;
+          }
+
         case "getItemComponentDetail" : {
             response.getWriter().print(arrayToJson(getItemComponentDetail(request.getHeader("param1"), request.getHeader("param2"))));
             break;    
