@@ -106,11 +106,11 @@ public static String getItemJSON(String id) {
                " it_loc as 'Location', it_wh as 'Warehouse', " +
                " it_sell_price as 'SellingPrice', it_pur_price as 'PurchasePrice', it_mtl_cost as 'MaterialCost', " +
                " it_leadtime as 'LeadTime', it_safestock as 'SafetyStock', " +
-               " it_group as 'Group', it_drawing as 'Drawing' " +          
-               " it_rev as 'Revision', it_custrev as 'CustRevision', " +  
-               " it_taxcode as 'TaxCode', it_custrev as 'Status', " +  
-               " from item_mstr " +   
-               " where it_item = " + "'" + id + "'" + 
+               " it_group as 'Group', it_drawing as 'Drawing', " +
+               " it_rev as 'Revision', it_custrev as 'CustRevision', " +
+               " it_taxcode as 'TaxCode', it_custrev as 'Status' " +
+               " from item_mstr " +
+               " where it_item = " + "'" + id + "'" +
                ";");
                    
                    org.json.simple.JsonArray json = new org.json.simple.JsonArray();
