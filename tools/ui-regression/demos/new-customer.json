@@ -1,0 +1,14 @@
+{
+  "steps": [
+    { "caption": "Creating a new Customer", "wait": 1000 },
+    { "menu": "Address>Customer Menu>Customer Maintenance", "wait": 1200 },
+    { "click": "New", "wait": 1500, "caption": "BlueSeer assigns the customer number automatically" },
+    { "type": { "label": "Name", "text": "Acme Distribution" } },
+    { "type": { "label": "Line 1", "text": "123 Demo Street" } },
+    { "type": { "label": "City", "text": "Springfield" } },
+    { "type": { "label": "Phone", "text": "555-0100" } },
+    { "zoom": { "label": "Name", "level": 2.0 }, "wait": 1600, "caption": "Basic contact info is all you need to get started" },
+    { "click": "Add", "wait": 1200, "caption": "Saved" },
+    { "screenshot": "new-customer-saved.png" }
+  ]
+}

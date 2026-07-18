@@ -39,20 +39,30 @@ DISPLAY_NUM="${DEMO_DISPLAY:-95}"
 export DISPLAY=":${DISPLAY_NUM}"
 
 MANIFEST_DIR="$(mktemp -d)"
+RAW_VIDEO="$MANIFEST_DIR/raw.mp4"
 
 XVFB_PID=""
 FLUXBOX_PID=""
 FFMPEG_PID=""
 
+stop_ffmpeg() {
+  if [ -n "$FFMPEG_PID" ] && kill -0 "$FFMPEG_PID" 2>/dev/null; then
+    # SIGINT (not -9) so ffmpeg finalizes the mp4's container/moov atom
+    # instead of leaving a corrupt/unplayable file. A SIGINT-terminated
+    # process's wait exit status is non-zero, which would trip "set -e"
+    # here (this is called directly from the main flow, not just from the
+    # trap, which disables errexit before calling it) - that exit status
+    # isn't actionable, so swallow it explicitly.
+    kill -INT "$FFMPEG_PID"
+    wait "$FFMPEG_PID" 2>/dev/null || true
+  fi
+  FFMPEG_PID=""
+}
+
 cleanup() {
   local status=$?
   set +e
-  if [ -n "$FFMPEG_PID" ] && kill -0 "$FFMPEG_PID" 2>/dev/null; then
-    # SIGINT (not -9) so ffmpeg finalizes the mp4's container/moov atom
-    # instead of leaving a corrupt/unplayable file.
-    kill -INT "$FFMPEG_PID"
-    wait "$FFMPEG_PID" 2>/dev/null
-  fi
+  stop_ffmpeg
   [ -n "$FLUXBOX_PID" ] && kill "$FLUXBOX_PID" 2>/dev/null
   [ -n "$XVFB_PID" ] && kill "$XVFB_PID" 2>/dev/null
   exit $status
@@ -70,14 +80,38 @@ fluxbox >"$MANIFEST_DIR/fluxbox.log" 2>&1 &
 FLUXBOX_PID=$!
 sleep 1
 
-ffmpeg -y -f x11grab -video_size "${WIDTH}x${HEIGHT}" -framerate 12 -i "$DISPLAY" \
-    -c:v libx264 -preset ultrafast -pix_fmt yuv420p "$OUT_VIDEO" \
+ffmpeg -y -f x11grab -video_size "${WIDTH}x${HEIGHT}" -framerate 20 -i "$DISPLAY" \
+    -c:v libx264 -preset ultrafast -pix_fmt yuv420p "$RAW_VIDEO" \
     >"$MANIFEST_DIR/ffmpeg.log" 2>&1 &
 FFMPEG_PID=$!
+# Best-effort correlation between DemoRunner's wall clock and ffmpeg's capture
+# timeline, so "zoom" steps can compute which video-relative second to punch
+# in at (see DemoRunner's class doc). ffmpeg's own x11grab startup adds maybe
+# a few hundred ms of slop this doesn't account for - fine for a demo effect,
+# not something frame-accurate.
+RECORDING_EPOCH_MS=$(date +%s%3N)
 sleep 1
+
+export DEMO_RECORDING_EPOCH_MS="$RECORDING_EPOCH_MS"
+export DEMO_WIDTH="$WIDTH"
+export DEMO_HEIGHT="$HEIGHT"
 
 "$TOOL_DIR/run.sh" demo "$WORK_DIR" "$SCRIPT_JSON" "$MANIFEST_DIR"
 
+# Stop the raw capture before post-processing so raw.mp4 is finalized and
+# readable (and so cleanup's own stop_ffmpeg call below becomes a no-op).
+stop_ffmpeg
+
+if [ -s "$MANIFEST_DIR/zoom-filter.txt" ]; then
+  echo "Applying zoom effect(s)..."
+  ffmpeg -y -i "$RAW_VIDEO" -vf "$(cat "$MANIFEST_DIR/zoom-filter.txt")" \
+      -c:v libx264 -preset medium -pix_fmt yuv420p "$OUT_VIDEO" \
+      >"$MANIFEST_DIR/ffmpeg-zoom.log" 2>&1
+else
+  cp "$RAW_VIDEO" "$OUT_VIDEO"
+fi
+
 echo ""
 echo "Video:    $OUT_VIDEO"
+echo "Raw:      $RAW_VIDEO (pre-zoom, kept for debugging)"
 echo "Manifest: $MANIFEST_DIR/manifest.json"

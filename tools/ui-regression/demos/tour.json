@@ -1,0 +1,12 @@
+{
+  "steps": [
+    { "caption": "Welcome to BlueSeer ERP", "wait": 2000 },
+    { "zoom": { "rect": [470, 280, 340, 340] }, "wait": 1800, "caption": "A full-featured, open-source manufacturing ERP" },
+    { "menu": "Order", "caption": "Order Management", "wait": 1400 },
+    { "menu": "Purchasing", "caption": "Purchasing", "wait": 1400 },
+    { "menu": "Inventory", "caption": "Inventory Control", "wait": 1400 },
+    { "menu": "Finance", "caption": "Finance and Accounting", "wait": 1400 },
+    { "menu": "HR", "caption": "Human Resources", "wait": 1400 },
+    { "key": "ESCAPE", "wait": 500 }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "steps": [
+    { "caption": "Creating a new Product Code", "wait": 1000 },
+    { "menu": "Inventory>Product Code Maintenance", "wait": 1200 },
+    { "click": "New", "wait": 700 },
+    { "type": { "label": "Key", "text": "D001" } },
+    { "type": { "label": "Description", "text": "Demo Product Code" } },
+    { "zoom": { "label": "Key", "level": 2.2 }, "wait": 1800, "caption": "Every product code needs a unique key" },
+    { "wait": 1200, "screenshot": "new-product-code-filled.png" }
+  ]
+}

@@ -1,10 +1,11 @@
 {
   "steps": [
     { "caption": "Welcome to BlueSeer ERP", "wait": 1500 },
-    { "menu": "Inventory>Product Code Maintenance", "caption": "Product Code Maintenance", "wait": 1500 },
-    { "click": "New", "wait": 800 },
-    { "type": { "label": "Key", "text": "DEMO-001" }, "wait": 500 },
-    { "type": { "label": "Description", "text": "Demo Product Code" }, "wait": 500 },
-    { "caption": "That's how you add a new product code", "wait": 2000 }
+    { "menu": "Inventory>Product Code Maintenance", "caption": "Product Code Maintenance", "wait": 1200 },
+    { "click": "New", "wait": 600 },
+    { "type": { "label": "Key", "text": "D001" } },
+    { "type": { "label": "Description", "text": "Demo Product Code" } },
+    { "zoom": { "label": "Key", "level": 2.2 }, "wait": 1500, "caption": "Every product code needs a unique key" },
+    { "screenshot": "product-code-filled.png" }
   ]
 }

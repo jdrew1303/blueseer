@@ -81,10 +81,21 @@ whose DB has already been through that once.
 manager, so `MainFrame`'s `setExtendedState(MAXIMIZED_BOTH)` call on launch
 never actually resizes anything - the window stays pinned at its tiny
 pre-login `pack()` size without one), starts `ffmpeg -f x11grab` recording
-that display, runs the script via `run.sh demo`, then stops everything
-(SIGINT to ffmpeg specifically, so the mp4 container finalizes instead of
-coming out corrupt) and prints where the video and a `manifest.json` ended
-up.
+that display, runs the script via `run.sh demo`, then stops the raw capture
+(SIGINT, so the mp4 container finalizes instead of coming out corrupt),
+optionally runs a second ffmpeg pass to apply any zoom effects (see below),
+and prints where the final video, the raw pre-zoom recording, and a
+`manifest.json` ended up.
+
+`demos/` has a few complete, verified scripts covering common flows
+(`tour.json`, `new-product-code.json`, `new-customer.json`) - a working
+starting point to copy from, and evidence of what actually works end to end
+against a real build rather than just documentation.
+
+Every click-like step moves the real pointer to the target with a brief
+eased glide first, rather than teleporting there - the entire point of this
+mode is a human watching along, unlike `record`/`replay`'s instant clicks.
+Typing likewise visibly clicks into the field before entering text.
 
 ### Script format
 
@@ -94,32 +105,59 @@ up.
     { "caption": "Welcome to BlueSeer ERP", "wait": 1500 },
     { "menu": "Inventory>Product Code Maintenance", "wait": 1500 },
     { "click": "New", "wait": 800 },
-    { "type": { "label": "Key", "text": "DEMO-001" } },
+    { "type": { "label": "Key", "text": "D001" } },
+    { "zoom": { "label": "Key", "level": 2.2 }, "wait": 1500 },
     { "tab": { "title": "Detail" } },
     { "combo": { "index": 0, "select": "Each" } },
-    { "key": "ENTER" }
+    { "key": "ENTER" },
+    { "screenshot": "final-state.png" }
   ]
 }
 ```
 
 Every step has exactly one action key, plus optional `"wait"` (ms to pause
-*after* that action - defaults to 400ms; a bare `{"wait": N}` step is just
+*after* that action - defaults to 600ms; a bare `{"wait": N}` step is just
 that pause on its own) and `"caption"` (logged to the manifest and console
 for narration/subtitle authoring later, not rendered on screen) and
-`"screenshot"` (also captures a discrete PNG alongside the continuous video).
+`"screenshot"` (captures a discrete PNG alongside the continuous video - a
+bare `{"screenshot": "name.png"}` step just captures on its own).
 
 | Action | Shape | Notes |
 |---|---|---|
 | `menu` | `"Top>Sub>Leaf"` | Matches `JMenu`/`JMenuItem` text exactly, `>`-joined. |
 | `click` | `"Button Text"` | Finds a `JButton` by exact text in the current content pane. |
-| `type` | `{"label": "Key", "text": "..."}` or `{"index": 0, "text": "..."}` | `label` finds the field whose nearest preceding `JLabel` matches (case-insensitive substring) - a heuristic that works for BlueSeer's generated forms but isn't a real association, so fall back to `index` (nth `JTextField`) if it picks the wrong one. |
+| `type` | `{"label": "Key", "text": "..."}` or `{"index": 0, "text": "..."}` | `label` finds the `JLabel` matching (exact match preferred, else case-insensitive substring), then the `JTextField`/`JComboBox` on the same visual row to its right - geometric, not tree-structural, since BlueSeer's generated panels aren't consistent about *how* a label and its field get parented (see `SwingAppDriver.findFieldByLabel`'s doc comment for a concrete example of two different patterns on two different screens). Fall back to `index` (nth visible `JTextField`) if a screen's layout still confuses it. |
 | `tab` | `{"pane": 0, "title": "..."}` or `{"pane": 0, "index": 1}` | `pane` selects which `JTabbedPane` on screen (0 = first found), default 0. |
 | `check` / `radio` | `0` | Clicks the nth checkbox/radio button found on screen. |
 | `combo` | `{"index": 0, "item": 1}` or `{"index": 0, "select": "text"}` | `index` picks which combo box; `item`/`select` pick its value. |
 | `key` | `"ENTER"` | Any `java.awt.event.KeyEvent.VK_*` name. |
+| `zoom` | `{"label": "Key", "level": 2.0}` or `{"button": "New", "level": 2.0}` or `{"rect": [x,y,w,h]}` | Punches in on the target, holds for `"wait"` ms (default 1500), eases back out. See "Zoom" below. |
 | `wait` | `1500` | Pause only. |
 | `caption` | `"..."` | Log only, no UI action. |
+| `screenshot` | `"name.png"` | Captures a PNG, no other action. |
 
 A failed step (menu path/button/field not found) is logged to the manifest
-as an `ERROR:` entry and the script continues - it doesn't abort the whole
+as an `ERROR:` entry (with its own screenshot of what was actually on
+screen, `error-N.png`) and the script continues - it doesn't abort the whole
 recording over one bad selector.
+
+### Zoom
+
+Implemented as a second ffmpeg pass over the finished raw recording, not a
+live effect - `crop`'s width/height turned out not to be reconfigurable
+per-frame in practice (only its x/y position is; confirmed empirically, not
+just from docs), so the actual technique is: `scale` the whole frame up by a
+time-varying factor (`scale` *does* support this, via `eval=frame`), then
+`crop` a constant-size window that pans to stay centered on the target as
+the frame grows underneath it. DemoRunner records each zoom event's target
+center and video-relative timing (using the `DEMO_RECORDING_EPOCH_MS` /
+`DEMO_WIDTH` / `DEMO_HEIGHT` env vars `demo.sh` sets, to correlate its own
+wall clock with ffmpeg's capture timeline - accurate to within ffmpeg's own
+x11grab startup latency, maybe a few hundred ms, not frame-exact) and writes
+the resulting filter graph to `<outDir>/zoom-filter.txt`; `demo.sh` applies
+it automatically if any zoom steps ran. The recording holds still for the
+entire ease-in + hold + ease-out window while a zoom step executes, since
+the crop is computed against those exact timestamps.
+
+Don't overuse it - one or two zooms on the moment that actually matters
+reads as emphasis; zooming on every field reads as seasick.
