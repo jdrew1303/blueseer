@@ -569,6 +569,32 @@
 
 <profiles>
   <profile>
+    <!-- Browser build for running BlueSeer under CheerpJ (see browser/README.md):
+         mvn package -Pbrowser -DskipTests. CheerpJ's JVM only understands
+         class files up to Java 17, so this overrides the project's normal
+         maven.compiler.release=25 down to CheerpJ's ceiling. utilities/bsCommVT.java
+         is excluded because it's a standalone CLI service (not reachable from
+         the Swing UI) that uses Java 21 virtual threads, a bytecode feature
+         CheerpJ can't run regardless of the release flag, so it's simplest
+         to just not compile it into the browser build rather than rewrite it. -->
+    <id>browser</id>
+    <properties>
+      <maven.compiler.release>17</maven.compiler.release>
+    </properties>
+    <build>
+      <plugins>
+        <plugin>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <configuration>
+            <excludes>
+              <exclude>utilities/bsCommVT.java</exclude>
+            </excludes>
+          </configuration>
+        </plugin>
+      </plugins>
+    </build>
+  </profile>
+  <profile>
     <id>windows</id>
     <activation>
       <os>

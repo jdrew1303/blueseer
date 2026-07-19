@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>BlueSeer ERP (Browser via CheerpJ)</title>
+<!-- CheerpJ 3 runtime, loaded from LeaningTech's CDN. See ../browser/README.md
+     for why this can't be self-hosted and what to check first if this page
+     doesn't boot. -->
+<script src="https://cjrtnc.leaningtech.com/3.0/cj3loader.js"></script>
+<style>
+  html, body { margin: 0; height: 100%; background: #222; }
+  #display { width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<div id="display"></div>
+<script>
+(async () => {
+  await cheerpjInit();
+  // CheerpJ mounts the directory this page is served from at /app by
+  // default, so /app/dist/* lines up with this file living next to the
+  // "dist" folder produced by `mvn package -Pbrowser` (see serve.sh).
+  cheerpjCreateDisplay(-1, -1, document.getElementById('display'));
+  await cheerpjRunMain("com.blueseer.utl.mf", "/app/dist/*");
+})();
+</script>
+</body>
+</html>
