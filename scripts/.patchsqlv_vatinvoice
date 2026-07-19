@@ -1,0 +1,60 @@
+/* sql updates for the VAT-compliant Van Sale receipt/invoice feature.
+
+   NOTE: named descriptively rather than the next numeric version (the last
+   patch checked into this repo is v70, but the running app is well past
+   that - this repo doesn't have the client's live patch sequence). Rename/
+   renumber this to fit the client's actual .patchsqlvNN sequence at deploy
+   time.
+
+   The ALTER TABLE below is single-shot - not safely re-runnable, matching
+   the scripts/sqliteupgrade.txt convention for plain column adds (SQLite
+   has no "ADD COLUMN IF NOT EXISTS"). The seed INSERTs are idempotent
+   (guarded by WHERE NOT EXISTS) and safe to run more than once.
+*/
+
+select '*** ALTER SCHEMA SECTION ***';
+select '';
+
+/* site_vatnbr: the company's own VAT/tax registration number, required on
+   every VAT invoice by law. No field for this existed anywhere in the
+   schema (checked site_mstr and every other admData record) - this is the
+   correct long-term home for it, read-only from the hand terminal app
+   (mirrors how site_logo/ov_ctrl brand config already work: server-owned,
+   app only reads it). No UI to edit this yet - SiteMaint would need a new
+   field too; out of scope here, so set this directly via SQL until that
+   desktop-side work happens. */
+alter table site_mstr add column site_vatnbr varchar(30) NOT NULL DEFAULT '';
+
+select '*** ADD TABLE IF NOT EXISTS SECTION ***';
+select '';
+
+/* no new tables - tax_mstr/taxd_mstr/item_mstr.it_taxcode already exist */
+
+select '*** SEED DATA SECTION (starting point ONLY - a compliance reviewer should confirm these codes/rates/item assignments against the actual product catalogue before go-live, same caveat as warn_rule in .patchsqlv_ingredientlabeling) ***';
+select '';
+
+/* Irish VAT: 0% (e.g. bread), 13.5% reduced (e.g. cakes/pastries), 23%
+   standard (e.g. confectionery/chocolate) - per the client's own examples.
+   taxd_enabled=1 even though the item-level tax calc
+   (OVData.getTaxAmtApplicableByItem) doesn't currently filter on it -
+   other tooling (desktop tax-code browse, getTaxDet callers) may. */
+insert into tax_mstr (tax_code, tax_desc, tax_userid) select 'VAT-ZERO', 'VAT Zero Rate', 'system' where not exists(select 1 from tax_mstr where tax_code = 'VAT-ZERO');
+insert into tax_mstr (tax_code, tax_desc, tax_userid) select 'VAT-RED', 'VAT Reduced Rate 13.5%', 'system' where not exists(select 1 from tax_mstr where tax_code = 'VAT-RED');
+insert into tax_mstr (tax_code, tax_desc, tax_userid) select 'VAT-STD', 'VAT Standard Rate 23%', 'system' where not exists(select 1 from tax_mstr where tax_code = 'VAT-STD');
+
+insert into taxd_mstr (taxd_parentcode, taxd_desc, taxd_type, taxd_percent, taxd_enabled, taxd_userid, taxd_line) select 'VAT-ZERO', 'VAT Zero Rate', 'VAT', 0, 1, 'system', '1' where not exists(select 1 from taxd_mstr where taxd_parentcode = 'VAT-ZERO');
+insert into taxd_mstr (taxd_parentcode, taxd_desc, taxd_type, taxd_percent, taxd_enabled, taxd_userid, taxd_line) select 'VAT-RED', 'VAT Reduced Rate', 'VAT', 13.5, 1, 'system', '1' where not exists(select 1 from taxd_mstr where taxd_parentcode = 'VAT-RED');
+insert into taxd_mstr (taxd_parentcode, taxd_desc, taxd_type, taxd_percent, taxd_enabled, taxd_userid, taxd_line) select 'VAT-STD', 'VAT Standard Rate', 'VAT', 23, 1, 'system', '1' where not exists(select 1 from taxd_mstr where taxd_parentcode = 'VAT-STD');
+
+/* demo items - purely so this feature is demoable with the item catalogue
+   already seeded in this dev db (office supplies, not real bakery goods -
+   assignments below are arbitrary, just spread across all 3 rates to
+   exercise the mixed-rate breakdown on a printed receipt). */
+update item_mstr set it_taxcode = 'VAT-ZERO' where it_item = '10-1001';
+update item_mstr set it_taxcode = 'VAT-RED'  where it_item = '10-1002';
+update item_mstr set it_taxcode = 'VAT-STD'  where it_item = '10-1003';
+update item_mstr set it_taxcode = 'VAT-ZERO' where it_item = 'p0001';
+update item_mstr set it_taxcode = 'VAT-RED'  where it_item = 'p0002';
+update item_mstr set it_taxcode = 'VAT-STD'  where it_item = 'p0003';
+
+select '*** SQL UPDATE ENDS ***';

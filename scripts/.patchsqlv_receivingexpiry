@@ -1,0 +1,24 @@
+/* sql updates for lot/expiry capture on the hand terminal's Receiving screen.
+
+   NOTE: named descriptively rather than the next numeric version - see
+   .patchsqlv_vatinvoice/.patchsqlv_ingredientlabeling for the same
+   convention. Rename/renumber this to fit the client's actual
+   .patchsqlvNN sequence at deploy time.
+
+   Single-shot - not safely re-runnable (SQLite has no "ADD COLUMN IF NOT
+   EXISTS"), matching the scripts/sqliteupgrade.txt convention for plain
+   column adds.
+*/
+
+select '*** ALTER SCHEMA SECTION ***';
+select '';
+
+/* rvd_expdate: a best-before/expiry date entered at receiving time, per
+   line. Previously there was nowhere to put this at all - the only related
+   field anywhere in the schema is in_mstr.in_expire, which the server's own
+   receiving code never actually populated with anything meaningful (see
+   rcvData.java's _updateInventoryFromReceiver, now fixed to read this
+   field instead of stamping "today" onto every line in the batch). */
+alter table recv_det add column rvd_expdate varchar(10) NOT NULL DEFAULT '';
+
+select '*** SQL UPDATE ENDS ***';
