@@ -188,7 +188,8 @@ public class bsTest {
                 "contactemail", // sqemail
                 "pojasper",
                 "orderjasper",
-                "posjasper");
+                "posjasper",
+                "xvatnbr");
        return x;
    }
    

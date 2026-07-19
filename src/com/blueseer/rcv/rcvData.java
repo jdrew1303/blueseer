@@ -116,15 +116,15 @@ public class rcvData {
         String sqlInsert = "insert into recv_det (rvd_id, rvd_rline, rvd_item, rvd_po, "
                             + " rvd_poline, rvd_qty, rvd_uom, "
                             + "rvd_listprice, rvd_disc, rvd_netprice,  "
-                            + " rvd_loc, rvd_wh, rvd_serial, rvd_lot, rvd_cost, rvd_site, " 
-                            + " rvd_packingslip, rvd_date  ) "
-                        + " values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?); "; 
-       
-          ps = con.prepareStatement(sqlSelect); 
+                            + " rvd_loc, rvd_wh, rvd_serial, rvd_lot, rvd_cost, rvd_site, "
+                            + " rvd_packingslip, rvd_date, rvd_expdate  ) "
+                        + " values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?); ";
+
+          ps = con.prepareStatement(sqlSelect);
           ps.setString(1, x.rvd_id);
           ps.setInt(2, x.rvd_rline);
           res = ps.executeQuery();
-          ps = con.prepareStatement(sqlInsert);  
+          ps = con.prepareStatement(sqlInsert);
             if (! res.isBeforeFirst()) {
             ps.setString(1, x.rvd_id);
             ps.setInt(2, x.rvd_rline);
@@ -144,8 +144,9 @@ public class rcvData {
             ps.setString(16, x.rvd_site);
             ps.setString(17, x.rvd_packingslip);
             ps.setString(18, x.rvd_date);
+            ps.setString(19, x.rvd_expdate);
             rows = ps.executeUpdate();
-            } 
+            }
             return rows;
     }
    
@@ -323,8 +324,7 @@ public class rcvData {
 
     public static void _updateInventoryFromReceiver(recv_mstr rv, ArrayList<recv_det> rvd, Connection bscon) throws SQLException {
        boolean isInventorySerialized = (OVData.isInvCtrlSerialize()) ? true : false;
-        
-        Date expire = new java.util.Date();
+
         double baseqty = 0.00;
         String serial;
 
@@ -332,12 +332,22 @@ public class rcvData {
 
             baseqty = OVData.getUOMBaseQty(z.rvd_item(), rv.rv_site(), z.rvd_uom(), z.rvd_qty());
             serial = z.rvd_serial();
-                    
+
+            // expire is a lot-level concept (a best-before date captured at
+            // receiving) -- independent of whether this company serializes
+            // individual units, so it's computed per-line from what was
+            // actually received rather than defaulted to "today" once for
+            // the whole batch. Blank when nothing was entered, matching
+            // today's behavior for callers (the desktop client) that never
+            // send this field.
+            Date expire = (z.rvd_expdate() != null && ! z.rvd_expdate().isBlank())
+                    ? parseDate(z.rvd_expdate())
+                    : null;
+
                     // check for serialized inventory flag...if not...prevent serial from entry into in_mstr
                     if (! OVData.isInvCtrlSerialize()) {
                         serial = "";
-                        expire = null;
-                    } 
+                    }
 
                     invData.in_mstr in = new invData.in_mstr(null,
                         z.rvd_item(),
@@ -722,8 +732,8 @@ public class rcvData {
                     r = new recv_det(m, res.getString("rvd_id"), res.getString("rvd_po"), res.getInt("rvd_poline"),
                     res.getString("rvd_packingslip"), res.getString("rvd_item"), res.getDouble("rvd_qty"), res.getString("rvd_date"), res.getDouble("rvd_listprice"),
                     res.getDouble("rvd_netprice"), res.getDouble("rvd_disc"), res.getString("rvd_lot"), res.getString("rvd_wh"), res.getString("rvd_serial"),
-                    res.getString("rvd_loc"), res.getString("rvd_jobnbr"), res.getString("rvd_site"), res.getString("rvd_status"), 
-                    res.getInt("rvd_rline"), res.getDouble("rvd_voqty"), res.getDouble("rvd_cost"), res.getString("rvd_uom") );
+                    res.getString("rvd_loc"), res.getString("rvd_jobnbr"), res.getString("rvd_site"), res.getString("rvd_status"),
+                    res.getInt("rvd_rline"), res.getDouble("rvd_voqty"), res.getDouble("rvd_cost"), res.getString("rvd_uom"), res.getString("rvd_expdate") );
                     list.add(r);
                     }
             }
@@ -1345,16 +1355,16 @@ public class rcvData {
         }
     }
    
-    public record recv_det(String[] m, String rvd_id, String rvd_po, int rvd_poline, 
-        String rvd_packingslip, String rvd_item, double rvd_qty, 
-        String rvd_date, double rvd_listprice, double rvd_netprice, double rvd_disc, 
+    public record recv_det(String[] m, String rvd_id, String rvd_po, int rvd_poline,
+        String rvd_packingslip, String rvd_item, double rvd_qty,
+        String rvd_date, double rvd_listprice, double rvd_netprice, double rvd_disc,
         String rvd_lot, String rvd_wh, String rvd_serial, String rvd_loc,
-        String rvd_jobnbr, String rvd_site, String rvd_status, int rvd_rline, 
-        double rvd_voqty, double rvd_cost, String rvd_uom ) {
+        String rvd_jobnbr, String rvd_site, String rvd_status, int rvd_rline,
+        double rvd_voqty, double rvd_cost, String rvd_uom, String rvd_expdate ) {
          public recv_det(String[] m) {
             this(m, "", "", 0, "", "", 0, "", 0, 0, 0,
                     "", "", "", "", "", "", "", 0, 0, 0,
-                    ""
+                    "", ""
                     );
         }
     }

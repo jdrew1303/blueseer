@@ -3025,12 +3025,16 @@ public class invData {
     }
     
     public static int _addUpdateInMstr(in_mstr in, boolean isInventorySerialized, Connection con) throws SQLException {
-          int rows = 0; 
+          int rows = 0;
+          // expire is a lot-level concept (best-before/expiry date), not a
+          // serial-tracking one -- only serial gets cleared when this
+          // company doesn't serialize individual units. A caller that
+          // never sets in_expire (every caller today except a receipt with
+          // an entered expiry date) is unaffected either way.
           String expire = in.in_expire();
           String serial = in.in_serial();
           if (! isInventorySerialized) {
                 serial = "";
-                expire = null;
             }
             java.util.Date now = new java.util.Date();
             DateFormat dfdate = new SimpleDateFormat("yyyy-MM-dd");

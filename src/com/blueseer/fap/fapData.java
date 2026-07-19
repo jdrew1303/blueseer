@@ -1518,7 +1518,8 @@ public class fapData {
                 bsParseInt(String.valueOf(j + 1)), // rline
                 0, // voqty
                 bsParseDouble(d[2]), // cost
-                "EA" // uom    
+                "EA", // uom
+                "" // expdate
                 );
         recvlist.add(rvd);
                 

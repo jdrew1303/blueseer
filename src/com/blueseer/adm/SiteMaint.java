@@ -603,8 +603,12 @@ public class SiteMaint extends javax.swing.JPanel implements IBlueSeerCtl {
                 tbemail.getText(), // sqemail
                 tb_po_generic.getText(),
                 tb_or_generic.getText(),
-                tb_pos_generic.getText());
-        return x;  
+                tb_pos_generic.getText(),
+                // no form field for this yet - round-trip whatever was
+                // already loaded rather than silently blanking it on save
+                // (x is null on a fresh "Add New" before any record loads)
+                (SiteMaint.x == null) ? "" : SiteMaint.x.site_vatnbr());
+        return x;
     }
     
     public void lookUpFrame() {

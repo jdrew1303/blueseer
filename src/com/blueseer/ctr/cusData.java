@@ -2576,22 +2576,22 @@ public class cusData {
             try {
                 
                 if (keys[0].equals("cm_code")) {
-                res = st.executeQuery("SELECT cm_code, cm_name, cm_line1, cm_city, cm_state, cm_zip " +
+                res = st.executeQuery("SELECT cm_code, cm_name, cm_line1, cm_line2, cm_line3, cm_city, cm_state, cm_zip, cm_country " +
                         " from cm_mstr where cm_code like " + "'" + '%' + keys[1] + '%' + "'" + ";");
                 }
                 if (keys[0].equals("cm_name")) {
-                res = st.executeQuery("SELECT cm_code, cm_name, cm_line1, cm_city, cm_state, cm_zip " +
+                res = st.executeQuery("SELECT cm_code, cm_name, cm_line1, cm_line2, cm_line3, cm_city, cm_state, cm_zip, cm_country " +
                         " from cm_mstr where cm_name like " + "'" + '%' + keys[1] + '%' + "'" + ";");
                 }
                 if (keys[0].equals("cm_zip")) {
-                res = st.executeQuery("SELECT cm_code, cm_name, cm_line1, cm_city, cm_state, cm_zip " +
+                res = st.executeQuery("SELECT cm_code, cm_name, cm_line1, cm_line2, cm_line3, cm_city, cm_state, cm_zip, cm_country " +
                         " from cm_mstr where cm_zip like " + "'" + '%' + keys[1] + '%' + "'" + ";");
                 }
-                
-                
+
+
                     while (res.next()) {
-                   
-                    JSONArray rowArray = new JSONArray(); 
+
+                    JSONArray rowArray = new JSONArray();
                         rowArray.put("select");
                         rowArray.put(res.getString("cm_code"));
                         rowArray.put(res.getString("cm_name"));
@@ -2599,6 +2599,9 @@ public class cusData {
                         rowArray.put(res.getString("cm_city"));
                         rowArray.put(res.getString("cm_state"));
                         rowArray.put(res.getString("cm_zip"));
+                        rowArray.put(res.getString("cm_line2"));
+                        rowArray.put(res.getString("cm_line3"));
+                        rowArray.put(res.getString("cm_country"));
                         jsonarray.put(rowArray);
                 }
                

@@ -252,7 +252,8 @@ public class admData {
                             res.getString("site_sqeemail"),
                             res.getString("site_po_jasper"),
                             res.getString("site_or_jasper"),
-                            res.getString("site_pos_jasper")
+                            res.getString("site_pos_jasper"),
+                            res.getString("site_vatnbr")
                         );
                     }
                 }
@@ -5397,16 +5398,16 @@ public class admData {
         }
     }
     
-    public record site_mstr(String[] m, String site_site, String site_desc, 
+    public record site_mstr(String[] m, String site_site, String site_desc,
     String site_line1, String site_line2, String site_line3, String site_city,
     String site_state, String site_zip, String site_country, String site_phone,
-    String site_web, String site_logo, String site_iv_jasper, String site_sh_jasper, 
+    String site_web, String site_logo, String site_iv_jasper, String site_sh_jasper,
     String site_sqename, String site_sqephone, String site_sqefax, String site_sqeemail,
-    String site_po_jasper, String site_or_jasper, String site_pos_jasper) {
+    String site_po_jasper, String site_or_jasper, String site_pos_jasper, String site_vatnbr) {
         public site_mstr(String[] m) {
             this(m, "", "", "", "", "", "", "", "", "", "",
                     "", "", "", "", "", "", "", "", "", "",
-                    ""
+                    "", ""
                     );
         }
     }
