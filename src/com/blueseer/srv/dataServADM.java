@@ -104,10 +104,13 @@ import static com.blueseer.utl.OVData.deleteMenuToAllUsers;
 import static com.blueseer.utl.OVData.deleteMenuToUser;
 import static com.blueseer.utl.OVData.getMenusOfUsersListArray;
 import static com.blueseer.utl.OVData.getUsersOfMenusList;
+import static com.blueseer.utl.OVData.getSystemImageDirectory;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
@@ -212,16 +215,34 @@ protected void doGet(HttpServletRequest request, HttpServletResponse response)
             break;
           }
         
-        case "getSiteMstr" : { 
-            String[] key = new String[]{request.getHeader("param1")}; 
+        case "getSiteMstr" : {
+            String[] key = new String[]{request.getHeader("param1")};
             admData.site_mstr x = getSiteMstr(key);
             ObjectMapper objectMapper = new ObjectMapper();
             String r = objectMapper.writeValueAsString(x);
             response.getWriter().print(r);
             break;
           }
-        
-                
+
+        case "getSiteLogoImage" : {
+            // Raw bytes, not JSON -- site_mstr.site_logo only ever stores a
+            // filename (see SiteMaint), the actual file lives in the
+            // configured image directory. Content-type is guessed from the
+            // extension so a future SVG logo (site_logo="logo.svg") is
+            // already handled, even though today it's always a raster PNG.
+            String filename = request.getHeader("param1");
+            File imageFile = new File(BlueSeerUtils.cleanDirString(getSystemImageDirectory()) + filename);
+            if (filename == null || filename.isEmpty() || ! imageFile.exists()) {
+                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                break;
+            }
+            String contentType = filename.toLowerCase().endsWith(".svg") ? "image/svg+xml" : "image/png";
+            response.setContentType(contentType);
+            response.getOutputStream().write(Files.readAllBytes(imageFile.toPath()));
+            break;
+          }
+
+
         case "addUserMstr" : { 
             String line;
             StringBuilder sb = new StringBuilder();  

@@ -665,7 +665,8 @@ public class RecvMaint extends javax.swing.JPanel implements IBlueSeerV {
                 bsParseInt(rvdet.getValueAt(j, 0).toString()), // rline
                 0, // voqty
                 bsParseDouble(rvdet.getValueAt(j, 13).toString()), // cost
-                rvdet.getValueAt(j, 5).toString() // uom    
+                rvdet.getValueAt(j, 5).toString(), // uom
+                "" // expdate -- no field on this desktop form yet
                 );
         list.add(x);
         }      
