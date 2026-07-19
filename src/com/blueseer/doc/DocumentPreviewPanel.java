@@ -26,6 +26,7 @@ SOFTWARE.
 package com.blueseer.doc;
 
 import bsmf.MainFrame;
+import com.formdev.flatlaf.extras.FlatSVGIcon;
 import org.icepdf.ri.common.ComponentKeyBinding;
 import org.icepdf.ri.common.SwingController;
 import org.icepdf.ri.common.SwingViewBuilder;
@@ -33,6 +34,7 @@ import org.icepdf.ri.common.MyAnnotationCallback;
 
 import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -41,9 +43,11 @@ import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Image;
+import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.util.List;
@@ -105,8 +109,15 @@ public class DocumentPreviewPanel extends JPanel {
                 add(new JLabel("Couldn't display this image.", SwingConstants.CENTER), BorderLayout.CENTER);
                 return;
             }
-            imageCanvas = new ImageCanvas(scaleToFit(image, 700));
+            imageCanvas = new ImageCanvas(image);
             add(new JScrollPane(imageCanvas), BorderLayout.CENTER);
+
+            JButton btRotate = new JButton(new FlatSVGIcon("images/queue-rotate.svg", 16, 16));
+            btRotate.setToolTipText("Rotate 90° - a photographed document is often sideways");
+            btRotate.addActionListener(e -> imageCanvas.rotate90());
+            JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.CENTER));
+            toolbar.add(btRotate);
+            add(toolbar, BorderLayout.SOUTH);
         } catch (Exception ex) {
             MainFrame.bslog(ex);
             add(new JLabel("Couldn't display this image.", SwingConstants.CENTER), BorderLayout.CENTER);
@@ -162,13 +173,51 @@ public class DocumentPreviewPanel extends JPanel {
     private static class ImageCanvas extends JPanel {
 
         private static final Color HIGHLIGHT_COLOR = new Color(0xE6, 0x8A, 0x00);
+        private static final int MAX_WIDTH = 700;
 
-        private final Image image;
+        private BufferedImage originalImage;
+        private Image displayImage;
         private List<DocTagsParser.Block> highlights = List.of();
 
-        ImageCanvas(Image image) {
-            this.image = image;
-            setPreferredSize(new Dimension(image.getWidth(null), image.getHeight(null)));
+        ImageCanvas(BufferedImage originalImage) {
+            this.originalImage = originalImage;
+            rescale();
+        }
+
+        private void rescale() {
+            displayImage = scaleToFit(originalImage, MAX_WIDTH);
+            setPreferredSize(new Dimension(displayImage.getWidth(null), displayImage.getHeight(null)));
+        }
+
+        /**
+         * A phone photo of a document is sideways at least as often as
+         * not - IcePDF's own viewer already has rotation for the PDF path,
+         * this is the equivalent for the plain-image path. Rotates the
+         * actual pixel data (not just the on-screen presentation), so
+         * clears any highlight boxes rather than trying to also rotate
+         * their coordinates - they're recomputed from scratch the next
+         * time this document is freshly opened anyway (see
+         * ScanToImportPanel.openDetail, which always rebuilds the preview
+         * from the original, unrotated bytes on disk).
+         */
+        void rotate90() {
+            int w = originalImage.getWidth();
+            int h = originalImage.getHeight();
+            int type = originalImage.getType() == 0 ? BufferedImage.TYPE_INT_ARGB : originalImage.getType();
+            BufferedImage rotated = new BufferedImage(h, w, type);
+            Graphics2D g2 = rotated.createGraphics();
+            AffineTransform at = new AffineTransform();
+            at.translate(h / 2.0, w / 2.0);
+            at.rotate(Math.PI / 2);
+            at.translate(-w / 2.0, -h / 2.0);
+            g2.drawImage(originalImage, at, null);
+            g2.dispose();
+
+            originalImage = rotated;
+            highlights = List.of();
+            rescale();
+            revalidate();
+            repaint();
         }
 
         void setHighlights(List<DocTagsParser.Block> highlights) {
@@ -179,15 +228,15 @@ public class DocumentPreviewPanel extends JPanel {
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
-            g.drawImage(image, 0, 0, this);
+            g.drawImage(displayImage, 0, 0, this);
             if (highlights.isEmpty()) {
                 return;
             }
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setColor(HIGHLIGHT_COLOR);
             g2.setStroke(new BasicStroke(2f));
-            int imgWidth = image.getWidth(null);
-            int imgHeight = image.getHeight(null);
+            int imgWidth = displayImage.getWidth(null);
+            int imgHeight = displayImage.getHeight(null);
             for (DocTagsParser.Block block : highlights) {
                 int x = (int) (block.left() / 500.0 * imgWidth);
                 int y = (int) (block.top() / 500.0 * imgHeight);
