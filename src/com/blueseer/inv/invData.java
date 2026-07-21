@@ -3131,12 +3131,65 @@ public class invData {
         } catch (SQLException s) {   
 	       MainFrame.bslog(s);  
                m = new String[]{BlueSeerUtils.ErrorBit, getMessageTag(1016, Thread.currentThread().getStackTrace()[1].getClassName() + "." + Thread.currentThread().getStackTrace()[1].getMethodName())}; 
-               
+
         }
         return r;
     }
-  
-    
+
+    /** Every in_mstr row at one warehouse/location (across all items) -- the
+     * counterpart to getInMstr's "one item, every location" query, used by
+     * cycle counting to list what's expected to be on hand at a scanned
+     * location. Mirrors getInMstr's structure exactly. */
+    public static ArrayList<in_mstr> getInMstrByLocation(String[] x) {
+        ArrayList<in_mstr> r = new ArrayList<in_mstr>();
+        String[] m = new String[2];
+        if (bsmf.MainFrame.remoteDB && ! bsmf.MainFrame.isSSHConnected) {
+            ArrayList<String[]> paramlist = new ArrayList<String[]>();
+            paramlist.add(new String[]{"id", "getInMstrByLocation"});
+            paramlist.add(new String[]{"param1",  x[0]});
+            paramlist.add(new String[]{"param2",  x[1]});
+            paramlist.add(new String[]{"param3",  x[2]});
+            ObjectMapper objectMapper = new ObjectMapper();
+            try {
+                String returnstring = sendServerPost(paramlist, "", null, "dataServINV");
+                r = objectMapper.readValue(returnstring, new TypeReference<ArrayList<in_mstr>>() {});
+                return r;
+            } catch (IOException ex) {
+                bslog(ex);
+                return r;
+            }
+        }
+        String sql = "select * from in_mstr where in_wh = ? and in_loc = ? and in_site = ? order by in_item;";
+
+        try (Connection con = (ds == null ? DriverManager.getConnection(url + db, user, pass) : ds.getConnection());
+	PreparedStatement ps = con.prepareStatement(sql);) {
+        ps.setString(1, x[0]);
+        ps.setString(2, x[1]);
+        ps.setString(3, x[2]);
+
+             try (ResultSet res = ps.executeQuery();) {
+                if (! res.isBeforeFirst()) {
+                m = new String[]{BlueSeerUtils.ErrorBit, BlueSeerUtils.noRecordFound};
+                } else {
+                    while(res.next()) {
+                        m = new String[]{BlueSeerUtils.SuccessBit, BlueSeerUtils.getRecordSuccess};
+                        r.add(new in_mstr(m, res.getString("in_item"), res.getDouble("in_qoh"),
+                        res.getString("in_date"), res.getString("in_loc"),
+                        res.getString("in_wh"), res.getString("in_site"),
+                        res.getString("in_serial"), res.getString("in_expire"),
+                        res.getString("in_userid"), res.getString("in_prog")));
+                    }
+                }
+            }
+        } catch (SQLException s) {
+	       MainFrame.bslog(s);
+               m = new String[]{BlueSeerUtils.ErrorBit, getMessageTag(1016, Thread.currentThread().getStackTrace()[1].getClassName() + "." + Thread.currentThread().getStackTrace()[1].getMethodName())};
+
+        }
+        return r;
+    }
+
+
     public static tran_mstr getTranMstr(String id) {
         tran_mstr r = null;
         String[] m = new String[2];
