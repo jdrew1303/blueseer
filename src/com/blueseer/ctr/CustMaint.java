@@ -700,7 +700,11 @@ public class CustMaint extends javax.swing.JPanel implements IBlueSeerT {
                 tblastselldate.getText(),
                 tbmunicipality.getText(),
                 tbcounty.getText(),
-                BlueSeerUtils.boolToString(cbtaxexempt.isSelected())
+                BlueSeerUtils.boolToString(cbtaxexempt.isSelected()),
+                // No VAT-number field on this form yet -- preserve whatever
+                // was already on the loaded record (k) rather than blanking
+                // it out on every save; a brand-new customer just gets "".
+                (k != null) ? k.cm_vatnbr() : ""
                 );
         return x;
     }

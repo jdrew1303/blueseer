@@ -1,0 +1,24 @@
+/* sql updates: customer VAT registration number, printed on invoices and
+   credit notes per Revenue's "Information required on Credit Notes"
+   (full name, address AND VAT registration number of the person to whom
+   the note is being issued) -- confirmed this applies beyond just
+   reverse-charge/intra-EU supplies, so it belongs alongside the other
+   customer fields already surfaced to the hand terminal (see
+   .patchsqlv_vatinvoice for the supplier-side equivalent, site_vatnbr).
+
+   Single-shot ALTER, not safely re-runnable, matching that same
+   convention -- rename/renumber to fit the client's real .patchsqlvNN
+   sequence at deploy time.
+*/
+
+select '*** ALTER SCHEMA SECTION ***';
+select '';
+
+alter table cm_mstr add column cm_vatnbr varchar(30) NOT NULL DEFAULT '';
+
+select '*** SEED DATA SECTION (dev-db only, so the hand terminal has something to print) ***';
+select '';
+
+update cm_mstr set cm_vatnbr = 'IE9876543K' where cm_code = 'ACME';
+
+select '*** SQL UPDATE ENDS ***';

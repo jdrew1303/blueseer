@@ -247,7 +247,8 @@ public class cusData {
                     "",
                     "", // muncipal
                     "", // county
-                    "0" // tax exempt
+                    "0", // tax exempt
+                    "" // vat number
                 );
      
                 _addCustMstr(x, con, ps, res, true);
@@ -645,7 +646,7 @@ public class cusData {
                     res.getString("cm_label"), res.getString("cm_ps_jasper"), res.getString("cm_iv_jasper"), res.getString("cm_phone"), res.getString("cm_email"), 
                     res.getString("cm_is855export"),res.getString("cm_is856export"),res.getString("cm_is810export"),res.getString("cm_site"), res.getString("cm_misc1"),
                     res.getString("cm_cascade"), res.getString("cm_highbal"), res.getString("cm_avgdays"), res.getString("cm_lastpaydate"), res.getString("cm_lastselldate"),
-                        res.getString("cm_municipality"), res.getString("cm_county"), res.getString("cm_tax_exempt"));
+                        res.getString("cm_municipality"), res.getString("cm_county"), res.getString("cm_tax_exempt"), res.getString("cm_vatnbr"));
                     }
                 }
             }
@@ -681,7 +682,7 @@ public class cusData {
                     res.getString("cm_label"), res.getString("cm_ps_jasper"), res.getString("cm_iv_jasper"), res.getString("cm_phone"), res.getString("cm_email"), 
                     res.getString("cm_is855export"),res.getString("cm_is856export"),res.getString("cm_is810export"),res.getString("cm_site"), res.getString("cm_misc1"),
                     res.getString("cm_cascade"), res.getString("cm_highbal"), res.getString("cm_avgdays"), res.getString("cm_lastpaydate"), res.getString("cm_lastselldate"),
-                    res.getString("cm_municipality"), res.getString("cm_county"), res.getString("cm_tax_exempt"));
+                    res.getString("cm_municipality"), res.getString("cm_county"), res.getString("cm_tax_exempt"), res.getString("cm_vatnbr"));
                     }
             }
             return r;
@@ -2576,15 +2577,15 @@ public class cusData {
             try {
                 
                 if (keys[0].equals("cm_code")) {
-                res = st.executeQuery("SELECT cm_code, cm_name, cm_line1, cm_line2, cm_line3, cm_city, cm_state, cm_zip, cm_country " +
+                res = st.executeQuery("SELECT cm_code, cm_name, cm_line1, cm_line2, cm_line3, cm_city, cm_state, cm_zip, cm_country, cm_vatnbr " +
                         " from cm_mstr where cm_code like " + "'" + '%' + keys[1] + '%' + "'" + ";");
                 }
                 if (keys[0].equals("cm_name")) {
-                res = st.executeQuery("SELECT cm_code, cm_name, cm_line1, cm_line2, cm_line3, cm_city, cm_state, cm_zip, cm_country " +
+                res = st.executeQuery("SELECT cm_code, cm_name, cm_line1, cm_line2, cm_line3, cm_city, cm_state, cm_zip, cm_country, cm_vatnbr " +
                         " from cm_mstr where cm_name like " + "'" + '%' + keys[1] + '%' + "'" + ";");
                 }
                 if (keys[0].equals("cm_zip")) {
-                res = st.executeQuery("SELECT cm_code, cm_name, cm_line1, cm_line2, cm_line3, cm_city, cm_state, cm_zip, cm_country " +
+                res = st.executeQuery("SELECT cm_code, cm_name, cm_line1, cm_line2, cm_line3, cm_city, cm_state, cm_zip, cm_country, cm_vatnbr " +
                         " from cm_mstr where cm_zip like " + "'" + '%' + keys[1] + '%' + "'" + ";");
                 }
 
@@ -2602,6 +2603,7 @@ public class cusData {
                         rowArray.put(res.getString("cm_line2"));
                         rowArray.put(res.getString("cm_line3"));
                         rowArray.put(res.getString("cm_country"));
+                        rowArray.put(res.getString("cm_vatnbr"));
                         jsonarray.put(rowArray);
                 }
                
@@ -4387,21 +4389,21 @@ public class cusData {
     
     public record cm_mstr(String[] m, String cm_code, String cm_name, String cm_line1, String cm_line2,
     String cm_line3, String cm_city, String cm_state, String cm_zip,
-    String cm_country, String cm_dateadd, String cm_datemod, String cm_usermod, 
-    String cm_group, String cm_market, String cm_creditlimit, String cm_onhold, 
+    String cm_country, String cm_dateadd, String cm_datemod, String cm_usermod,
+    String cm_group, String cm_market, String cm_creditlimit, String cm_onhold,
     String cm_carrier, String cm_terms, String cm_freight_type, String cm_price_code,
     String cm_disc_code, String cm_tax_code, String cm_salesperson, String cm_ar_acct,
     String cm_ar_cc, String cm_bank, String cm_curr, String cm_remarks,
     String cm_label, String cm_ps_jasper, String cm_iv_jasper, String cm_phone, String cm_email,
     String cm_is855export, String cm_is856export, String cm_is810export, String cm_site, String cm_misc1, String cm_cascade,
     String cm_highbal, String cm_avgdays, String cm_lastpaydate, String cm_lastselldate,
-    String cm_municipality, String cm_county, String cm_tax_exempt) {
+    String cm_municipality, String cm_county, String cm_tax_exempt, String cm_vatnbr) {
         public cm_mstr(String[] m) {
             this(m, "", "", "", "", "", "", "", "", "", "",
                     "", "", "", "", "", "", "", "", "", "",
                     "", "", "", "", "", "", "", "", "", "",
                     "", "", "", "", "", "", "", "", "", "",
-                    "", "", "", "", "", ""
+                    "", "", "", "", "", "", ""
                     );
         }
     }
