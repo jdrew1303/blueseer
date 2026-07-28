@@ -68,6 +68,13 @@ Within each folder, one script per scenario, named for what it proves:
   should still compute correctly. Example: `edge-exactly-at-cutoff.json`,
   `edge-week-53.json`, `edge-zero-years-service.json`.
 
+`assert` can't currently read JTable cell contents (Register of Employees,
+RPN Bulk Retrieval's results grid, etc.) - `findValueByLabel`/`anyShowingLabelContains`
+only look at JLabel/JTextField/JComboBox. For a table-backed screen, verify
+via screenshot instead (as the `reports/` and `rpn/` scripts do) rather than
+asserting against table content - don't add a fragile workaround that
+happens to string-match some other label near the table.
+
 Don't be precious about the boundary between "error" and "edge" - the point
 is the filename tells the next person what scenario they're looking at
 without opening it, not that every case fits a strict taxonomy.
@@ -181,9 +188,26 @@ itself) - don't run scripts concurrently against the same `bsdbdev.db`, and
 don't leave a manually-launched instance running while these execute (see
 the smoke README).
 
+Running the whole suite as one tight back-to-back loop (14+ JVM launches in
+a few minutes) can occasionally produce a spurious `menu path not found` or
+similar timing failure on an otherwise-passing script, purely from system
+load - `launchAndLogin()` polls for the JMenuBar to be populated before
+returning, but that's not a hard guarantee against a genuinely starved
+machine. If a script fails standalone, that's real; if it only fails inside
+a large batch and passes cleanly on its own immediately after, it's this,
+not a regression - don't chase it further.
+
 ## Status
 
-Structure and tooling (this doc, the `assert` step, pass/fail exit codes)
-are in place. Scripts themselves are being filled in folder by folder:
-`leavers/`, `rpn/`, `pay-processing/`, and the rest are still empty pending
-that work.
+Covered with real (non-screenshot-only) assertions: `company-setup-and-
+employee-master/`, `rpn/`, `pay-processing/`, `leavers/`, `bik-sick-pay-
+pensions/`, `psr/`. Covered with load-verification (screenshot-only, no
+`assert`): `distribution/`, `reports/`.
+
+Not yet built out here - `journals-and-year-transition/` and `remittance/`
+only have the screenshot-only smoke coverage in `../smoke/` (see that
+folder's README for what's covered there). `company-setup-and-employee-
+master/` doesn't yet cover the Additions/Deductions/Mid-Year Cumulatives/CSO
+Details tabs or the S-01 New Company Wizard (the latter creates a new
+company record - needs a decision on whether/how to make that safely
+repeatable against the shared dev database before scripting it).

@@ -1,0 +1,37 @@
+{
+  "steps": [
+    { "caption": "Statutory Sick Pay (S-56): entitlement computes live, Record button gates on medical certificate" },
+    { "menu": "Payroll>BIK / Sick Pay & Pensions>Statutory Sick Pay", "wait": 1500 },
+    { "screenshot": "ssp-initial.png" },
+    { "assert": { "label": "Daily Rate Base:", "notBlank": true } },
+    { "assert": { "label": "SSP Pay This Instance:", "notBlank": true } },
+    { "check": 0, "wait": 500 },
+    { "screenshot": "ssp-cert-checked.png" },
+    { "click": "Record Sick Leave", "wait": 800 },
+    { "screenshot": "ssp-recorded-dialog.png" },
+    { "click": "OK", "wait": 500 },
+
+    { "caption": "Illness Benefit Handling (S-57): default is employer-does-not-pay, radio selection persists" },
+    { "menu": "Payroll>BIK / Sick Pay & Pensions>Illness Benefit Handling", "wait": 1500 },
+    { "screenshot": "illness-benefit-initial.png" },
+    { "radio": 1, "wait": 500 },
+    { "click": "Save", "wait": 800 },
+    { "screenshot": "illness-benefit-saved.png" },
+    { "click": "OK", "wait": 500 },
+
+    { "caption": "Parenting Benefits (S-58): Maternity leave record, employer top-up doesn't touch gross pay" },
+    { "menu": "Payroll>BIK / Sick Pay & Pensions>Parenting Benefits", "wait": 1500 },
+    { "screenshot": "parenting-benefit-initial.png" },
+    { "assert": { "text": "no amount is added to gross pay for the benefit itself", "visible": true } },
+    { "click": "Save Leave Record", "wait": 800 },
+    { "screenshot": "parenting-benefit-saved.png" },
+    { "click": "OK", "wait": 500 },
+
+    { "caption": "Auto-Enrolment (S-61): eligibility and Year 1 contribution tier" },
+    { "menu": "Payroll>BIK / Sick Pay & Pensions>Auto-Enrolment (MyFuture Fund)", "wait": 1500 },
+    { "screenshot": "auto-enrolment.png" },
+    { "assert": { "label": "Eligibility Status:", "equals": "Eligible" } },
+    { "assert": { "label": "Current Contribution Tier:", "contains": "Year 1" } },
+    { "assert": { "label": "AEPN Status:", "equals": "No pending notifications" } }
+  ]
+}

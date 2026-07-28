@@ -1,0 +1,25 @@
+{
+  "steps": [
+    { "caption": "PSR Prepare & Submit (S-31): with nothing finalised yet, totals should correctly show zero rather than garbage or an error" },
+    { "menu": "Payroll>PSR Submissions>PSR Prepare and Submit", "wait": 1500 },
+    { "click": "PSR Prepare & Submit", "wait": 1000 },
+    { "screenshot": "psr-prepare-dialog.png" },
+    { "assert": { "label": "PAYE Total:", "equals": "0" } },
+    { "assert": { "label": "USC Total:", "equals": "0" } },
+    { "assert": { "label": "PRSI Total:", "equals": "0" } },
+    { "assert": { "label": "LPT Total:", "equals": "0" } },
+    { "click": "Close", "wait": 500 },
+
+    { "caption": "PSR Control Panel (S-32)" },
+    { "menu": "Payroll>PSR Submissions>PSR Control Panel", "wait": 1500 },
+    { "screenshot": "psr-control-panel.png" },
+
+    { "caption": "Recheck Payroll Submissions (S-34)" },
+    { "menu": "Payroll>PSR Submissions>Recheck Payroll Submissions", "wait": 1500 },
+    { "screenshot": "recheck-submissions.png" },
+
+    { "caption": "Check Revenue Record (S-35)" },
+    { "menu": "Payroll>PSR Submissions>Check Revenue Record", "wait": 1500 },
+    { "screenshot": "check-revenue-record.png" }
+  ]
+}

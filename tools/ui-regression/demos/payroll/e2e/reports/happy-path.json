@@ -1,0 +1,28 @@
+{
+  "steps": [
+    { "caption": "Reports hub (S-40 to S-47): each report screen should load without error, even with no finalised pay periods yet" },
+    { "menu": "Payroll>Reports>Payroll Summary/Audit Trail", "wait": 1500 },
+    { "screenshot": "s40-audit-trail.png" },
+
+    { "menu": "Payroll>Reports>Tax Details Report", "wait": 1500 },
+    { "screenshot": "s41-tax-details.png" },
+
+    { "menu": "Payroll>Reports>Register of Employees", "wait": 1500 },
+    { "screenshot": "s42-register-of-employees.png" },
+
+    { "menu": "Payroll>Reports>Additions/Deductions Report", "wait": 1500 },
+    { "screenshot": "s43-add-ded-report.png" },
+
+    { "menu": "Payroll>Reports>Pension Reports", "wait": 1500 },
+    { "screenshot": "s44-pension-reports.png" },
+
+    { "menu": "Payroll>Reports>Other Reports", "wait": 1500 },
+    { "screenshot": "s45-other-reports.png" },
+
+    { "menu": "Payroll>Reports>Year End Summary", "wait": 1500 },
+    { "screenshot": "s46-year-end-summary.png" },
+
+    { "menu": "Payroll>Reports>Employment Details Summary", "wait": 1500 },
+    { "screenshot": "s47-employment-details-summary.png" }
+  ]
+}

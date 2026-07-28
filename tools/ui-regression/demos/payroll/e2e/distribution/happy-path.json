@@ -1,0 +1,15 @@
+{
+  "steps": [
+    { "caption": "Print/Email Payslips (S-36): with nothing finalised yet, the payslip list is legitimately empty" },
+    { "menu": "Payroll>Distribution & Payment>Print/Email Payslips", "wait": 1500 },
+    { "screenshot": "print-payslips.png" },
+
+    { "caption": "Pay Employees - Bank File (S-38)" },
+    { "menu": "Payroll>Distribution & Payment>Pay Employees - Bank File", "wait": 1500 },
+    { "screenshot": "bank-file-wizard.png" },
+
+    { "caption": "Pay Method Reporting (S-39)" },
+    { "menu": "Payroll>Distribution & Payment>Pay Method Reporting", "wait": 1500 },
+    { "screenshot": "pay-method-reporting.png" }
+  ]
+}
