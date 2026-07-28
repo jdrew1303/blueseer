@@ -1,0 +1,21 @@
+{
+  "steps": [
+    { "caption": "Navigate to BIK - Cars & Vans (S-53)" },
+    { "menu": "Payroll>BIK / Sick Pay & Pensions>BIK - Cars & Vans", "wait": 1200 },
+    { "screenshot": "s53-loaded.png" },
+    { "type": { "label": "OMV (Original Market Value):", "text": "28000" }, "wait": 400 },
+    { "type": { "label": "CO2 Emissions (g/km):", "text": "120" }, "wait": 400 },
+    { "type": { "label": "Actual Business Kilometres:", "text": "32000" }, "wait": 400 },
+    { "type": { "label": "Available From:", "text": "01/01/2026" }, "wait": 400 },
+    { "type": { "label": "Available To:", "text": "31/12/2026" }, "wait": 800 },
+    { "key": "TAB", "wait": 800 },
+    { "screenshot": "s53-car-computed.png" },
+    { "caption": "Navigate to Pension Deduction Setup (S-59)" },
+    { "menu": "Payroll>BIK / Sick Pay & Pensions>Pension Deduction Setup", "wait": 1200 },
+    { "screenshot": "s59-standard-loaded.png" },
+    { "combo": { "index": 1, "select": "CWPS" }, "wait": 800 },
+    { "screenshot": "s59-cwps.png" },
+    { "combo": { "index": 1, "select": "NECI" }, "wait": 800 },
+    { "screenshot": "s59-neci.png" }
+  ]
+}

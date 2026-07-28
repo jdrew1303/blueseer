@@ -1,0 +1,19 @@
+{
+  "steps": [
+    { "caption": "Navigate to Remittance Overview (S-66)" },
+    { "menu": "Payroll>Revenue Payments>Remittance to Revenue - Overview", "wait": 1200 },
+    { "screenshot": "s66-loaded.png" },
+    { "caption": "Navigate to Payment Due Dates (S-67)" },
+    { "menu": "Payroll>Revenue Payments>Payment Due Dates", "wait": 1200 },
+    { "screenshot": "s67-loaded.png" },
+    { "caption": "Navigate to Revenue Payments Record (S-68)" },
+    { "menu": "Payroll>Revenue Payments>Revenue Payments Record", "wait": 1200 },
+    { "screenshot": "s68-loaded.png" },
+    { "caption": "Navigate to Returns Look-Up (S-69)" },
+    { "menu": "Payroll>Revenue Payments>Returns Look-Up", "wait": 1200 },
+    { "screenshot": "s69-loaded.png" },
+    { "caption": "Navigate to Query Revenue Record (S-70)" },
+    { "menu": "Payroll>Revenue Payments>Query Revenue Record", "wait": 1200 },
+    { "screenshot": "s70-loaded.png" }
+  ]
+}

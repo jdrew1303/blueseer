@@ -1004,6 +1004,7 @@ extends JFrame {
         myarray.add(BlueSeerUtils.getGlobalMenuTag((String)"admin"));
         myarray.add(BlueSeerUtils.getGlobalMenuTag((String)"help"));
         myarray.add(BlueSeerUtils.getGlobalMenuTag((String)"custom"));
+        myarray.add(BlueSeerUtils.getGlobalMenuTag((String)"payroll"));
         return myarray;
     }
 

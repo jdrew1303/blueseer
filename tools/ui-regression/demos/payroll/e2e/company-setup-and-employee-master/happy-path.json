@@ -1,0 +1,47 @@
+{
+  "steps": [
+    { "caption": "Load existing employee, verify Personal Details loaded correctly" },
+    { "menu": "Payroll>Employee Maintenance", "wait": 1500 },
+    { "combo": { "index": 0, "item": 0 }, "wait": 1000 },
+    { "screenshot": "employee-loaded.png" },
+    { "assert": { "label": "Surname", "equals": "Murphy" } },
+    { "assert": { "label": "First Name", "equals": "Siobhan" } },
+
+    { "caption": "Edit Email and persist via Update" },
+    { "type": { "label": "Email", "text": "siobhan.murphy.updated" }, "wait": 300 },
+    { "click": "Update", "wait": 800 },
+    { "screenshot": "personal-saved-dialog.png" },
+    { "click": "OK", "wait": 500 },
+
+    { "caption": "Navigate away and back - confirm the edit actually persisted, not just displayed" },
+    { "menu": "Payroll>Payroll Calendar", "wait": 1000 },
+    { "menu": "Payroll>Employee Maintenance", "wait": 1500 },
+    { "combo": { "index": 0, "item": 0 }, "wait": 1000 },
+    { "assert": { "label": "Email", "equals": "siobhan.murphy.updated" } },
+
+    { "caption": "Revenue Details tab: Start Date entry auto-computes Start Week" },
+    { "tab": { "pane": 0, "title": "Revenue Details" }, "wait": 800 },
+    { "screenshot": "revenue-details.png" },
+    { "type": { "label": "Start Date", "text": "06/01/2026" }, "wait": 300 },
+    { "key": "TAB", "wait": 500 },
+    { "assert": { "label": "Start Week", "notBlank": true } },
+    { "click": "Update", "wait": 800 },
+    { "screenshot": "revenue-saved-dialog.png" },
+    { "click": "No", "wait": 500 },
+    { "click": "OK", "wait": 500 },
+
+    { "caption": "HR Details tab: edit and persist Job Title" },
+    { "tab": { "pane": 0, "title": "HR Details" }, "wait": 800 },
+    { "type": { "label": "Job Title", "text": "Payroll Administrator" }, "wait": 300 },
+    { "click": "Update", "wait": 800 },
+    { "screenshot": "hr-details-saved.png" },
+    { "click": "OK", "wait": 500 },
+
+    { "caption": "Navigate away and back - confirm HR Details persisted too" },
+    { "menu": "Payroll>Payroll Calendar", "wait": 1000 },
+    { "menu": "Payroll>Employee Maintenance", "wait": 1500 },
+    { "combo": { "index": 0, "item": 0 }, "wait": 1000 },
+    { "tab": { "pane": 0, "title": "HR Details" }, "wait": 800 },
+    { "assert": { "label": "Job Title", "equals": "Payroll Administrator" } }
+  ]
+}

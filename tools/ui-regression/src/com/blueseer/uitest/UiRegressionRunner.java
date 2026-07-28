@@ -102,7 +102,8 @@ public class UiRegressionRunner {
         } else if (mode.equals("demo")) {
             File script = new File(args[2]);
             File outDir = new File(args[3]);
-            DemoRunner.run(script, outDir);
+            boolean passed = DemoRunner.run(script, outDir);
+            System.exit(passed ? 0 : 1);
         } else {
             System.err.println("unknown mode: " + mode);
             System.exit(2);

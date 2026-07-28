@@ -11,6 +11,7 @@ import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JPasswordField;
+import javax.swing.MenuSelectionManager;
 import javax.swing.JRadioButton;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
@@ -90,9 +91,57 @@ final class SwingAppDriver {
                 smoothMoveAndClick(loginButton);
             }
             robot.waitForIdle();
-            pause(3000);
+            // A fixed pause here is a guess at how long post-login menu
+            // construction (a DB round-trip building ~70 menu_tree rows into
+            // the JMenuBar) takes, and it's occasionally not enough under
+            // system load - confirmed by a real failure where every menu
+            // step failed instantly because the JMenuBar was still empty 3s
+            // after login. Poll for the actual condition instead of guessing
+            // its duration.
+            waitForMenuBarPopulated((JFrame) frame, 10000);
         }
         return frame;
+    }
+
+    private void waitForMenuBarPopulated(JFrame jframe, long timeoutMs) {
+        long deadline = System.currentTimeMillis() + timeoutMs;
+        while (System.currentTimeMillis() < deadline) {
+            JMenuBar bar = jframe.getJMenuBar();
+            if (bar != null && bar.getMenuCount() > 0) {
+                return;
+            }
+            pause(100);
+        }
+    }
+
+    /**
+     * The container demo-script steps ("click", "type", "combo", "tab",
+     * "check"/"radio") should actually search: the topmost currently-showing
+     * {@link Window} other than the main frame if one exists (a modal
+     * {@code JDialog} - including a plain {@code JOptionPane} confirm, which
+     * is backed by one - or a wizard dialog like {@code RpnRequestDialog}),
+     * else the main frame's own content pane. {@link Window#getWindows()}
+     * returns windows in creation order, so the last showing non-main entry
+     * is the most recently opened - the right choice even for a dialog
+     * spawned from within another dialog (a confirm prompt raised from
+     * inside a wizard), since that inner dialog is necessarily created after
+     * its parent.
+     *
+     * <p>Without this, every step targeting dialog content silently resolves
+     * against the main frame's tree instead and fails with a "not found"
+     * error - a real, previously-undiagnosed limitation (dialogs are common
+     * throughout this app: confirmations, multi-step wizards, add/edit
+     * modals), not a hypothetical edge case.
+     */
+    Container currentInteractionRoot(JFrame mainFrame) {
+        Window topmost = null;
+        for (Window w : Window.getWindows()) {
+            if (w == mainFrame || !w.isShowing()) {
+                continue;
+            }
+            topmost = w;
+        }
+        return topmost != null ? topmost : mainFrame.getContentPane();
     }
 
     Frame waitForFrame() throws InterruptedException {
@@ -229,18 +278,29 @@ final class SwingAppDriver {
         smoothMoveAndClick(top);
         pause(300);
 
+        // Every JMenu we've opened along the way (top included), so it can
+        // be closed by hand once we're done - MenuSelectionManager.
+        // clearSelectedPath() turned out not to close any of these under
+        // this app's Nimbus look-and-feel, top-level included, so cleanup
+        // is symmetric with how each was opened rather than relying on it.
+        List<JMenu> openedMenus = new ArrayList<>();
+        openedMenus.add(top);
         JMenu currentMenu = top;
         for (int i = 1; i < path.size(); i++) {
             String text = path.get(i);
             JMenuItem found = null;
+            StringBuilder seen = new StringBuilder();
             for (int j = 0; j < currentMenu.getItemCount(); j++) {
                 JMenuItem item = currentMenu.getItem(j);
+                seen.append('[').append(item == null ? "null" : item.getText()).append(']');
                 if (item != null && text.equals(item.getText())) {
                     found = item;
                     break;
                 }
             }
             if (found == null) {
+                System.err.println("menu path lookup failed: no item '" + text + "' under '" +
+                        currentMenu.getText() + "' - actual items: " + seen);
                 return false;
             }
             // A direct diagonal glide from the top-level menu bar down to this
@@ -256,7 +316,68 @@ final class SwingAppDriver {
             Point cur = currentPointer();
             smoothMoveTo(new Point(cur.x, dest.y));
             smoothMoveTo(dest);
-            pressAndRelease();
+
+            boolean isTerminal = i == path.size() - 1;
+            if (isTerminal) {
+                // The submenu(s) above were opened directly via
+                // JPopupMenu.show(...) rather than through
+                // MenuSelectionManager's normal selection-path machinery
+                // (see below), so Swing doesn't consider them part of an
+                // active menu session - a raw coordinate click here lands as
+                // a stray click outside any tracked menu, which dismisses
+                // everything without firing the item's action (confirmed:
+                // the target screen never loaded, just closed the menu).
+                // JMenuItem.doClick() invokes the action listener directly,
+                // sidestepping that entirely.
+                JMenuItem terminal = found;
+                try {
+                    SwingUtilities.invokeAndWait(terminal::doClick);
+                } catch (Exception ex) {
+                    throw new RuntimeException(ex);
+                }
+                robot.waitForIdle();
+                try {
+                    SwingUtilities.invokeAndWait(() -> {
+                        MenuSelectionManager.defaultManager().clearSelectedPath();
+                        for (int k = openedMenus.size() - 1; k >= 0; k--) {
+                            JMenu m = openedMenus.get(k);
+                            m.getPopupMenu().setVisible(false);
+                            m.setSelected(false);
+                        }
+                    });
+                } catch (Exception ex) {
+                    throw new RuntimeException(ex);
+                }
+                robot.waitForIdle();
+                pause(300);
+            } else {
+                // Neither a raw java.awt.Robot press/release nor AssertJ's
+                // Robot.click() reliably pops a *nested* JMenu's flyout open
+                // here (confirmed by screenshotting mid-failure: the click
+                // registers but the submenu never appears), and manually
+                // extending MenuSelectionManager's selected path updates the
+                // selection model but - confirmed via a debug probe - still
+                // leaves getPopupMenu().isShowing() false, since that's not
+                // what actually triggers the popup to render (that normally
+                // happens via a ChangeListener BasicMenuUI itself registers,
+                // and apparently isn't wired the same way under this app's
+                // Nimbus look-and-feel). Calling JPopupMenu.show(...)
+                // directly is the one approach that reliably renders it. The
+                // cursor still glides here first purely so a demo recording
+                // shows it travelling down the cascade.
+                JMenu sub = (JMenu) found;
+                try {
+                    SwingUtilities.invokeAndWait(() -> {
+                        sub.setSelected(true);
+                        sub.getPopupMenu().show(sub, sub.getWidth(), 0);
+                    });
+                } catch (Exception ex) {
+                    throw new RuntimeException(ex);
+                }
+                openedMenus.add(sub);
+                robot.waitForIdle();
+                pause(300);
+            }
             pause(300);
             if (found instanceof JMenu) {
                 currentMenu = (JMenu) found;
@@ -380,6 +501,25 @@ final class SwingAppDriver {
      * which pattern a given screen happens to use.
      */
     Component findFieldByLabel(Container root, String labelText) {
+        return findNearestToLabel(root, labelText, false);
+    }
+
+    /**
+     * Same label-then-nearest-to-the-right lookup as {@link #findFieldByLabel},
+     * but also considers plain {@link JLabel}s as candidates - used only for
+     * "assert" steps, which need to read back computed, read-only results
+     * (e.g. {@code lblTaxableAmount} in TerminationLumpSumPanel: a JLabel
+     * sitting to the right of a static "Taxable Amount:" caption JLabel,
+     * exactly the same row-based layout pattern as a JTextField would use).
+     * Kept separate from findFieldByLabel rather than folded in, since a
+     * "type" step matching a JLabel by mistake would silently type into
+     * nothing instead of failing loudly.
+     */
+    Component findValueByLabel(Container root, String labelText) {
+        return findNearestToLabel(root, labelText, true);
+    }
+
+    private Component findNearestToLabel(Container root, String labelText, boolean includeLabels) {
         String wanted = labelText.toLowerCase(java.util.Locale.ROOT);
         List<Component> labels = new ArrayList<>();
         collectShowing(root, JLabel.class, labels);
@@ -412,10 +552,16 @@ final class SwingAppDriver {
         List<Component> candidates = new ArrayList<>();
         collectShowing(root, JTextField.class, candidates);
         collectShowing(root, JComboBox.class, candidates);
+        if (includeLabels) {
+            collectShowing(root, JLabel.class, candidates);
+        }
 
         Component best = null;
         long bestScore = Long.MAX_VALUE;
         for (Component c : candidates) {
+            if (c == target) {
+                continue; // the caption label itself is never its own value
+            }
             Point p = c.getLocationOnScreen();
             int centerY = p.y + c.getHeight() / 2;
             int dy = Math.abs(centerY - labelCenterY);
@@ -433,6 +579,35 @@ final class SwingAppDriver {
             }
         }
         return best;
+    }
+
+    /** For a self-describing JLabel with no separate caption+value pair (a standalone banner/warning). */
+    boolean anyShowingLabelContains(Container root, String needle) {
+        List<Component> labels = new ArrayList<>();
+        collectShowing(root, JLabel.class, labels);
+        String wanted = needle.toLowerCase(java.util.Locale.ROOT);
+        for (Component c : labels) {
+            String t = ((JLabel) c).getText();
+            if (t != null && t.toLowerCase(java.util.Locale.ROOT).contains(wanted)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Reads back the displayed value of a field found via findValueByLabel. */
+    String textOf(Component c) {
+        if (c instanceof JTextField) {
+            return ((JTextField) c).getText();
+        }
+        if (c instanceof JLabel) {
+            return ((JLabel) c).getText();
+        }
+        if (c instanceof JComboBox) {
+            Object sel = ((JComboBox<?>) c).getSelectedItem();
+            return sel == null ? "" : sel.toString();
+        }
+        return null;
     }
 
     <T extends Component> void collectShowing(Component c, Class<T> type, List<Component> out) {
@@ -461,7 +636,18 @@ final class SwingAppDriver {
     }
 
     void setComboIndex(JComboBox<?> combo, int itemIdx) {
-        SwingUtilities.invokeLater(() -> combo.setSelectedIndex(itemIdx));
+        // selectComboSmooth clicks the combo first (so a demo recording shows
+        // the dropdown genuinely opening), which leaves its popup showing;
+        // setSelectedIndex() only updates the model and doesn't go through
+        // the popup's own selection listener, so the dropdown never closes
+        // on its own - confirmed by screenshotting mid-run: the popup was
+        // still open, covering every field below it, well after the
+        // selection had already taken effect. setPopupVisible(false) is the
+        // direct, documented way to close it.
+        SwingUtilities.invokeLater(() -> {
+            combo.setSelectedIndex(itemIdx);
+            combo.setPopupVisible(false);
+        });
         robot.waitForIdle();
     }
 

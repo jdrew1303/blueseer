@@ -1,0 +1,9 @@
+{
+  "steps": [
+    { "caption": "Navigate to Start New Tax Year (S-65)" },
+    { "menu": "Payroll>Journals & Year Transition>Start New Tax Year", "wait": 1200 },
+    { "screenshot": "s65-launcher.png" },
+    { "click": "Start New Tax Year...", "wait": 1000 },
+    { "screenshot": "s65-checklist.png" }
+  ]
+}

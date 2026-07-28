@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created for the Irish Payroll module (com.blueseer.pay). Matches Thesaurus
+     Payroll Manager 2026's documented "Laser Security Payslip" stationery type
+     (thesaurus.ie/docs/2026/distributing-payslips/printing-payslips/): "prints
+     a payslip which converts into a sealed window envelope, showing the
+     employee's name and address in the window." One employee per page.
+
+     Thesaurus does not publish the exact window/fold coordinates for their
+     pre-printed stationery in their public documentation (only the type name
+     and behaviour description were available - see the roadmap's Open
+     Question on payslip stationery parity). This template follows the
+     standard commercial tri-fold ("C-fold") self-mailer convention instead:
+     the page is divided into three equal panels (dashed fold lines shown at
+     y=277/554); the BOTTOM panel becomes the outward-facing panel after
+     folding and carries only the employee name/address positioned within a
+     standard window-envelope-safe rectangle, with the earnings/deductions
+     detail confined to the panels that end up folded to the inside.
+
+     JasperReports 7.x JRXML syntax (see payslip_2perpage_hires.jrxml's header
+     comment for the 6.x -> 7.x rationale). -->
+<jasperReport name="payslip_laser_security" pageWidth="595" pageHeight="842" columnWidth="567" leftMargin="14" rightMargin="14" topMargin="20" bottomMargin="20" uuid="a1b2c3d4-0004-4004-8004-000000000001">
+	<field name="employerName" class="java.lang.String"/>
+	<field name="employerAddress" class="java.lang.String"/>
+	<field name="employerRegistrationNumber" class="java.lang.String"/>
+	<field name="employeeName" class="java.lang.String"/>
+	<field name="employeeAddress" class="java.lang.String"/>
+	<field name="ppsNumber" class="java.lang.String"/>
+	<field name="worksNumber" class="java.lang.String"/>
+	<field name="payDate" class="java.time.LocalDate"/>
+	<field name="periodNumber" class="java.lang.Integer"/>
+	<field name="taxYear" class="java.lang.Integer"/>
+	<field name="payFrequency" class="java.lang.String"/>
+	<field name="prsiClass" class="java.lang.String"/>
+	<field name="calculationBasis" class="java.lang.String"/>
+	<field name="grossPay" class="java.math.BigDecimal"/>
+	<field name="additionsText" class="java.lang.String"/>
+	<field name="deductionsText" class="java.lang.String"/>
+	<field name="paye" class="java.math.BigDecimal"/>
+	<field name="employeePrsi" class="java.math.BigDecimal"/>
+	<field name="usc" class="java.math.BigDecimal"/>
+	<field name="lpt" class="java.math.BigDecimal"/>
+	<field name="netPay" class="java.math.BigDecimal"/>
+	<field name="employerPrsi" class="java.math.BigDecimal"/>
+	<field name="annualTaxCredit" class="java.math.BigDecimal"/>
+	<field name="annualCutOffPoint" class="java.math.BigDecimal"/>
+	<field name="cumulativeGrossPay" class="java.math.BigDecimal"/>
+	<field name="cumulativeTaxPaid" class="java.math.BigDecimal"/>
+	<field name="cumulativePrsiPaid" class="java.math.BigDecimal"/>
+	<field name="cumulativeUscPaid" class="java.math.BigDecimal"/>
+	<detail>
+		<band height="780" splitType="Stretch">
+			<!-- Top panel (0-267): employer header + earnings -->
+			<element kind="textField" uuid="a1b2c3d4-0004-4004-8004-000000000010" key="employerName" x="14" y="8" width="320" height="18" fontSize="13.0" bold="true">
+				<expression><![CDATA[$F{employerName}]]></expression>
+			</element>
+			<element kind="textField" uuid="a1b2c3d4-0004-4004-8004-000000000011" key="employerAddress" x="14" y="26" width="320" height="14" fontSize="8.0">
+				<expression><![CDATA[$F{employerAddress}]]></expression>
+			</element>
+			<element kind="staticText" uuid="a1b2c3d4-0004-4004-8004-000000000012" key="title" x="367" y="8" width="186" height="20" fontSize="16.0" bold="true" hTextAlign="Right">
+				<text><![CDATA[PAYSLIP]]></text>
+			</element>
+			<element kind="textField" uuid="a1b2c3d4-0004-4004-8004-000000000013" key="payDatePeriod" x="367" y="28" width="186" height="12" fontSize="8.0" hTextAlign="Right" pattern="dd/MM/yyyy">
+				<expression><![CDATA["Pay Date: " + $F{payDate} + "   Period: " + $F{periodNumber}]]></expression>
+			</element>
+			<element kind="textField" uuid="a1b2c3d4-0004-4004-8004-000000000014" key="employeeName" x="14" y="50" width="280" height="14" fontSize="10.0" bold="true">
+				<expression><![CDATA[$F{employeeName}]]></expression>
+			</element>
+			<element kind="textField" uuid="a1b2c3d4-0004-4004-8004-000000000015" key="ppsWorksNo" x="300" y="50" width="253" height="12" fontSize="8.0">
+				<expression><![CDATA["PPS Number: " + $F{ppsNumber} + "   Works No: " + $F{worksNumber}]]></expression>
+			</element>
+			<element kind="textField" uuid="a1b2c3d4-0004-4004-8004-000000000016" key="prsiClassBasis" x="300" y="63" width="253" height="12" fontSize="8.0">
+				<expression><![CDATA["PRSI Class: " + $F{prsiClass} + "   Basis: " + $F{calculationBasis} + "   Tax Year: " + $F{taxYear}]]></expression>
+			</element>
+			<element kind="line" uuid="a1b2c3d4-0004-4004-8004-000000000017" key="rule1" x="14" y="80" width="539" height="1">
+				<pen lineWidth="0.5"/>
+			</element>
+			<element kind="staticText" uuid="a1b2c3d4-0004-4004-8004-000000000018" key="earningsHeader" x="14" y="86" width="270" height="12" fontSize="9.0" bold="true">
+				<text><![CDATA[Earnings]]></text>
+			</element>
+			<element kind="staticText" uuid="a1b2c3d4-0004-4004-8004-000000000019" key="deductionsHeader" x="300" y="86" width="253" height="12" fontSize="9.0" bold="true">
+				<text><![CDATA[Deductions]]></text>
+			</element>
+			<element kind="staticText" uuid="a1b2c3d4-0004-4004-8004-00000000001a" key="basicPayLabel" x="14" y="102" width="200" height="12" fontSize="8.0">
+				<text><![CDATA[Basic Pay]]></text>
+			</element>
+			<element kind="textField" uuid="a1b2c3d4-0004-4004-8004-00000000001b" key="grossPay" x="214" y="102" width="70" height="12" fontSize="8.0" hTextAlign="Right" pattern="#,##0.00">
+				<expression><![CDATA[$F{grossPay}]]></expression>
+			</element>
+			<element kind="textField" uuid="a1b2c3d4-0004-4004-8004-00000000001c" key="additionsText" x="14" y="116" width="270" height="50" fontSize="7.0">
+				<expression><![CDATA[$F{additionsText}]]></expression>
+			</element>
+			<element kind="textField" uuid="a1b2c3d4-0004-4004-8004-00000000001d" key="deductionLabels" x="300" y="102" width="200" height="50" fontSize="7.0">
+				<expression><![CDATA["PAYE\nPRSI\nUSC" + ($F{lpt} != null ? "\nLPT" : "") + ($F{deductionsText} != null && !$F{deductionsText}.isEmpty() ? "\n" + $F{deductionsText} : "")]]></expression>
+			</element>
+			<element kind="textField" uuid="a1b2c3d4-0004-4004-8004-00000000001e" key="paye" x="500" y="102" width="53" height="12" fontSize="7.0" hTextAlign="Right" pattern="#,##0.00">
+				<expression><![CDATA[$F{paye}]]></expression>
+			</element>
+			<element kind="textField" uuid="a1b2c3d4-0004-4004-8004-00000000001f" key="employeePrsi" x="500" y="114" width="53" height="12" fontSize="7.0" hTextAlign="Right" pattern="#,##0.00">
+				<expression><![CDATA[$F{employeePrsi}]]></expression>
+			</element>
+			<element kind="textField" uuid="a1b2c3d4-0004-4004-8004-000000000020" key="usc" x="500" y="126" width="53" height="12" fontSize="7.0" hTextAlign="Right" pattern="#,##0.00">
+				<expression><![CDATA[$F{usc}]]></expression>
+			</element>
+			<element kind="textField" uuid="a1b2c3d4-0004-4004-8004-000000000021" key="lpt" x="500" y="138" width="53" height="12" fontSize="7.0" hTextAlign="Right" pattern="#,##0.00">
+				<expression><![CDATA[$F{lpt}]]></expression>
+			</element>
+			<element kind="textField" uuid="a1b2c3d4-0004-4004-8004-000000000022" key="netPay" x="300" y="180" width="253" height="16" fontSize="10.0" bold="true" hTextAlign="Right" pattern="#,##0.00">
+				<expression><![CDATA["Net Pay: " + $F{netPay}]]></expression>
+			</element>
+			<element kind="textField" uuid="a1b2c3d4-0004-4004-8004-000000000023" key="creditCutoffEmployerPrsi" x="14" y="200" width="400" height="12" fontSize="7.0" pattern="#,##0.00">
+				<expression><![CDATA["Tax Credit: " + $F{annualTaxCredit} + "   Cut-Off: " + $F{annualCutOffPoint} + "   Employer PRSI (info only): " + $F{employerPrsi}]]></expression>
+			</element>
+			<element kind="textField" uuid="a1b2c3d4-0004-4004-8004-000000000024" key="cumulative" x="14" y="220" width="539" height="12" fontSize="7.0" pattern="#,##0.00">
+				<expression><![CDATA["Cumulative to date - Gross: " + $F{cumulativeGrossPay} + "   PAYE: " + $F{cumulativeTaxPaid} + "   PRSI: " + $F{cumulativePrsiPaid} + "   USC: " + $F{cumulativeUscPaid}]]></expression>
+			</element>
+			<element kind="staticText" uuid="a1b2c3d4-0004-4004-8004-000000000025" key="foldMark1" x="14" y="248" width="539" height="10" fontSize="6.0" italic="true" hTextAlign="Center">
+				<text><![CDATA[- - - - - - - - - - - - - - - - - - - - - - - - - - - - - fold - - - - - - - - - - - - - - - - - - - - - - - - - - - - -]]></text>
+			</element>
+			<!-- Middle panel (277-544): folds to the inside, security-tint background -->
+			<element kind="rectangle" uuid="a1b2c3d4-0004-4004-8004-000000000030" key="middlePanel" x="0" y="277" width="567" height="267" mode="Opaque" backcolor="#F0F0F0">
+				<pen lineWidth="0.0"/>
+			</element>
+			<element kind="staticText" uuid="a1b2c3d4-0004-4004-8004-000000000031" key="middleNote" x="14" y="285" width="539" height="14" fontSize="8.0" italic="true" hTextAlign="Center">
+				<text><![CDATA[This panel folds to the inside of the sealed envelope and is not visible once folded.]]></text>
+			</element>
+			<element kind="staticText" uuid="a1b2c3d4-0004-4004-8004-000000000032" key="foldMark2" x="14" y="518" width="539" height="10" fontSize="6.0" italic="true" hTextAlign="Center">
+				<text><![CDATA[- - - - - - - - - - - - - - - - - - - - - - - - - - - - - fold - - - - - - - - - - - - - - - - - - - - - - - - - - - - -]]></text>
+			</element>
+			<!-- Bottom panel (554-780): outward-facing after folding - address window only -->
+			<element kind="staticText" uuid="a1b2c3d4-0004-4004-8004-000000000040" key="outwardNote" x="14" y="562" width="539" height="10" fontSize="6.0" italic="true" hTextAlign="Center">
+				<text><![CDATA[Outward-facing panel - address appears through the envelope window]]></text>
+			</element>
+			<element kind="textField" uuid="a1b2c3d4-0004-4004-8004-000000000041" key="windowEmployeeName" x="60" y="620" width="300" height="16" fontSize="10.0" bold="true">
+				<expression><![CDATA[$F{employeeName}]]></expression>
+			</element>
+			<element kind="textField" uuid="a1b2c3d4-0004-4004-8004-000000000042" key="windowEmployeeAddress" x="60" y="638" width="300" height="60" fontSize="10.0">
+				<expression><![CDATA[$F{employeeAddress}]]></expression>
+			</element>
+			<element kind="staticText" uuid="a1b2c3d4-0004-4004-8004-000000000043" key="confidential" x="14" y="754" width="539" height="12" fontSize="6.0" italic="true" hTextAlign="Center">
+				<text><![CDATA[Private and Confidential]]></text>
+			</element>
+		</band>
+	</detail>
+</jasperReport>

@@ -1,0 +1,14 @@
+{
+  "steps": [
+    { "caption": "Navigate to Termination Lump Sum" },
+    { "menu": "Payroll>Leavers>Termination Lump Sum", "wait": 1200 },
+    { "screenshot": "s50-loaded.png" },
+    { "type": { "label": "Ex-Gratia Lump Sum Amount:", "text": "30000" }, "wait": 500 },
+    { "key": "TAB", "wait": 800 },
+    { "screenshot": "s50-computed.png" },
+    { "assert": { "label": "Basic Exemption:", "equals": "21690" } },
+    { "assert": { "label": "Increased Exemption:", "equals": "10000" } },
+    { "assert": { "label": "Final Exemption Applied:", "equals": "21690" } },
+    { "assert": { "label": "Taxable Amount:", "equals": "8310" } }
+  ]
+}

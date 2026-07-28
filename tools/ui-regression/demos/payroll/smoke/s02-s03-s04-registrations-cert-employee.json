@@ -1,0 +1,17 @@
+{
+  "steps": [
+    { "caption": "Navigate to Additional PAYE Registrations (S-02)" },
+    { "menu": "Payroll>Company Setup>Additional PAYE Registrations", "wait": 1200 },
+    { "click": "Add Registration", "wait": 800 },
+    { "type": { "label": "Registration Number:", "text": "1234567A" }, "wait": 300 },
+    { "type": { "label": "Description:", "text": "Main Registration" }, "wait": 300 },
+    { "click": "OK", "wait": 800 },
+    { "screenshot": "s02-registration-added.png" },
+    { "caption": "Navigate to Digital Certificate Manager (S-03)" },
+    { "menu": "Payroll>Company Setup>Digital Certificate Manager", "wait": 1200 },
+    { "screenshot": "s03-loaded.png" },
+    { "caption": "Navigate to Employee Maintenance to test S-14 RPN wiring" },
+    { "menu": "Payroll>Employee Maintenance", "wait": 1200 },
+    { "screenshot": "s04-loaded.png" }
+  ]
+}

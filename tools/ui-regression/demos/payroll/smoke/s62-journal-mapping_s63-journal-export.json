@@ -1,0 +1,14 @@
+{
+  "steps": [
+    { "caption": "Navigate to Payroll Journal Mapping (S-62)" },
+    { "menu": "Payroll>Journals & Year Transition>Payroll Journal Mapping", "wait": 1200 },
+    { "screenshot": "s62-loaded.png" },
+    { "combo": { "index": 0, "select": "Native BlueSeer GL" }, "wait": 600 },
+    { "screenshot": "s62-native-selected.png" },
+    { "caption": "Navigate to Journal Export (S-63)" },
+    { "menu": "Payroll>Journals & Year Transition>Journal Export", "wait": 1200 },
+    { "screenshot": "s63-loaded.png" },
+    { "combo": { "index": 1, "select": "Native BlueSeer GL" }, "wait": 800 },
+    { "screenshot": "s63-native-button-label.png" }
+  ]
+}

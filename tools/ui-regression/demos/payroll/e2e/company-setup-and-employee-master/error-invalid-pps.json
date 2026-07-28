@@ -1,0 +1,18 @@
+{
+  "steps": [
+    { "caption": "Entering a malformed PPS Number should be rejected, not silently accepted" },
+    { "menu": "Payroll>Employee Maintenance", "wait": 1500 },
+    { "combo": { "index": 0, "item": 0 }, "wait": 1000 },
+    { "type": { "label": "PPS Number", "text": "123456" }, "wait": 300 },
+    { "key": "TAB", "wait": 500 },
+    { "screenshot": "invalid-pps-warning.png" },
+    { "click": "OK", "wait": 500 },
+    { "assert": { "label": "PPS Number", "equals": "" } },
+
+    { "caption": "A well-formed PPS Number should be accepted and kept" },
+    { "type": { "label": "PPS Number", "text": "1234567A" }, "wait": 300 },
+    { "key": "TAB", "wait": 500 },
+    { "screenshot": "valid-pps.png" },
+    { "assert": { "label": "PPS Number", "equals": "1234567A" } }
+  ]
+}

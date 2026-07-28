@@ -323,6 +323,24 @@
     <artifactId>jasperreports</artifactId>
     <version>7.0.4</version>
 </dependency>
+<!-- JasperReports 7.x split PDF export into this separate optional
+     artifact; JasperExportManager.exportReportToPdfFile throws
+     "Missing JasperReports PDF Extension" without it. -->
+<dependency>
+    <groupId>net.sf.jasperreports</groupId>
+    <artifactId>jasperreports-pdf</artifactId>
+    <version>7.0.4</version>
+</dependency>
+
+<!-- Irish Payroll module (com.blueseer.pay): statutory PAYE/PRSI/USC/etc.
+     calculation engines are expressed as EvalEx expressions rather than
+     hand-written Java arithmetic, so each labeled step's formula string is
+     itself the audit-trail record shown on the Payslip Workings screen. -->
+<dependency>
+    <groupId>com.ezylang</groupId>
+    <artifactId>EvalEx</artifactId>
+    <version>3.7.0</version>
+</dependency>
 
 <dependency>
     <groupId>javax.activation</groupId>

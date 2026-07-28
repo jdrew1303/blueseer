@@ -1,0 +1,9 @@
+{
+  "steps": [
+    { "caption": "Navigate to Change Pay Frequency (S-64)" },
+    { "menu": "Payroll>Journals & Year Transition>Change Pay Frequency", "wait": 1200 },
+    { "screenshot": "s64-launcher.png" },
+    { "click": "Change Pay Frequency...", "wait": 1000 },
+    { "screenshot": "s64-wizard-select.png" }
+  ]
+}

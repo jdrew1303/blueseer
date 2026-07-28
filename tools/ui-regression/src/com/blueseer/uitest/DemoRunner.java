@@ -65,11 +65,33 @@ import java.util.Locale;
  *                                                    console) for narration/subtitle authoring later
  *   "screenshot": "name.png"                       - no-op besides capturing a PNG (on its own; see
  *                                                    below for capturing alongside another action)
+ *   "assert": {"label": "Taxable Amount:",         - read the field/value on the same row as, and
+ *              "equals": "1234.56"}                  right of, the JLabel matching "label" (JLabel,
+ *             or {"label": "...", "contains": "x"}    JTextField, or JComboBox - unlike "type", this
+ *             or {"label": "...", "notBlank": true}   also matches read-only JLabel results, e.g. a
+ *                                                      computed payslip figure), and compare it.
+ *             or {"text": "not been retrieved"}      - for a self-describing JLabel with no separate
+ *                or {"text": "...", "visible": false}  caption+value pair (a standalone banner/
+ *                                                       warning): true/false (default true) for
+ *                                                       whether any currently-showing JLabel contains
+ *                                                       this text.
+ *                                                      A failed assertion fails the step exactly like
+ *                                                      any other error (see "Pass/fail" below) - this
+ *                                                      is what makes a script an actual test instead
+ *                                                      of just a screenshot-taking walkthrough.
  *
  * "wait" and "caption" can also ride along on any other step: "wait" becomes
  * that step's post-action pause (default 600ms if omitted), "caption" is
  * logged alongside it. "screenshot" likewise captures a PNG right after
  * whatever action the step performed, in addition to the continuous video.
+ *
+ * Pass/fail: a step that throws (target not found, assertion mismatch, ...)
+ * doesn't stop the run - it's logged as "ERROR:<action>" in manifest.json
+ * with an error screenshot, and the run continues, so one broken step near
+ * the start doesn't hide everything after it. But unlike smoke-test usage
+ * (where a human reads the screenshots), run() now returns false if *any*
+ * step failed, and UiRegressionRunner's "demo" mode exits 1 in that case -
+ * a script with assertions is a real pass/fail test, not just a recording.
  *
  * Zoom: DemoRunner records each zoom event's on-screen target rect and its
  * *video-relative* timing (using the DEMO_RECORDING_EPOCH_MS/DEMO_WIDTH/
@@ -98,7 +120,8 @@ final class DemoRunner {
         double level;          // zoom factor (2.0 = crop to half width/height, scaled back up)
     }
 
-    static void run(File scriptFile, File outDir) throws Exception {
+    /** @return true if every step succeeded (no ERROR entries in the manifest). */
+    static boolean run(File scriptFile, File outDir) throws Exception {
         outDir.mkdirs();
         JSONObject root;
         try (FileReader reader = new FileReader(scriptFile)) {
@@ -116,6 +139,7 @@ final class DemoRunner {
         JSONArray manifest = new JSONArray();
         List<ZoomEvent> zoomEvents = new ArrayList<>();
         int[] seq = {0};
+        int[] failures = {0};
 
         Frame frame = driver.launchAndLogin();
         JFrame jframe = (JFrame) frame;
@@ -136,7 +160,7 @@ final class DemoRunner {
                 } else if (step.has("click")) {
                     action = "click";
                     detail = step.getString("click");
-                    javax.swing.JButton b = driver.findButtonByText(jframe.getContentPane(), detail);
+                    javax.swing.JButton b = driver.findButtonByText(driver.currentInteractionRoot(jframe), detail);
                     if (b == null) {
                         throw new IllegalStateException("button not found: " + detail);
                     }
@@ -147,7 +171,7 @@ final class DemoRunner {
                     String text = t.getString("text");
                     Component field;
                     if (t.has("label")) {
-                        field = driver.findFieldByLabel(jframe.getContentPane(), t.getString("label"));
+                        field = driver.findFieldByLabel(driver.currentInteractionRoot(jframe), t.getString("label"));
                         detail = t.getString("label") + "=" + text;
                     } else if (t.has("index")) {
                         // Showing-only, unlike a plain tree walk - the login screen's
@@ -155,7 +179,7 @@ final class DemoRunner {
                         // just hidden, so an unfiltered scan would silently shift every
                         // index by 2.
                         List<Component> scan = new ArrayList<>();
-                        driver.collectShowing(jframe.getContentPane(), JTextField.class, scan);
+                        driver.collectShowing(driver.currentInteractionRoot(jframe), JTextField.class, scan);
                         field = driver.nthOfType(scan, JTextField.class, t.getInt("index"));
                         detail = "#" + t.getInt("index") + "=" + text;
                     } else {
@@ -169,7 +193,7 @@ final class DemoRunner {
                     action = "tab";
                     JSONObject t = step.getJSONObject("tab");
                     int paneIdx = t.optInt("pane", 0);
-                    List<Component> scan = driver.findTargets(jframe.getContentPane());
+                    List<Component> scan = driver.findTargets(driver.currentInteractionRoot(jframe));
                     JTabbedPane pane = driver.nthOfType(scan, JTabbedPane.class, paneIdx);
                     if (pane == null) {
                         throw new IllegalStateException("tab pane #" + paneIdx + " not found");
@@ -195,7 +219,7 @@ final class DemoRunner {
                     boolean isCheck = step.has("check");
                     action = isCheck ? "check" : "radio";
                     int idx = step.getInt(action);
-                    List<Component> scan = driver.findTargets(jframe.getContentPane());
+                    List<Component> scan = driver.findTargets(driver.currentInteractionRoot(jframe));
                     Component c = isCheck ? driver.nthOfType(scan, JCheckBox.class, idx)
                                            : driver.nthOfType(scan, JRadioButton.class, idx);
                     if (c == null) {
@@ -207,7 +231,7 @@ final class DemoRunner {
                     action = "combo";
                     JSONObject t = step.getJSONObject("combo");
                     int idx = t.getInt("index");
-                    List<Component> scan = driver.findTargets(jframe.getContentPane());
+                    List<Component> scan = driver.findTargets(driver.currentInteractionRoot(jframe));
                     JComboBox<?> combo = driver.nthOfType(scan, JComboBox.class, idx);
                     if (combo == null) {
                         throw new IllegalStateException("combo #" + idx + " not found");
@@ -252,10 +276,10 @@ final class DemoRunner {
                         Component target;
                         if (z.has("button")) {
                             detail = "button " + z.getString("button");
-                            target = driver.findButtonByText(jframe.getContentPane(), z.getString("button"));
+                            target = driver.findButtonByText(driver.currentInteractionRoot(jframe), z.getString("button"));
                         } else if (z.has("label")) {
                             detail = "label " + z.getString("label");
-                            target = driver.findFieldByLabel(jframe.getContentPane(), z.getString("label"));
+                            target = driver.findFieldByLabel(driver.currentInteractionRoot(jframe), z.getString("label"));
                         } else {
                             throw new IllegalArgumentException("zoom step needs \"button\", \"label\", or \"rect\"");
                         }
@@ -288,6 +312,57 @@ final class DemoRunner {
                     // ease-out) since the crop is applied afterward against these exact
                     // timestamps - nothing on screen should change while "zoomed in".
                     driver.pause(2 * ZOOM_EASE_MS + hold);
+                } else if (step.has("assert")) {
+                    action = "assert";
+                    JSONObject a = step.getJSONObject("assert");
+                    if (a.has("label")) {
+                        String label = a.getString("label");
+                        Component field = driver.findValueByLabel(driver.currentInteractionRoot(jframe), label);
+                        if (field == null) {
+                            throw new IllegalStateException("assert target not found: " + label);
+                        }
+                        String actual = driver.textOf(field);
+                        if (actual == null) {
+                            throw new IllegalStateException("assert target has no readable text: " + label);
+                        }
+                        String actualTrimmed = actual.trim();
+                        if (a.has("equals")) {
+                            String expected = a.getString("equals");
+                            detail = label + " equals \"" + expected + "\" (actual: \"" + actualTrimmed + "\")";
+                            if (!actualTrimmed.equals(expected)) {
+                                throw new IllegalStateException("assertion failed: " + detail);
+                            }
+                        } else if (a.has("contains")) {
+                            String expected = a.getString("contains");
+                            detail = label + " contains \"" + expected + "\" (actual: \"" + actualTrimmed + "\")";
+                            if (!actualTrimmed.contains(expected)) {
+                                throw new IllegalStateException("assertion failed: " + detail);
+                            }
+                        } else if (a.has("notBlank")) {
+                            detail = label + " notBlank (actual: \"" + actualTrimmed + "\")";
+                            if (actualTrimmed.isEmpty() || actualTrimmed.equals("-")) {
+                                throw new IllegalStateException("assertion failed: " + detail);
+                            }
+                        } else {
+                            throw new IllegalArgumentException("assert step (\"label\" form) needs \"equals\", \"contains\", or \"notBlank\"");
+                        }
+                    } else if (a.has("text")) {
+                        // For self-describing JLabels with no separate caption+value pair
+                        // (e.g. a standalone warning banner) - "label" mode can't target
+                        // these, since it looks for something *next to* a matching label,
+                        // not the label itself. This just asks "does any currently-showing
+                        // JLabel contain this text" instead.
+                        String needle = a.getString("text");
+                        boolean expectVisible = a.optBoolean("visible", true);
+                        boolean found = driver.anyShowingLabelContains(driver.currentInteractionRoot(jframe), needle);
+                        detail = "label containing \"" + needle + "\" " + (expectVisible ? "visible" : "not visible")
+                                + " (actual: " + (found ? "visible" : "not visible") + ")";
+                        if (found != expectVisible) {
+                            throw new IllegalStateException("assertion failed: " + detail);
+                        }
+                    } else {
+                        throw new IllegalArgumentException("assert step needs \"label\" or \"text\"");
+                    }
                 } else if (step.has("wait")) {
                     action = "wait";
                     detail = String.valueOf(step.getInt("wait"));
@@ -301,6 +376,7 @@ final class DemoRunner {
                     throw new IllegalArgumentException("step has no recognized action: " + step);
                 }
             } catch (Exception ex) {
+                failures[0]++;
                 String errShot = "error-" + i + ".png";
                 try {
                     screenshots.capture(new File(outDir, errShot));
@@ -345,7 +421,13 @@ final class DemoRunner {
             }
         }
 
-        System.out.println("Demo complete: " + seq[0] + " steps logged to " + new File(outDir, "manifest.json"));
+        if (failures[0] == 0) {
+            System.out.println("Demo complete: " + seq[0] + " steps logged to " + new File(outDir, "manifest.json") + " - PASS");
+        } else {
+            System.out.println("Demo complete: " + seq[0] + " steps logged to " + new File(outDir, "manifest.json")
+                    + " - FAIL (" + failures[0] + " step(s) failed)");
+        }
+        return failures[0] == 0;
     }
 
     private static double clampD(double v, double min, double max) {

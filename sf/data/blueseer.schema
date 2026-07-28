@@ -874,6 +874,74 @@ CREATE TABLE IF NOT EXISTS `emp_train` (
   `hours` decimal(14,2)  NOT NULL DEFAULT '0',
   `comments` varchar(500)  NOT NULL DEFAULT '',
   `emptrid` int(12) NOT NULL PRIMARY KEY AUTO_INCREMENT) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS `emp_pay_ie` (
+  `payie_nbr` int(8) NOT NULL DEFAULT '0',
+  `payie_pps` varchar(9) NOT NULL DEFAULT '',
+  `payie_employment_id` varchar(20) NOT NULL DEFAULT '',
+  `payie_director` tinyint(1) NOT NULL DEFAULT '0',
+  `payie_paymethod` varchar(20) NOT NULL DEFAULT '',
+  `payie_bank` varchar(50) NOT NULL DEFAULT '',
+  `payie_branch` varchar(50) NOT NULL DEFAULT '',
+  `payie_sortcode` varchar(8) NOT NULL DEFAULT '',
+  `payie_acctnum` varchar(10) NOT NULL DEFAULT '',
+  `payie_creditunionref` varchar(30) NOT NULL DEFAULT '',
+  `payie_iban` varchar(34) NOT NULL DEFAULT '',
+  `payie_bic` varchar(11) NOT NULL DEFAULT '',
+  `payie_payslip_password` varchar(60) NOT NULL DEFAULT '',
+  `payie_contract_type` varchar(20) NOT NULL DEFAULT '',
+  `payie_cso_occupation_code` varchar(20) NOT NULL DEFAULT '',
+  `payie_cso_hours_category` varchar(20) NOT NULL DEFAULT '',
+  PRIMARY KEY (`payie_nbr`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS `emp_rpn_ie` (
+  `emprpn_nbr` int(8) NOT NULL DEFAULT '0',
+  `emprpn_taxyear` int(4) NOT NULL DEFAULT '0',
+  `emprpn_startdate` date DEFAULT NULL,
+  `emprpn_startweek` int(2) NOT NULL DEFAULT '0',
+  `emprpn_prsiclass` varchar(4) NOT NULL DEFAULT '',
+  `emprpn_exemptions` varchar(200) NOT NULL DEFAULT '',
+  `emprpn_basis` varchar(20) NOT NULL DEFAULT 'EMERGENCY',
+  `emprpn_credit` decimal(14,2) NOT NULL DEFAULT '0',
+  `emprpn_cutoff` decimal(14,2) NOT NULL DEFAULT '0',
+  `emprpn_prior_gross` decimal(14,2) NOT NULL DEFAULT '0',
+  `emprpn_prior_tax` decimal(14,2) NOT NULL DEFAULT '0',
+  `emprpn_prior_prsi` decimal(14,2) NOT NULL DEFAULT '0',
+  `emprpn_prior_usc` decimal(14,2) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`emprpn_nbr`, `emprpn_taxyear`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS `emp_rpn_ie_log` (
+  `emprpnl_id` int(12) NOT NULL PRIMARY KEY AUTO_INCREMENT,
+  `emprpnl_nbr` int(8) NOT NULL DEFAULT '0',
+  `emprpnl_date` date DEFAULT NULL,
+  `emprpnl_reqtype` varchar(30) NOT NULL DEFAULT '',
+  `emprpnl_result` varchar(30) NOT NULL DEFAULT '',
+  `emprpnl_oldcredit` decimal(14,2) NOT NULL DEFAULT '0',
+  `emprpnl_newcredit` decimal(14,2) NOT NULL DEFAULT '0',
+  `emprpnl_oldcutoff` decimal(14,2) NOT NULL DEFAULT '0',
+  `emprpnl_newcutoff` decimal(14,2) NOT NULL DEFAULT '0'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS `psr_batch_ie` (
+  `psrb_id` int(12) NOT NULL PRIMARY KEY AUTO_INCREMENT,
+  `psrb_paydate` date DEFAULT NULL,
+  `psrb_status` varchar(20) NOT NULL DEFAULT '',
+  `psrb_refnbr` varchar(40) NOT NULL DEFAULT '',
+  `psrb_payslipcount` int(6) NOT NULL DEFAULT '0',
+  `psrb_countreturned` int(6) NOT NULL DEFAULT '0',
+  `psrb_payetotal` decimal(14,2) NOT NULL DEFAULT '0',
+  `psrb_prsitotal` decimal(14,2) NOT NULL DEFAULT '0',
+  `psrb_usctotal` decimal(14,2) NOT NULL DEFAULT '0',
+  `psrb_lpttotal` decimal(14,2) NOT NULL DEFAULT '0'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS `psr_line_ie` (
+  `psrl_id` int(12) NOT NULL PRIMARY KEY AUTO_INCREMENT,
+  `psrl_batchid` int(12) NOT NULL DEFAULT '0',
+  `psrl_empnbr` int(8) NOT NULL DEFAULT '0',
+  `psrl_paye` decimal(14,2) NOT NULL DEFAULT '0',
+  `psrl_prsi` decimal(14,2) NOT NULL DEFAULT '0',
+  `psrl_usc` decimal(14,2) NOT NULL DEFAULT '0',
+  `psrl_lpt` decimal(14,2) NOT NULL DEFAULT '0',
+  index psrl_batchid_idx (`psrl_batchid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE IF NOT EXISTS `fct_cal` (
   `fctc_year` varchar(4) NOT NULL  DEFAULT '',
   `fctc_start` date DEFAULT NULL

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Irish Payroll module (com.blueseer.pay) - shared tabular report shape for
+     §3.8 Reports Hub (S-40...S-46). Every report screen in that section is,
+     per the screen spec, "a filter panel, a btRun, an alphabetical-sort
+     prompt, and a common Print/Copy/HTML/Email action bar" over a period-
+     range-scoped list of rows - so rather than one bespoke .jrxml per report
+     type, every screen maps its own row shape into this one generic 6-column
+     template (com.blueseer.pay.GenericReportRowDTO), passing its own column
+     headers and title as report parameters. This is an intentional
+     simplification: a real system would give each report its own laid-out
+     stationery, but the underlying row/column shape genuinely is identical
+     across all of S-40/S-41/S-43/S-44/S-45/S-46, so one template avoids
+     duplicating seven near-identical files. JasperReports 7.x flattened
+     <element kind="..."> JRXML syntax, per the established convention in the
+     payslip templates. -->
+<jasperReport name="generic_tabular_report" pageWidth="595" pageHeight="842" columnWidth="567" leftMargin="14" rightMargin="14" topMargin="20" bottomMargin="20" whenNoDataType="AllSectionsNoDetail" uuid="b2c3d4e5-0001-4001-8001-000000000001">
+	<parameter name="REPORT_TITLE" class="java.lang.String"/>
+	<parameter name="COL1_HEADER" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+	<parameter name="COL2_HEADER" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+	<parameter name="COL3_HEADER" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+	<parameter name="COL4_HEADER" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+	<parameter name="COL5_HEADER" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+	<parameter name="COL6_HEADER" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+	<field name="col1" class="java.lang.String"/>
+	<field name="col2" class="java.lang.String"/>
+	<field name="col3" class="java.lang.String"/>
+	<field name="col4" class="java.lang.String"/>
+	<field name="col5" class="java.lang.String"/>
+	<field name="col6" class="java.lang.String"/>
+	<title height="40" splitType="Stretch">
+		<element kind="textField" uuid="b2c3d4e5-0001-4001-8001-000000000010" key="title" x="0" y="0" width="567" height="24" fontSize="14.0" bold="true">
+			<expression><![CDATA[$P{REPORT_TITLE}]]></expression>
+		</element>
+		<element kind="textField" uuid="b2c3d4e5-0001-4001-8001-000000000011" key="generatedOn" x="0" y="24" width="567" height="12" fontSize="7.0" italic="true">
+			<expression><![CDATA["Generated " + new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(new java.util.Date())]]></expression>
+		</element>
+	</title>
+	<columnHeader height="16" splitType="Stretch">
+		<element kind="textField" uuid="b2c3d4e5-0001-4001-8001-000000000021" key="h1f" x="0" y="0" width="95" height="16" fontSize="8.0" bold="true">
+			<expression><![CDATA[$P{COL1_HEADER}]]></expression>
+		</element>
+		<element kind="textField" uuid="b2c3d4e5-0001-4001-8001-000000000022" key="h2f" x="95" y="0" width="95" height="16" fontSize="8.0" bold="true">
+			<expression><![CDATA[$P{COL2_HEADER}]]></expression>
+		</element>
+		<element kind="textField" uuid="b2c3d4e5-0001-4001-8001-000000000023" key="h3f" x="190" y="0" width="95" height="16" fontSize="8.0" bold="true">
+			<expression><![CDATA[$P{COL3_HEADER}]]></expression>
+		</element>
+		<element kind="textField" uuid="b2c3d4e5-0001-4001-8001-000000000024" key="h4f" x="285" y="0" width="95" height="16" fontSize="8.0" bold="true">
+			<expression><![CDATA[$P{COL4_HEADER}]]></expression>
+		</element>
+		<element kind="textField" uuid="b2c3d4e5-0001-4001-8001-000000000025" key="h5f" x="380" y="0" width="95" height="16" fontSize="8.0" bold="true">
+			<expression><![CDATA[$P{COL5_HEADER}]]></expression>
+		</element>
+		<element kind="textField" uuid="b2c3d4e5-0001-4001-8001-000000000026" key="h6f" x="475" y="0" width="92" height="16" fontSize="8.0" bold="true">
+			<expression><![CDATA[$P{COL6_HEADER}]]></expression>
+		</element>
+		<element kind="line" uuid="b2c3d4e5-0001-4001-8001-000000000027" key="rule" x="0" y="15" width="567" height="1">
+			<pen lineWidth="0.5"/>
+		</element>
+	</columnHeader>
+	<detail>
+		<band height="14" splitType="Stretch">
+			<element kind="textField" uuid="b2c3d4e5-0001-4001-8001-000000000030" key="c1" x="0" y="0" width="95" height="14" fontSize="7.5">
+				<expression><![CDATA[$F{col1}]]></expression>
+			</element>
+			<element kind="textField" uuid="b2c3d4e5-0001-4001-8001-000000000031" key="c2" x="95" y="0" width="95" height="14" fontSize="7.5">
+				<expression><![CDATA[$F{col2}]]></expression>
+			</element>
+			<element kind="textField" uuid="b2c3d4e5-0001-4001-8001-000000000032" key="c3" x="190" y="0" width="95" height="14" fontSize="7.5">
+				<expression><![CDATA[$F{col3}]]></expression>
+			</element>
+			<element kind="textField" uuid="b2c3d4e5-0001-4001-8001-000000000033" key="c4" x="285" y="0" width="95" height="14" fontSize="7.5">
+				<expression><![CDATA[$F{col4}]]></expression>
+			</element>
+			<element kind="textField" uuid="b2c3d4e5-0001-4001-8001-000000000034" key="c5" x="380" y="0" width="95" height="14" fontSize="7.5">
+				<expression><![CDATA[$F{col5}]]></expression>
+			</element>
+			<element kind="textField" uuid="b2c3d4e5-0001-4001-8001-000000000035" key="c6" x="475" y="0" width="92" height="14" fontSize="7.5">
+				<expression><![CDATA[$F{col6}]]></expression>
+			</element>
+		</band>
+	</detail>
+</jasperReport>
