@@ -199,15 +199,26 @@ not a regression - don't chase it further.
 
 ## Status
 
-Covered with real (non-screenshot-only) assertions: `company-setup-and-
-employee-master/`, `rpn/`, `pay-processing/`, `leavers/`, `bik-sick-pay-
-pensions/`, `psr/`. Covered with load-verification (screenshot-only, no
-`assert`): `distribution/`, `reports/`.
+Every folder has at least one script. Covered with real (non-screenshot-
+only) assertions: `company-setup-and-employee-master/`, `rpn/`,
+`pay-processing/`, `leavers/`, `bik-sick-pay-pensions/`, `psr/`,
+`journals-and-year-transition/`, `remittance/`. Covered with
+load-verification only (screenshot-only, no `assert`): `distribution/`,
+`reports/` - both are read-heavy screens with little to compute wrong, so
+"loads without throwing" is most of the value; add real assertions if a bug
+ever turns up in one.
 
-Not yet built out here - `journals-and-year-transition/` and `remittance/`
-only have the screenshot-only smoke coverage in `../smoke/` (see that
-folder's README for what's covered there). `company-setup-and-employee-
-master/` doesn't yet cover the Additions/Deductions/Mid-Year Cumulatives/CSO
-Details tabs or the S-01 New Company Wizard (the latter creates a new
-company record - needs a decision on whether/how to make that safely
-repeatable against the shared dev database before scripting it).
+Known remaining gaps:
+- `company-setup-and-employee-master/` doesn't cover the
+  Additions/Deductions/Mid-Year Cumulatives/CSO Details tabs, or the S-01
+  New Company Wizard (the latter creates a new company record - needs a
+  decision on whether/how to make that safely repeatable against the shared
+  dev database before scripting it).
+- Several screens intentionally stop short of their genuinely one-way action
+  against the shared dev database rather than run it for real: Finalise Pay
+  Period, Leaver Finalise Final Payslip, PSR Submit to Revenue, Start New
+  Tax Year, Journal Export's actual file write. Each of those scripts
+  verifies the screen and its confirmation dialog, then declines/backs out.
+  If a dedicated disposable-database mode is ever added for this suite,
+  these are the scripts to extend to run the real action and assert on the
+  result.
