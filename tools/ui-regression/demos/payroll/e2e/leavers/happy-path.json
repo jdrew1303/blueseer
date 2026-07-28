@@ -1,0 +1,23 @@
+{
+  "steps": [
+    { "caption": "Leaver (Mid Pay Period) (S-49): Gross Pay Preview updates live as hours/rate are typed" },
+    { "menu": "Payroll>Leavers>Leaver (Mid Pay Period)", "wait": 1500 },
+    { "screenshot": "mid-leaver-initial.png" },
+    { "type": { "label": "Hourly Rate:", "text": "20" }, "wait": 300 },
+    { "type": { "label": "Standard Hours:", "text": "10" }, "wait": 500 },
+    { "screenshot": "mid-leaver-computed.png" },
+    { "assert": { "label": "Gross Pay Preview:", "equals": "200" } },
+
+    { "caption": "Finalise Final Payslip: confirm dialog exists (declined - this is an off-cycle, effectively one-way finalisation against the shared dev database, not something to trigger from an automated pass)" },
+    { "click": "Finalise Final Payslip", "wait": 800 },
+    { "screenshot": "mid-leaver-confirm-dialog.png" },
+    { "click": "No", "wait": 500 },
+
+    { "caption": "Post-Cessation Payment (S-51/S-52): with no leavers finalised yet, the screen should say so rather than silently show nothing" },
+    { "menu": "Payroll>Leavers>Post-Cessation Payment (Current Year)", "wait": 1500 },
+    { "screenshot": "post-cessation-current-year.png" },
+
+    { "menu": "Payroll>Leavers>Post-Cessation Payment (Out of Year)", "wait": 1500 },
+    { "screenshot": "post-cessation-out-of-year.png" }
+  ]
+}
