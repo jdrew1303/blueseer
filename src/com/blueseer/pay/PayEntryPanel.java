@@ -203,6 +203,21 @@ public class PayEntryPanel extends JPanel {
         FocusAdapter recomputeOnBlur = new FocusAdapter() {
             @Override
             public void focusLost(FocusEvent e) {
+                // JFormattedTextField only updates its own getValue() from a
+                // focus-lost commit if its internal listener happens to run
+                // before this one - not a safe assumption to rely on, and it
+                // silently doesn't for some focus-transfer paths (reproduced:
+                // typing a hidden value and tabbing away leaves the preview
+                // showing the pre-edit total, even though the typed value is
+                // visibly in the field and saves/reloads correctly). Commit
+                // explicitly so the preview always reflects what's on screen.
+                if (e.getSource() instanceof JFormattedTextField ftf) {
+                    try {
+                        ftf.commitEdit();
+                    } catch (java.text.ParseException ignored) {
+                        // leave the field's own revert/keep behavior to handle it
+                    }
+                }
                 recomputeGrossPreview();
             }
         };

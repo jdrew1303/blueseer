@@ -1,0 +1,30 @@
+{
+  "steps": [
+    { "caption": "Pay Entry (S-18): salaried employee's Monthly Basic drives Gross Pay Preview" },
+    { "menu": "Payroll>Pay Processing>Pay Entry", "wait": 1500 },
+    { "screenshot": "pay-entry-initial.png" },
+    { "assert": { "label": "Gross Pay Preview:", "equals": "3500.00" } },
+
+    { "caption": "Adding Holiday Pay should increase the Gross Pay Preview by exactly that amount" },
+    { "type": { "label": "Holiday Pay Amount:", "text": "200" }, "wait": 300 },
+    { "key": "TAB", "wait": 500 },
+    { "screenshot": "pay-entry-with-holiday-pay.png" },
+    { "assert": { "label": "Gross Pay Preview:", "equals": "3700.00" } },
+
+    { "caption": "Update File persists the entry" },
+    { "click": "Update File", "wait": 800 },
+    { "screenshot": "pay-entry-updated-dialog.png" },
+    { "click": "OK", "wait": 500 },
+
+    { "caption": "Payroll Preview (S-21): aggregate view loads without error" },
+    { "menu": "Payroll>Pay Processing>Payroll Preview", "wait": 1500 },
+    { "screenshot": "payroll-preview.png" },
+
+    { "caption": "Finalise Pay Period (S-22): confirm dialog exists (declined here - finalising is a per-period, effectively one-way action against the shared dev database, not something to trigger from an automated regression pass)" },
+    { "menu": "Payroll>Pay Processing>Finalise Pay Period", "wait": 1500 },
+    { "screenshot": "finalise-loaded.png" },
+    { "click": "Update", "wait": 800 },
+    { "screenshot": "finalise-confirm-dialog.png" },
+    { "click": "No", "wait": 500 }
+  ]
+}
