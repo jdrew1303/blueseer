@@ -1,28 +1,60 @@
 {
   "steps": [
-    { "caption": "Reports hub (S-40 to S-47): each report screen should load without error, even with no finalised pay periods yet" },
+    { "caption": "Payroll Summary/Audit Trail (S-40): actually run it, not just load the screen" },
     { "menu": "Payroll>Reports>Payroll Summary/Audit Trail", "wait": 1500 },
-    { "screenshot": "s40-audit-trail.png" },
+    { "assert": { "button": "Print", "enabled": false } },
+    { "click": "Run", "wait": 1000 },
+    { "screenshot": "s40-sort-dialog.png" },
+    { "click": "No", "wait": 1500 },
+    { "screenshot": "s40-audit-trail-run.png" },
+    { "assert": { "button": "Print", "enabled": true } },
 
+    { "caption": "Tax Details Report (S-41)" },
     { "menu": "Payroll>Reports>Tax Details Report", "wait": 1500 },
-    { "screenshot": "s41-tax-details.png" },
+    { "click": "Run", "wait": 1000 },
+    { "click": "No", "wait": 1500 },
+    { "screenshot": "s41-tax-details-run.png" },
+    { "assert": { "button": "Print", "enabled": true } },
 
+    { "caption": "Register of Employees (S-42): loads its own data directly, no Run needed" },
     { "menu": "Payroll>Reports>Register of Employees", "wait": 1500 },
     { "screenshot": "s42-register-of-employees.png" },
 
+    { "caption": "Additions/Deductions Report (S-43)" },
     { "menu": "Payroll>Reports>Additions/Deductions Report", "wait": 1500 },
-    { "screenshot": "s43-add-ded-report.png" },
+    { "click": "Run", "wait": 1000 },
+    { "click": "No", "wait": 1500 },
+    { "screenshot": "s43-add-ded-run.png" },
+    { "assert": { "button": "Print", "enabled": true } },
 
+    { "caption": "Pension Reports (S-44)" },
     { "menu": "Payroll>Reports>Pension Reports", "wait": 1500 },
-    { "screenshot": "s44-pension-reports.png" },
+    { "click": "Run", "wait": 1000 },
+    { "click": "No", "wait": 1500 },
+    { "screenshot": "s44-pension-reports-run.png" },
+    { "assert": { "button": "Print", "enabled": true } },
 
+    { "caption": "Other Reports (S-45)" },
     { "menu": "Payroll>Reports>Other Reports", "wait": 1500 },
-    { "screenshot": "s45-other-reports.png" },
+    { "click": "Run", "wait": 1000 },
+    { "click": "No", "wait": 1500 },
+    { "screenshot": "s45-other-reports-run.png" },
+    { "assert": { "button": "Print", "enabled": true } },
 
+    { "caption": "Year End Summary (S-46)" },
     { "menu": "Payroll>Reports>Year End Summary", "wait": 1500 },
-    { "screenshot": "s46-year-end-summary.png" },
+    { "click": "Run", "wait": 1000 },
+    { "click": "No", "wait": 1500 },
+    { "screenshot": "s46-year-end-summary-run.png" },
+    { "assert": { "button": "Print", "enabled": true } },
 
+    { "caption": "Employment Details Summary (S-47): its own Generate flow, not ReportRunnerPanel - correctly skips employees with no pay recorded rather than generating a hollow summary" },
     { "menu": "Payroll>Reports>Employment Details Summary", "wait": 1500 },
-    { "screenshot": "s47-employment-details-summary.png" }
+    { "check": 0, "wait": 500 },
+    { "click": "Generate", "wait": 1500 },
+    { "screenshot": "s47-employment-details-summary-generated.png" },
+    { "assert": { "text": "0 generated, 3 skipped", "visible": true } },
+    { "assert": { "text": "no pay recorded in 2026", "visible": true } },
+    { "click": "OK", "wait": 500 }
   ]
 }

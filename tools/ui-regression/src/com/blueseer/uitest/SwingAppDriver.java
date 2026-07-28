@@ -472,8 +472,17 @@ final class SwingAppDriver {
     }
 
     javax.swing.JButton findButtonByText(Container root, String text) {
+        // MainFrame caches previously-visited panels rather than destroying
+        // them when navigating away (confirmed: EmployeeMaintIE's own
+        // setVisible() comment - "every time MainFrame re-shows this cached
+        // panel"), so a hidden earlier screen's buttons are still reachable
+        // in the tree. collectAll would happily return one of those instead
+        // of the current screen's button with the same text (e.g. every
+        // Reports Hub screen has its own "Run"/"Print") - collectShowing is
+        // the same collectAll, just filtered to isShowing(), which a cached-
+        // but-not-currently-displayed panel's descendants never are.
         List<Component> out = new ArrayList<>();
-        collectAll(root, javax.swing.JButton.class, out);
+        collectShowing(root, javax.swing.JButton.class, out);
         for (Component c : out) {
             javax.swing.JButton b = (javax.swing.JButton) c;
             if (text.equals(b.getText())) {

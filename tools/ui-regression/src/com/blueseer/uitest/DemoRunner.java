@@ -75,6 +75,11 @@ import java.util.Locale;
  *                                                       warning): true/false (default true) for
  *                                                       whether any currently-showing JLabel contains
  *                                                       this text.
+ *             or {"button": "Print", "enabled": true} - a button's enabled state, e.g. to confirm a
+ *                                                       Jasper report actually generated (Print/Copy/
+ *                                                       HTML/Email start disabled and only enable on
+ *                                                       success) without needing to read the rendered
+ *                                                       preview's content directly.
  *                                                      A failed assertion fails the step exactly like
  *                                                      any other error (see "Pass/fail" below) - this
  *                                                      is what makes a script an actual test instead
@@ -360,8 +365,25 @@ final class DemoRunner {
                         if (found != expectVisible) {
                             throw new IllegalStateException("assertion failed: " + detail);
                         }
+                    } else if (a.has("button")) {
+                        // For screens whose real output is a rendered Jasper preview or a
+                        // written file rather than a JLabel/JTextField value - can't read
+                        // the content directly, but the action buttons (Print/Copy/HTML/
+                        // Email, disabled until a report successfully generates) are a real
+                        // proxy for "did this actually produce output" without needing to
+                        // fake reading a JRViewer's rendered page.
+                        String buttonText = a.getString("button");
+                        javax.swing.JButton button = driver.findButtonByText(driver.currentInteractionRoot(jframe), buttonText);
+                        if (button == null) {
+                            throw new IllegalStateException("assert target not found: button \"" + buttonText + "\"");
+                        }
+                        boolean expectEnabled = a.getBoolean("enabled");
+                        detail = "button \"" + buttonText + "\" enabled=" + expectEnabled + " (actual: " + button.isEnabled() + ")";
+                        if (button.isEnabled() != expectEnabled) {
+                            throw new IllegalStateException("assertion failed: " + detail);
+                        }
                     } else {
-                        throw new IllegalArgumentException("assert step needs \"label\" or \"text\"");
+                        throw new IllegalArgumentException("assert step needs \"label\", \"text\", or \"button\"");
                     }
                 } else if (step.has("wait")) {
                     action = "wait";

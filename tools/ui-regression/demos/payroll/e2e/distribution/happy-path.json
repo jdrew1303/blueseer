@@ -1,15 +1,22 @@
 {
   "steps": [
-    { "caption": "Print/Email Payslips (S-36): with nothing finalised yet, the payslip list is legitimately empty" },
+    { "caption": "Print/Email Payslips (S-36): with no periods available yet (nothing finalised), Preview correctly does nothing rather than crashing on a missing selection" },
     { "menu": "Payroll>Distribution & Payment>Print/Email Payslips", "wait": 1500 },
     { "screenshot": "print-payslips.png" },
-
-    { "caption": "Pay Employees - Bank File (S-38)" },
-    { "menu": "Payroll>Distribution & Payment>Pay Employees - Bank File", "wait": 1500 },
-    { "screenshot": "bank-file-wizard.png" },
+    { "click": "Preview", "wait": 800 },
+    { "screenshot": "print-payslips-preview-noop.png" },
 
     { "caption": "Pay Method Reporting (S-39)" },
     { "menu": "Payroll>Distribution & Payment>Pay Method Reporting", "wait": 1500 },
-    { "screenshot": "pay-method-reporting.png" }
+    { "screenshot": "pay-method-reporting.png" },
+
+    { "caption": "Pay Employees - Bank File (S-38): Next correctly validates period/source account are chosen before proceeding - opened last, since its wizard dialog has no Cancel/Close button (only Back/Next/Generate File) and would otherwise block navigating to anything after it" },
+    { "menu": "Payroll>Distribution & Payment>Pay Employees - Bank File", "wait": 1500 },
+    { "click": "Pay Employees...", "wait": 1000 },
+    { "screenshot": "bank-file-wizard.png" },
+    { "click": "Next", "wait": 800 },
+    { "screenshot": "bank-file-wizard-validation.png" },
+    { "assert": { "text": "Select a period and source account first", "visible": true } },
+    { "click": "OK", "wait": 500 }
   ]
 }

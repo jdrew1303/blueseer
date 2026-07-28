@@ -199,14 +199,33 @@ not a regression - don't chase it further.
 
 ## Status
 
-Every folder has at least one script. Covered with real (non-screenshot-
-only) assertions: `company-setup-and-employee-master/`, `rpn/`,
-`pay-processing/`, `leavers/`, `bik-sick-pay-pensions/`, `psr/`,
-`journals-and-year-transition/`, `remittance/`. Covered with
-load-verification only (screenshot-only, no `assert`): `distribution/`,
-`reports/` - both are read-heavy screens with little to compute wrong, so
-"loads without throwing" is most of the value; add real assertions if a bug
-ever turns up in one.
+Every folder is now covered with real (non-screenshot-only) assertions,
+including `distribution/` and `reports/` - the Reports Hub screens looked
+"read-only, low risk" at a glance, but each one actually runs a live
+Jasper compile+fill+render on click ("Run"), and Print/Copy/HTML/Email stay
+disabled until that succeeds - `{"assert": {"button": "Print", "enabled":
+true}}` after clicking Run genuinely proves the report pipeline executed
+end to end, not just that the empty shell screen loaded. Same idea for
+Print Payslips' Preview and the Bank File wizard's Next validation in
+`distribution/`.
+
+While building that pass, found and fixed a real bug in the test tooling
+itself (not the app): `findButtonByText` used `collectAll` rather than
+`collectShowing`, so on a script that visits several panels with the same
+button text (every Reports Hub screen has its own "Run"/"Print" - MainFrame
+caches previously-visited panels instead of destroying them, so those
+buttons are still reachable in the tree even once hidden) it could silently
+click a stale, no-longer-visible button from an earlier screen instead of
+the current one. Every already-passing script was re-run after the fix and
+came back identical, so this wasn't hiding a false positive elsewhere in the
+suite - but it's the reason to keep re-running the full suite after any
+change to the driver itself, not just the script that triggered the fix.
+
+Also found while exercising `distribution/`: the Bank File wizard (Pay
+Employees - Bank File) has no Cancel/Close button, only Back/Next/Generate
+File - a real, if minor, UX gap (not something this suite works around; the
+script visits it last so it doesn't need to navigate away from the open
+modal afterward).
 
 Known remaining gaps:
 - `company-setup-and-employee-master/` doesn't cover the
