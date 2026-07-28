@@ -1,0 +1,26 @@
+{
+  "steps": [
+    { "caption": "Remittance Overview (S-66): with nothing finalised yet, correctly shows no remittance due rather than a garbage amount" },
+    { "menu": "Payroll>Revenue Payments>Remittance to Revenue - Overview", "wait": 1500 },
+    { "screenshot": "remittance-overview.png" },
+    { "assert": { "label": "Amount Due:", "equals": "€0" } },
+    { "assert": { "label": "Due Date:", "equals": "-" } },
+    { "assert": { "label": "Payment Status:", "contains": "no finalised payslips yet" } },
+
+    { "caption": "Payment Due Dates (S-67)" },
+    { "menu": "Payroll>Revenue Payments>Payment Due Dates", "wait": 1500 },
+    { "screenshot": "payment-due-dates.png" },
+
+    { "caption": "Revenue Payments Record (S-68)" },
+    { "menu": "Payroll>Revenue Payments>Revenue Payments Record", "wait": 1500 },
+    { "screenshot": "revenue-payments-record.png" },
+
+    { "caption": "Returns Look-Up (S-69)" },
+    { "menu": "Payroll>Revenue Payments>Returns Look-Up", "wait": 1500 },
+    { "screenshot": "returns-lookup.png" },
+
+    { "caption": "Query Revenue Record (S-70) - reuses S-35's CheckRevenueRecordPanel, per the screen spec" },
+    { "menu": "Payroll>Revenue Payments>Query Revenue Record", "wait": 1500 },
+    { "screenshot": "query-revenue-record.png" }
+  ]
+}

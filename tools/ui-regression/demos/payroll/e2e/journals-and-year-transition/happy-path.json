@@ -1,0 +1,25 @@
+{
+  "steps": [
+    { "caption": "Payroll Journal Mapping (S-62): switching Accounting Target reloads the grid and saves cleanly" },
+    { "menu": "Payroll>Journals & Year Transition>Payroll Journal Mapping", "wait": 1500 },
+    { "screenshot": "journal-mapping-quickbooks.png" },
+    { "combo": { "index": 0, "select": "Xero Online" }, "wait": 800 },
+    { "screenshot": "journal-mapping-xero.png" },
+    { "click": "Save Mapping", "wait": 800 },
+    { "screenshot": "journal-mapping-saved.png" },
+    { "click": "OK", "wait": 500 },
+
+    { "caption": "Journal Export (S-63): with no GL codes mapped yet, export is correctly blocked rather than producing a hollow file" },
+    { "menu": "Payroll>Journals & Year Transition>Journal Export", "wait": 1500 },
+    { "screenshot": "journal-export.png" },
+    { "assert": { "text": "Mapping incomplete", "visible": true } },
+
+    { "caption": "Change Pay Frequency wizard (S-64): loads to its selection card" },
+    { "menu": "Payroll>Journals & Year Transition>Change Pay Frequency", "wait": 1500 },
+    { "screenshot": "pay-frequency-change.png" },
+
+    { "caption": "Start New Tax Year wizard (S-65): loads to its checklist card - not run to completion here, as it's a one-way year-rollover action against the shared dev database" },
+    { "menu": "Payroll>Journals & Year Transition>Start New Tax Year", "wait": 1500 },
+    { "screenshot": "start-new-tax-year.png" }
+  ]
+}
